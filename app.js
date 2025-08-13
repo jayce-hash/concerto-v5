@@ -1,7 +1,7 @@
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto app.js v6.2.1 loaded");
+  console.log("Concerto app.js v6.3.0 loaded");
 
   const byId = (id) => document.getElementById(id);
   const screens = {
@@ -360,41 +360,56 @@
     return `${h}:${m.toString().padStart(2,'0')} ${ampm}`;
   }
 
-  // Add "from the venue" after ~X mi snippets (keeps cards clean by only applying to narrative/intro)
+  // Add "from the venue" after ~X mi snippets for narrative text
   function addVenueSuffix(text){
     if (!text) return text;
     return text.replace(/(~\s*\d+(\.\d+)?\s*mi)\b/g, "$1 from the venue");
   }
 
-  // --- Narrative itinerary builder ---
-  function buildNarrative(plan){
+  // --- Top blurb (short, keeps your original vibe, ensures venue distance phrasing) ---
+  function buildTopBlurb(plan){
     const showM = parseHM(state.showTime);
     const venueName = state.venue || "your venue";
 
-    const parts = [];
-    parts.push(`Your night is centered around <strong>${esc(venueName)}</strong>${state.showTime ? ` with a show at <strong>${format12(showM)}</strong>` : ""}.`);
+    // Optional small “extra” mention to keep it lively but concise
+    let extraBit = "";
+    if (Array.isArray(plan.extras) && plan.extras.length){
+      const e = plan.extras[0];
+      if (e){
+        extraBit = ` Want a little extra? Consider <strong>${esc(e.name)}</strong> (${esc((e.section||"").toLowerCase())}, ~${e.distance?.toFixed ? e.distance.toFixed(1) : e.distance} mi).`;
+      }
+    }
+
+    const core = `Your night is centered around <strong>${esc(venueName)}</strong>${state.showTime ? ` with a show at <strong>${format12(showM)}</strong>` : ""}.`;
+    const tail = ` Distances below are from the venue. Maps and websites are linked for quick booking and directions.`;
+    return addVenueSuffix(core + extraBit + tail);
+  }
+
+  // --- Time-based mini-itinerary lines for the “Your Evening Plan” card ---
+  function buildEveningLines(plan){
+    const lines = [];
+    const showM = parseHM(state.showTime);
 
     const beforePick = Array.isArray(plan.diningBefore) && plan.diningBefore[0] ? plan.diningBefore[0] : null;
     const afterPick  = Array.isArray(plan.diningAfter)  && plan.diningAfter[0]  ? plan.diningAfter[0]  : null;
 
     if (state.eatWhen !== "after" && showM != null && beforePick){
       const dinnerBeforeM = addMinutes(showM, -90);
-      parts.push(`Plan to have dinner before at <strong>${esc(beforePick.name)}</strong> (~${beforePick.distance?.toFixed ? beforePick.distance.toFixed(1) : beforePick.distance} mi) around <strong>${format12(dinnerBeforeM)}</strong>.`);
+      lines.push(`${format12(dinnerBeforeM)} · Pre-show: <strong>${esc(beforePick.name)}</strong> (~${beforePick.distance?.toFixed ? beforePick.distance.toFixed(1) : beforePick.distance} mi)`);
     }
+
+    if (showM != null){
+      lines.push(`${format12(showM)} · Show at <strong>${esc(state.venue || "the venue")}</strong>`);
+    } else {
+      lines.push(`Showtime · <strong>${esc(state.venue || "the venue")}</strong>`);
+    }
+
     if (state.eatWhen !== "before" && showM != null && afterPick){
       const dinnerAfterM = addMinutes(showM, +45);
-      parts.push(`After the show, head to <strong>${esc(afterPick.name)}</strong> (~${afterPick.distance?.toFixed ? afterPick.distance.toFixed(1) : afterPick.distance} mi) around <strong>${format12(dinnerAfterM)}</strong> for a late bite or drinks.`);
+      lines.push(`${format12(dinnerAfterM)} · Post-show: <strong>${esc(afterPick.name)}</strong> (~${afterPick.distance?.toFixed ? afterPick.distance.toFixed(1) : afterPick.distance} mi)`);
     }
 
-    if (Array.isArray(plan.extras) && plan.extras.length){
-      const e = plan.extras[0];
-      if (e){
-        parts.push(`Want a little extra? Consider <strong>${esc(e.name)}</strong> (${esc((e.section||"").toLowerCase())}, ~${e.distance?.toFixed ? e.distance.toFixed(1) : e.distance} mi).`);
-      }
-    }
-
-    parts.push(`Maps and websites are linked below for quick booking and directions.`);
-    return parts.join(" ");
+    return lines;
   }
 
   async function pickRestaurants({ wantOpenNow }){
@@ -547,28 +562,16 @@
   }
 
   function renderResults(plan){
-    // 12-hour header time
+    // Header context (artist at venue · time, in 12-hour)
     const showM = parseHM(state.showTime);
     const showText = showM != null ? format12(showM) : "";
     byId('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
 
-    // Build or use AI intro, then ensure distance phrasing
-let narrativeRaw;
-if (plan.intro && plan.intro.trim()) {
-  // Use AI intro but append "from the venue" if no miles are present
-  narrativeRaw = plan.intro.includes("mi") 
-    ? plan.intro 
-    : `${plan.intro.trim()} (from the venue)`;
-} else {
-  // Use our generated narrative with distances
-  narrativeRaw = buildNarrative(plan);
-}
+    // Top blurb (short), always mentions distances are from the venue
+    const blurb = buildTopBlurb(plan);
+    byId('intro-line').innerHTML = blurb;
 
-// Add "from the venue" wording to any ~X mi phrases
-const narrative = addVenueSuffix(narrativeRaw);
-
-
-    // Timeline with 12-hour stamps
+    // Timeline (visual) with 12-hour stamps
     const tl = byId('timeline'), tlb = byId('timeline-body');
     tl.style.display = state.showTime ? "block" : "none";
     if (showM != null){
@@ -580,10 +583,10 @@ const narrative = addVenueSuffix(narrativeRaw);
       tlb.innerHTML = "";
     }
 
-    // Cards grid + narrative card at top (clean distances here too, but keep cards uncluttered)
+    // Cards grid — first card = time-based mini-itinerary (not the paragraph)
     const grid = byId('itinerary');
     const cards = [];
-    cards.push(card("Your Evening Plan", null, [line(narrative)]));
+    cards.push(card("Your Evening Plan", null, buildEveningLines(plan).map(line)));
 
     if (Array.isArray(plan.diningBefore) && plan.diningBefore.length){
       cards.push(card("Eat Before", null, plan.diningBefore.map(placeLine)));
@@ -622,19 +625,20 @@ const narrative = addVenueSuffix(narrativeRaw);
   }
 
   // Helpers
-  function line(t){ return t ? `${esc(t)}` : ""; }
+  function line(t){ return t ? `${t}` : ""; } // (t is already safely assembled)
   function link(u,t){ return u ? `<a href="${u}" target="_blank" rel="noopener">${t}</a>` : ""; }
   function badge(t){ return t ? `<span class="meta">${esc(t)}</span>` : ""; }
   function esc(s) {
-  return (s || "").replace(/[&<>"']/g, m => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",   // no space before >
-    '"': "&quot;",
-    "'": "&#39;"
-  }[m]));
-}
+    return (s || "").replace(/[&<>"']/g, m => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[m]));
+  }
 
+  // harmless global fallback in case anything else references sel()
   window.sel = window.sel || function sel(cond){ return cond ? " selected" : ""; };
 
   function waitForPlaces(maxMs=8000){

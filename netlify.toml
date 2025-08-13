@@ -1,7 +1,0 @@
-[build]
-  publish = "./"
-  command = ""
-
-[template.environment]
-  GOOGLE_MAPS_API_KEY = "Your Google API Key"
-  COHERE_API_KEY = "Your Cohere API Key"

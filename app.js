@@ -552,10 +552,21 @@
     const showText = showM != null ? format12(showM) : "";
     byId('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
 
-    // Narrative (AI intro if present, else our builder) + append "from the venue" to any ~X mi
-    const narrativeRaw = plan.intro && plan.intro.trim() ? plan.intro : buildNarrative(plan);
-    const narrative = addVenueSuffix(narrativeRaw);
-    byId('intro-line').innerHTML = narrative;
+    // Build or use AI intro, then ensure distance phrasing
+let narrativeRaw;
+if (plan.intro && plan.intro.trim()) {
+  // Use AI intro but append "from the venue" if no miles are present
+  narrativeRaw = plan.intro.includes("mi") 
+    ? plan.intro 
+    : `${plan.intro.trim()} (from the venue)`;
+} else {
+  // Use our generated narrative with distances
+  narrativeRaw = buildNarrative(plan);
+}
+
+// Add "from the venue" wording to any ~X mi phrases
+const narrative = addVenueSuffix(narrativeRaw);
+
 
     // Timeline with 12-hour stamps
     const tl = byId('timeline'), tlb = byId('timeline-body');

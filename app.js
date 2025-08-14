@@ -1,7 +1,7 @@
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto app.js v6.3.0 loaded");
+  console.log("Concerto app.js v6.3.1 loaded");
 
   const byId = (id) => document.getElementById(id);
   const screens = {
@@ -292,6 +292,12 @@
     }
   }
 
+  // ---- Correct Google Maps URL for place IDs ----
+  function gmapsUrl(placeId){
+    // Official pattern: https://www.google.com/maps/search/?api=1&query_place_id=PLACE_ID
+    return `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}`;
+  }
+
   async function generate(){
     if (!state.venue) { alert("Please enter a venue."); return; }
     show('loading');
@@ -443,7 +449,7 @@
       enriched.push({
         name: d.name, address: d.formatted_address || r.vicinity || "",
         distance: +dist.toFixed(2),
-        mapUrl: `https://www.google.com/maps/place/?q=place_id:${d.place_id}`,
+        mapUrl: gmapsUrl(d.place_id),
         url: d.website || "",
         rating: typeof d.rating === "number" ? d.rating : null,
         price: typeof d.price_level === "number" ? "$".repeat(d.price_level+1) : null,
@@ -506,7 +512,7 @@
       return {
         name: d.name, address: d.formatted_address || r.vicinity || "",
         distance: +dist.toFixed(2),
-        mapUrl: `https://www.google.com/maps/place/?q=place_id:${d.place_id}`,
+        mapUrl: gmapsUrl(d.place_id),
         url: d.website || "",
         rating: typeof d.rating === "number" ? d.rating : null
       };

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Concerto+ — Concert Night Planner (v7.3.1)</title>
+
+  <!-- Fonts & CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Lora:wght@400;600&display=swap" rel="stylesheet">
+  <link href="./style.css?v=7.6" rel="stylesheet" />
+
+  <!-- 1) PASTE YOUR GOOGLE KEY BELOW (keep the quotes) -->
+  <script>
+    window.GOOGLE_MAPS_API_KEY = window.GOOGLE_MAPS_API_KEY || ""; // e.g. set via Netlify env and inline script
+  </script>
+
+  <!-- 2) Load Google Maps JavaScript + Places library -->
+  <script>
+    (function loadGoogle(){
+      var k = window.GOOGLE_MAPS_API_KEY;
+      if(!k){ console.warn("Missing GOOGLE_MAPS_API_KEY — Places Autocomplete will be disabled until you set it."); return; }
+      var s = document.createElement('script');
+      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(k) + "&libraries=places&v=weekly";
+      s.async = true; s.defer = true;
+      document.head.appendChild(s);
+    })();
+  </script>
+</head>
+
+<body>
+  <!-- Decorative -->
+  <div class="music-notes" aria-hidden="true"></div>
+
+  <!-- Welcome -->
+  <section id="screen-welcome" class="screen active">
+    <div class="container">
+      <header class="hero">
+        <h1 class="headline">PLAN YOUR NIGHT WITH <span class="brand">CONCERTO+</span></h1>
+        <p class="subhead">A curated, real-world itinerary for your concert night.</p>
+        <button id="btn-start" class="btn btn-primary btn-xl">Start Planning</button>
+        <p class="disclaimer">No account needed. ~60 seconds.</p>
+      </header>
+    </div>
+  </section>
+
+  <!-- Form -->
+  <section id="screen-form" class="screen">
+    <div class="container narrow">
+      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+      <div class="step-card">
+        <div id="step-wrapper"></div>
+        <div class="sticky-actions">
+          <button id="btn-prev" class="btn">Back</button>
+          <button id="btn-next" class="btn btn-primary">Next</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Loading -->
+  <section id="screen-loading" class="screen loading">
+    <div class="container">
+      <div class="spinner" role="status" aria-label="Loading"></div>
+      <p class="loading-text muted" id="loading-line">We’re putting your night together…</p>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section id="screen-results" class="screen">
+    <div class="container wide">
+      <header class="results-header">
+        <div>
+          <h2>Your Night Out</h2>
+          <p class="muted" id="results-context"></p>
+          <p class="muted" id="intro-line"></p>
+        </div>
+        <div class="results-actions">
+          <button id="btn-share" class="btn btn-ghost">Share Link</button>
+          <button id="btn-ics" class="btn btn-ghost">Add to Calendar</button>
+          <button id="btn-edit" class="btn btn-ghost">Edit Answers</button>
+          <button id="btn-new" class="btn btn-ghost">Start Over</button>
+        </div>
+      </header>
+
+      <!-- Single continuous schedule target -->
+      <div id="schedule" class="schedule"></div>
+    </div>
+  </section>
+
+  <footer class="footer no-print">
+    <div class="container">
+      <p class="tiny muted">© Concerto. “From the concert, to the city.”</p>
+    </div>
+  </footer>
+
+  <!-- App (ES module) -->
+  <script type="module" src="./app.js?v=7.3.1"></script>
+</body>
+</html>

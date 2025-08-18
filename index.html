@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Concerto+ — Concert Night Planner (v6.2.0)</title>
+
+  <!-- Fonts & CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&family=Lora:wght@400;600&display=swap" rel="stylesheet">
+  <link href="./style.css?v=6.2.0" rel="stylesheet" />
+
+  <!-- 1) PASTE YOUR GOOGLE KEY BELOW (keep the quotes) -->
+  <script>
+    window.GOOGLE_MAPS_API_KEY = "AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w";
+  </script>
+
+  <!-- 2) Load Google Maps JavaScript + Places library -->
+  <script>
+    (function loadGoogle(){
+      var k = window.GOOGLE_MAPS_API_KEY;
+      if(!k){ console.error("Missing GOOGLE_MAPS_API_KEY"); return; }
+      var s = document.createElement('script');
+      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(k) + "&libraries=places&v=weekly";
+      s.async = true; s.defer = true;
+      document.head.appendChild(s);
+    })();
+  </script>
+</head>
+
+<body>
+  <!-- Background -->
+  <div class="bg-stars"></div>
+  <div class="music-notes" aria-hidden="true"></div>
+
+  <!-- Welcome -->
+  <section id="screen-welcome" class="screen active">
+    <div class="container">
+      <header class="hero">
+        <h1 class="headline">PLAN YOUR NIGHT WITH <span class="brand">CONCERTO+</span></h1>
+        <p class="subhead">A curated, real-world itinerary for your concert night.</p>
+        <button id="btn-start" class="btn btn-primary btn-xl">Start Planning</button>
+        <p class="disclaimer">No account needed. ~60 seconds.</p>
+      </header>
+    </div>
+  </section>
+
+  <!-- Form -->
+  <section id="screen-form" class="screen">
+    <div class="container narrow">
+      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+      <div id="step-wrapper" class="card step-card"></div>
+      <div class="nav sticky-actions">
+        <button id="btn-prev" class="btn btn-ghost" disabled>Back</button>
+        <button id="btn-next" class="btn btn-primary">Next</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Loading -->
+  <section id="screen-loading" class="screen">
+    <div class="container">
+      <div class="loader"><div class="dots"><span></span><span></span><span></span></div></div>
+      <p class="loading-text" id="loading-line">We’re putting your night together…</p>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section id="screen-results" class="screen">
+    <div class="container wide">
+      <header class="results-header">
+        <div>
+          <h2>Your Night Out</h2>
+          <p class="muted" id="results-context"></p>
+          <p class="muted" id="intro-line"></p>
+        </div>
+        <div class="results-actions">
+          <button id="btn-share" class="btn btn-ghost">Share Link</button>
+          <button id="btn-edit" class="btn btn-ghost">Edit Answers</button>
+          <button id="btn-new" class="btn btn-ghost">Start Over</button>
+        </div>
+      </header>
+      <div id="timeline" class="card card-itin" style="display:none">
+        <header><h3>Timeline</h3></header>
+        <div class="body" id="timeline-body"></div>
+      </div>
+      <div id="itinerary" class="grid"></div>
+    </div>
+  </section>
+
+  <footer class="footer no-print">
+    <div class="container">
+      <p class="tiny">© Concerto. “From the concert, to the city.”</p>
+    </div>
+  </footer>
+
+  <script src="./app.js?v=6.2.1"></script>
+</body>
+</html>

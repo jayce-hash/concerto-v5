@@ -1,27 +1,41 @@
-// app.js — Concerto+ continuous schedule (v7.3.0)
+// app.js — Concerto+ continuous schedule (v7.3.1, safe bindings + fixes)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
-import { renderSchedule, fmtTime } from './timeline-renderer.js';
+import { renderSchedule } from './timeline-renderer.js';
 import { shareLinkOrCopy, toICS } from './export-tools.js';
 
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v7.3.0 loaded");
+  console.log("Concerto+ app.js v7.3.1 loaded");
 
+  // ---------- helpers ----------
   const $ = (id) => document.getElementById(id);
-  const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
+  const qsa = (sel, el=document) => Array.from(el.querySelectorAll(sel));
   const esc = (s) => (s || "").replace(/[&<>\"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-  const screens = { welcome: $('screen-welcome'), form: $('screen-form'), loading: $('screen-loading'), results: $('screen-results') };
+  const on = (id, evt, fn) => { const el = $(id); if (el) el.addEventListener(evt, fn); return !!el; };
+
+  const screens = {
+    welcome: $('screen-welcome'),
+    form: $('screen-form'),
+    loading: $('screen-loading'),
+    results: $('screen-results')
+  };
 
   function show(name){
-    Object.values(screens).forEach(s => s.classList.remove('active'));
-    screens[name].classList.add('active');
+    Object.values(screens).forEach(s => s && s.classList.remove('active'));
+    if (screens[name]) screens[name].classList.add('active');
     document.body.classList.add('page-transition');
     setTimeout(()=>document.body.classList.remove('page-transition'), 400);
   }
-  function setProgress(){ $('progress-bar').style.width = `${(step/steps.length)*100}%`; }
+  function setProgress(){
+    const bar = $('progress-bar');
+    if (!bar) return;
+    const pct = Math.round((step / (steps.length - 1)) * 100); // 0% .. 100%
+    bar.style.width = `${isFinite(pct) ? pct : 0}%`;
+  }
 
+  // ---------- state ----------
   let step = 0;
   const steps = ["concert","stay","dining","activities"];
   const state = window.__concertoState = {
@@ -35,22 +49,23 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     arrivalBufferMin: 45, doorsBeforeMin: 90
   };
 
-  $('btn-start').addEventListener('click', () => { show('form'); renderStep(); });
-  $('btn-prev').addEventListener('click', () => { if (step>0){ step--; renderStep(); } });
-  $('btn-next').addEventListener('click', async () => {
+  // ---------- bindings (null-safe) ----------
+  on('btn-start','click', () => { show('form'); renderStep(); });
+  on('btn-prev','click', () => { if (step>0){ step--; renderStep(); } });
+  on('btn-next','click', async () => {
     if (steps[step] === "concert") { await ensureVenueResolved(); }
     if (steps[step] === "stay" && state.staying) { await ensureHotelResolved(); }
     if (step < steps.length-1){ step++; renderStep(); }
     else { await generate(); }
   });
-  $('btn-edit').addEventListener('click', () => { show('form'); step = 0; renderStep(); });
-  $('btn-new').addEventListener('click', () => { location.href = location.pathname; });
-  $('btn-share').addEventListener('click', async () => {
+  on('btn-edit','click', () => { show('form'); step = 0; renderStep(); });
+  on('btn-new','click', () => { location.href = location.pathname; });
+  on('btn-share','click', async () => {
     const enc = btoa(encodeURIComponent(JSON.stringify(state)));
     const url = `${location.origin}${location.pathname}?a=${enc}`;
     await shareLinkOrCopy("Your Concerto+ plan", url);
   });
-  $('btn-ics').addEventListener('click', () => {
+  on('btn-ics','click', () => {
     const items = window.__lastItinerary || [];
     const blob = toICS(items, 'Concerto+ — Concert Day');
     const a = document.createElement('a');
@@ -59,14 +74,17 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     document.body.appendChild(a); a.click(); a.remove();
   });
 
+  // deep-link restore
   try {
     const enc = new URLSearchParams(location.search).get("a");
     if (enc) { Object.assign(state, JSON.parse(decodeURIComponent(atob(enc)))); show('form'); step = steps.length-1; renderStep(); }
   } catch {}
 
+  // ---------- step renderer ----------
   function renderStep(){
     setProgress();
     const w = $('step-wrapper');
+    if (!w) return;
 
     if (steps[step] === "concert"){
       w.innerHTML = `
@@ -96,10 +114,11 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         </div>
       `;
       bindArtistSuggest(); bindVenueAutocomplete();
-      $('showTime').onchange = (e)=> state.showTime = e.target.value;
-      $('showDate').onchange = (e)=> state.showDate = e.target.value;
-      $('btn-prev').disabled = true;
-      $('btn-next').textContent = "Next";
+      const st = $('showTime'), sd = $('showDate');
+      if (st) st.onchange = (e)=> state.showTime = e.target.value;
+      if (sd) sd.onchange = (e)=> state.showDate = e.target.value;
+      const prev = $('btn-prev'); if (prev) prev.disabled = true;
+      const next = $('btn-next'); if (next) next.textContent = "Next";
 
     } else if (steps[step] === "stay"){
       w.innerHTML = `
@@ -116,10 +135,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         </div>
       `;
       const cb = $('staying'); const hotelInput = $('hotel');
-      cb.onchange = ()=>{ state.staying = cb.checked; hotelInput.disabled = !cb.checked; };
+      if (cb) cb.onchange = ()=>{ state.staying = cb.checked; if (hotelInput) hotelInput.disabled = !cb.checked; };
       bindHotelAutocomplete();
-      $('btn-prev').disabled = false;
-      $('btn-next').textContent = "Next";
+      const prev = $('btn-prev'); if (prev) prev.disabled = false;
+      const next = $('btn-next'); if (next) next.textContent = "Next";
 
     } else if (steps[step] === "dining"){
       const cuisines = ["American","Italian","Japanese/Sushi","Mexican/Tacos","Steakhouse","Seafood","Mediterranean","Vegan/Vegetarian","Pizza","BBQ"];
@@ -172,10 +191,11 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
           </div>
         </div>
       `;
-      $('eatWhen').onchange = (e)=> state.eatWhen = e.target.value;
-      $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
-      $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
-      $('tone').onchange = (e)=> state.tone = e.target.value;
+      const ew = $('eatWhen'), ps = $('placeStyle'), fso = $('foodStyleOther'), tone = $('tone');
+      if (ew) ew.onchange = (e)=> state.eatWhen = e.target.value;
+      if (ps) ps.onchange = (e)=> state.placeStyle = e.target.value;
+      if (fso) fso.oninput = (e)=> state.foodStyleOther = e.target.value.trim();
+      if (tone) tone.onchange = (e)=> state.tone = e.target.value;
       qsa('#cuisine-pills .pill').forEach(p=>{
         p.onclick=()=>{
           const v = p.dataset.val;
@@ -187,8 +207,8 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       qsa('#budget-pills .pill').forEach(p=>{
         p.onclick=()=>{ state.budget = p.dataset.val; qsa('#budget-pills .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
       });
-      $('btn-prev').disabled = false;
-      $('btn-next').textContent = "Next";
+      const prev = $('btn-prev'); if (prev) prev.disabled = false;
+      const next = $('btn-next'); if (next) next.textContent = "Next";
 
     } else {
       w.innerHTML = `
@@ -203,21 +223,21 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       `;
       ["coffee","drinks","dessert","sights"].forEach(k=>{
         const el = $('int-'+k);
-        el.onchange = ()=>{ state.interests[k] = el.checked; };
+        if (el) el.onchange = ()=>{ state.interests[k] = el.checked; };
       });
-      $('btn-prev').disabled = false;
-      $('btn-next').textContent = "Generate Schedule";
+      const prev = $('btn-prev'); if (prev) prev.disabled = false;
+      const next = $('btn-next'); if (next) next.textContent = "Generate Schedule";
     }
   }
 
-  // Artist suggest
+  // ---------- artist suggest ----------
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list');
-    if (!input) return;
+    if (!input || !list) return;
     input.addEventListener('input', async ()=>{
       state.artist = input.value.trim();
       const q = input.value.trim();
-      if (!q){ list.style.display="none"; return; }
+      if (!q){ list.style.display="none"; list.innerHTML=""; return; }
       try{
         const res = await fetch(`https://itunes.apple.com/search?entity=musicArtist&limit=6&term=${encodeURIComponent(q)}`);
         const data = await res.json();
@@ -237,10 +257,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     });
   }
 
-  // Places autocomplete
+  // ---------- Places autocomplete ----------
   function bindVenueAutocomplete(){
     waitForPlaces().then(()=>{
-      const input = $('venue');
+      const input = $('venue'); if (!input) return;
       const ac = new google.maps.places.Autocomplete(input, { types: ['establishment'] });
       ac.addListener('place_changed', () => {
         const p = ac.getPlace();
@@ -270,17 +290,19 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       input.addEventListener('keydown', (e)=>{ if (e.key === "Enter"){ e.preventDefault(); ensureHotelResolved(); }});
     }).catch(()=>{});
   }
+  function mapsAvailable(){ return !!(window.google && google.maps && google.maps.places); }
   function waitForPlaces(maxMs=10000){
     const t0 = Date.now();
     return new Promise((resolve, reject)=>{
       (function tick(){
-        if (window.google?.maps?.places) return resolve(true);
+        if (mapsAvailable()) return resolve(true);
         if (Date.now()-t0 > maxMs) return reject(new Error("Google Places failed to load"));
         setTimeout(tick, 120);
       })();
     });
   }
 
+  // ---------- resolvers ----------
   async function ensureVenueResolved(){
     if (state.venueLat && state.venueLng) return;
     await waitForPlaces();
@@ -319,8 +341,9 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
+  // ---------- time helpers ----------
   function parseHM(hhmm){
-    if (!hhmm || !/^\\d{1,2}:\\d{2}$/.test(hhmm)) return null;
+    if (!hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null; // single backslashes
     const [h,m] = hhmm.split(':').map(n=>parseInt(n,10));
     return { h, m };
   }
@@ -334,19 +357,21 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
+  // ---------- generate ----------
   async function generate(){
     show('loading');
-
     try{
       await ensureVenueResolved();
       if (state.staying) await ensureHotelResolved();
 
       const targetISO = parseShowDateTimeISO();
-      const beforeList = (state.eatWhen==="before" || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}) : [];
-      const afterList  = (state.eatWhen==="after"  || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}) : [];
+      const beforeList = (state.eatWhen==="before" || state.eatWhen==="both")
+        ? await pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO }) : [];
+      const afterList  = (state.eatWhen==="after"  || state.eatWhen==="both")
+        ? await pickRestaurants({ wantOpenNow:true, state, slot:"after", targetISO }) : [];
       const extras = await pickExtras({ state });
 
-      // Cohere curate
+      // Cohere curate (best-effort)
       let curated = null;
       try {
         curated = await cohereCurate(state, beforeList, afterList, extras);
@@ -359,7 +384,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       const showTitle = state.artist ? `${state.artist} — Live` : "Your Concert";
       const intro = curated?.intro || `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
 
-      // Build itinerary objects
       const dinnerPick = (state.eatWhen!=='after' ? diningBefore?.[0] : null) || null;
       const itin = await buildItinerary({
         show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: showTitle },
@@ -372,14 +396,12 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       // Header
       const showText = [state.showDate, state.showTime].filter(Boolean).join(" ");
-      $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
-      $('intro-line').innerHTML = intro;
+      const ctx = $('results-context'); if (ctx) ctx.textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
+      const introEl = $('intro-line'); if (introEl) introEl.innerHTML = intro;
 
       // Render continuous schedule
-      renderSchedule(itin, $('schedule'), {
-        before: diningBefore,
-        after: diningAfter
-      });
+      const scheduleEl = $('schedule');
+      if (scheduleEl) renderSchedule(itin, scheduleEl, { before: diningBefore, after: diningAfter });
 
       show('results');
     }catch(e){
@@ -389,6 +411,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
+  // ---------- cohere ----------
   async function cohereCurate(stateSnapshot, beforeList, afterList, extras){
     const trim = p => ({
       name: p.name, address: p.address, distance: p.distance,

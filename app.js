@@ -1,4 +1,4 @@
-// app.js — Concerto+ continuous schedule (v7.3.2, light theme ready, safe bindings)
+// app.js — Concerto+ with “Your picks” locked stops (v7.4.0)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { renderSchedule } from './timeline-renderer.js';
@@ -7,37 +7,17 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v7.3.2 loaded");
+  console.log("Concerto+ app.js v7.4.0 loaded");
 
-  // ---------- helpers ----------
   const $ = (id) => document.getElementById(id);
-  const qsa = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+  const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
   const esc = (s) => (s || "").replace(/[&<>\"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-  const on = (id, evt, fn) => { const el = $(id); if (el) el.addEventListener(evt, fn); return !!el; };
+  const show = (name)=>{ ["welcome","form","loading","results"].forEach(k=>$( "screen-"+k)?.classList.remove('active')); $("screen-"+name)?.classList.add('active'); document.body.classList.add('page-transition'); setTimeout(()=>document.body.classList.remove('page-transition'), 350); };
+  const setProgress = ()=>{ const bar=$('progress-bar'); if(!bar) return; const pct = Math.max(0, Math.min(100, Math.round((step/(steps.length-1))*100))); bar.style.width = pct+"%"; };
 
-  const screens = {
-    welcome: $('screen-welcome'),
-    form: $('screen-form'),
-    loading: $('screen-loading'),
-    results: $('screen-results')
-  };
-
-  function show(name){
-    Object.values(screens).forEach(s => s && s.classList.remove('active'));
-    if (screens[name]) screens[name].classList.add('active');
-    document.body.classList.add('page-transition');
-    setTimeout(()=>document.body.classList.remove('page-transition'), 350);
-  }
-  function setProgress(){
-    const bar = $('progress-bar');
-    if (!bar) return;
-    const pct = Math.max(0, Math.min(100, Math.round((step / (steps.length - 1)) * 100)));
-    bar.style.width = pct + '%';
-  }
-
-  // ---------- state ----------
   let step = 0;
   const steps = ["concert","stay","dining","activities"];
+
   const state = window.__concertoState = {
     artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
     showDate: "", showTime: "",
@@ -46,26 +26,28 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
     budget: "$$", tone: "balanced",
     interests: { coffee:false, drinks:false, dessert:false, sights:false },
-    arrivalBufferMin: 45, doorsBeforeMin: 90
+    arrivalBufferMin: 45, doorsBeforeMin: 90,
+    // NEW: user-locked places
+    customStops: [] // {name, placeId, lat, lng, url, mapUrl, when:'before'|'after', type:'coffee'|'drinks'|'dessert'|'sight'|'dinner', durationMin, note}
   };
 
-  // ---------- bindings (null-safe) ----------
-  on('btn-start','click', () => { show('form'); renderStep(); });
-  on('btn-prev','click', () => { if (step>0){ step--; renderStep(); } });
-  on('btn-next','click', async () => {
+  // ---- Nav buttons
+  $('btn-start')?.addEventListener('click', () => { show('form'); renderStep(); });
+  $('btn-prev')?.addEventListener('click', () => { if (step>0){ step--; renderStep(); } });
+  $('btn-next')?.addEventListener('click', async () => {
     if (steps[step] === "concert") { await ensureVenueResolved(); }
     if (steps[step] === "stay" && state.staying) { await ensureHotelResolved(); }
     if (step < steps.length-1){ step++; renderStep(); }
     else { await generate(); }
   });
-  on('btn-edit','click', () => { show('form'); step = 0; renderStep(); });
-  on('btn-new','click', () => { location.href = location.pathname; });
-  on('btn-share','click', async () => {
+  $('btn-edit')?.addEventListener('click', () => { show('form'); step = 0; renderStep(); });
+  $('btn-new')?.addEventListener('click', () => { location.href = location.pathname; });
+  $('btn-share')?.addEventListener('click', async () => {
     const enc = btoa(encodeURIComponent(JSON.stringify(state)));
     const url = `${location.origin}${location.pathname}?a=${enc}`;
     await shareLinkOrCopy("Your Concerto+ plan", url);
   });
-  on('btn-ics','click', () => {
+  $('btn-ics')?.addEventListener('click', () => {
     const items = window.__lastItinerary || [];
     const blob = toICS(items, 'Concerto+ — Concert Day');
     const a = document.createElement('a');
@@ -80,11 +62,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     if (enc) { Object.assign(state, JSON.parse(decodeURIComponent(atob(enc)))); show('form'); step = steps.length-1; renderStep(); }
   } catch {}
 
-  // ---------- step renderer ----------
+  // ---- Steps
   function renderStep(){
     setProgress();
-    const w = $('step-wrapper');
-    if (!w) return;
+    const w = $('step-wrapper'); if (!w) return;
 
     if (steps[step] === "concert"){
       w.innerHTML = `
@@ -114,11 +95,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         </div>
       `;
       bindArtistSuggest(); bindVenueAutocomplete();
-      const st = $('showTime'), sd = $('showDate');
-      if (st) st.onchange = (e)=> state.showTime = e.target.value;
-      if (sd) sd.onchange = (e)=> state.showDate = e.target.value;
-      const prev = $('btn-prev'); if (prev) prev.disabled = true;
-      const next = $('btn-next'); if (next) next.textContent = "Next";
+      $('showTime').onchange = (e)=> state.showTime = e.target.value;
+      $('showDate').onchange = (e)=> state.showDate = e.target.value;
+      $('btn-prev').disabled = true;
+      $('btn-next').textContent = "Next";
 
     } else if (steps[step] === "stay"){
       w.innerHTML = `
@@ -135,10 +115,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         </div>
       `;
       const cb = $('staying'); const hotelInput = $('hotel');
-      if (cb) cb.onchange = ()=>{ state.staying = cb.checked; if (hotelInput) hotelInput.disabled = !cb.checked; };
+      cb.onchange = ()=>{ state.staying = cb.checked; hotelInput.disabled = !cb.checked; };
       bindHotelAutocomplete();
-      const prev = $('btn-prev'); if (prev) prev.disabled = false;
-      const next = $('btn-next'); if (next) next.textContent = "Next";
+      $('btn-prev').disabled = false;
+      $('btn-next').textContent = "Next";
 
     } else if (steps[step] === "dining"){
       const cuisines = ["American","Italian","Japanese/Sushi","Mexican/Tacos","Steakhouse","Seafood","Mediterranean","Vegan/Vegetarian","Pizza","BBQ"];
@@ -175,7 +155,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
           </div>
           <div>
             <label>Budget</label>
-            <div class="radio-group" id="budget-pills">
+            <div class="radio-group segmented" id="budget-pills">
               ${["$","$$","$$$","$$$$"].map(b => `<div class="pill${b===state.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
             </div>
           </div>
@@ -191,53 +171,87 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
           </div>
         </div>
       `;
-      const ew = $('eatWhen'), ps = $('placeStyle'), fso = $('foodStyleOther'), tone = $('tone');
-      if (ew) ew.onchange = (e)=> state.eatWhen = e.target.value;
-      if (ps) ps.onchange = (e)=> state.placeStyle = e.target.value;
-      if (fso) fso.oninput = (e)=> state.foodStyleOther = e.target.value.trim();
-      if (tone) tone.onchange = (e)=> state.tone = e.target.value;
+      $('eatWhen').onchange = (e)=> state.eatWhen = e.target.value;
+      $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
+      $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
+      $('tone').onchange = (e)=> state.tone = e.target.value;
       qsa('#cuisine-pills .pill').forEach(p=>{
-        p.onclick=()=>{
-          const v = p.dataset.val;
-          const i = state.foodStyles.indexOf(v);
-          if (i>=0) state.foodStyles.splice(i,1); else state.foodStyles.push(v);
-          p.classList.toggle('active');
-        };
+        p.onclick=()=>{ const v = p.dataset.val; const i = state.foodStyles.indexOf(v); if (i>=0) state.foodStyles.splice(i,1); else state.foodStyles.push(v); p.classList.toggle('active'); };
       });
       qsa('#budget-pills .pill').forEach(p=>{
         p.onclick=()=>{ state.budget = p.dataset.val; qsa('#budget-pills .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
       });
-      const prev = $('btn-prev'); if (prev) prev.disabled = false;
-      const next = $('btn-next'); if (next) next.textContent = "Next";
+      $('btn-prev').disabled = false;
+      $('btn-next').textContent = "Next";
 
     } else {
+      // ACTIVITIES + YOUR PICKS
       w.innerHTML = `
         <h3 class="step-title">Activities & Interests</h3>
-        <p class="step-help">Optional extras to round out your night.</p>
+        <p class="step-help">Optional extras to round out your night — and lock in any places you already know you want.</p>
         <div class="form-grid two">
           <div><label><input type="checkbox" id="int-coffee" ${state.interests.coffee?'checked':''}/> Coffee</label></div>
           <div><label><input type="checkbox" id="int-drinks" ${state.interests.drinks?'checked':''}/> Drinks / Lounge</label></div>
           <div><label><input type="checkbox" id="int-dessert" ${state.interests.dessert?'checked':''}/> Dessert</label></div>
           <div><label><input type="checkbox" id="int-sights" ${state.interests.sights?'checked':''}/> Sights / Landmarks</label></div>
         </div>
+
+        <article class="card" id="custom-card" style="margin-top:12px;">
+          <h3 class="step-title" style="margin-bottom:6px;">Your picks (optional)</h3>
+          <p class="step-help">We’ll lock these into your schedule.</p>
+          <div class="form-grid two">
+            <div class="full">
+              <label>Place</label>
+              <input id="custom-place" type="text" placeholder="e.g., Starbucks Reserve Roastery" autocomplete="off" />
+            </div>
+            <div>
+              <label>When</label>
+              <select id="custom-when">
+                <option value="before">Before the show</option>
+                <option value="after">After the show</option>
+              </select>
+            </div>
+            <div>
+              <label>Type</label>
+              <select id="custom-type">
+                <option value="coffee">Coffee</option>
+                <option value="drinks">Drinks</option>
+                <option value="dessert">Dessert</option>
+                <option value="sight">Sights</option>
+                <option value="dinner">Dinner</option>
+              </select>
+            </div>
+            <div>
+              <label>Duration (min)</label>
+              <input id="custom-duration" type="number" min="10" max="240" value="45" />
+            </div>
+            <div class="full">
+              <label>Note (optional)</label>
+              <input id="custom-note" type="text" placeholder="e.g., mobile order ahead" />
+            </div>
+          </div>
+          <div class="sticky-actions">
+            <button id="custom-add" class="btn">+ Add to my picks</button>
+          </div>
+          <div id="custom-pills" class="radio-group" style="margin-top:10px;"></div>
+        </article>
       `;
       ["coffee","drinks","dessert","sights"].forEach(k=>{
         const el = $('int-'+k);
         if (el) el.onchange = ()=>{ state.interests[k] = el.checked; };
       });
-      const prev = $('btn-prev'); if (prev) prev.disabled = false;
-      const next = $('btn-next'); if (next) next.textContent = "Generate Schedule";
+      bindCustomAutocomplete(); bindCustomAdd(); renderCustomPills();
+      $('btn-prev').disabled = false;
+      $('btn-next').textContent = "Generate Schedule";
     }
   }
 
-  // ---------- artist suggest ----------
+  // ---- Artist suggest
   function bindArtistSuggest(){
-    const input = $('artist'), list = $('artist-list');
-    if (!input || !list) return;
+    const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{
       state.artist = input.value.trim();
-      const q = input.value.trim();
-      if (!q){ list.style.display="none"; list.innerHTML=""; return; }
+      const q = input.value.trim(); if (!q){ list.style.display="none"; list.innerHTML=""; return; }
       try{
         const res = await fetch(`https://itunes.apple.com/search?entity=musicArtist&limit=6&term=${encodeURIComponent(q)}`);
         const data = await res.json();
@@ -257,14 +271,24 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     });
   }
 
-  // ---------- Places autocomplete ----------
+  // ---- Places autocomplete
+  function mapsReady(){ return !!(window.google && google.maps && google.maps.places); }
+  function waitForPlaces(maxMs=10000){
+    const t0 = Date.now();
+    return new Promise((resolve, reject)=>{
+      (function tick(){
+        if (mapsReady()) return resolve(true);
+        if (Date.now()-t0 > maxMs) return reject(new Error("Google Places failed to load"));
+        setTimeout(tick, 120);
+      })();
+    });
+  }
   function bindVenueAutocomplete(){
     waitForPlaces().then(()=>{
       const input = $('venue'); if (!input) return;
       const ac = new google.maps.places.Autocomplete(input, { types: ['establishment'] });
       ac.addListener('place_changed', () => {
-        const p = ac.getPlace();
-        if (!p || !p.geometry) return;
+        const p = ac.getPlace(); if (!p || !p.geometry) return;
         state.venue = p.name || input.value.trim();
         state.venuePlaceId = p.place_id || "";
         state.venueLat = p.geometry.location.lat();
@@ -279,8 +303,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       const input = $('hotel'); if (!input) return;
       const ac = new google.maps.places.Autocomplete(input, { types: ['establishment'] });
       ac.addListener('place_changed', () => {
-        const p = ac.getPlace();
-        if (!p || !p.geometry) return;
+        const p = ac.getPlace(); if (!p || !p.geometry) return;
         state.hotel = p.name || input.value.trim();
         state.hotelPlaceId = p.place_id || "";
         state.hotelLat = p.geometry.location.lat();
@@ -290,19 +313,26 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       input.addEventListener('keydown', (e)=>{ if (e.key === "Enter"){ e.preventDefault(); ensureHotelResolved(); }});
     }).catch(()=>{});
   }
-  function mapsAvailable(){ return !!(window.google && google.maps && google.maps.places); }
-  function waitForPlaces(maxMs=10000){
-    const t0 = Date.now();
-    return new Promise((resolve, reject)=>{
-      (function tick(){
-        if (mapsAvailable()) return resolve(true);
-        if (Date.now()-t0 > maxMs) return reject(new Error("Google Places failed to load"));
-        setTimeout(tick, 120);
-      })();
-    });
+  function bindCustomAutocomplete(){
+    waitForPlaces().then(()=>{
+      const input = $('custom-place'); if (!input) return;
+      const ac = new google.maps.places.Autocomplete(input, { types: ['establishment'] });
+      ac.addListener('place_changed', () => {
+        const p = ac.getPlace(); if (!p || !p.geometry) return;
+        input.dataset.name = p.name || input.value.trim();
+        input.dataset.placeId = p.place_id || "";
+        input.dataset.lat = p.geometry.location.lat();
+        input.dataset.lng = p.geometry.location.lng();
+        // try to capture website via details (best-effort)
+        const svc = new google.maps.places.PlacesService(document.createElement('div'));
+        svc.getDetails({ placeId: p.place_id, fields: ["website"] }, (d)=> {
+          if (d && d.website) input.dataset.url = d.website;
+        });
+      });
+    }).catch(()=>{});
   }
 
-  // ---------- resolvers ----------
+  // ---- Resolvers
   async function ensureVenueResolved(){
     if (state.venueLat && state.venueLng) return;
     await waitForPlaces();
@@ -341,7 +371,70 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  // ---------- time helpers ----------
+  // ---- Custom picks UI
+  function renderCustomPills(){
+    const wrap = $('custom-pills'); if (!wrap) return;
+    wrap.innerHTML = state.customStops.map((p, idx)=> `
+      <div class="pill" data-idx="${idx}">
+        ${esc(p.name)} <span class="meta">· ${p.when} · ${p.durationMin || defaultDurationByType(p.type)} min</span>
+        <button class="btn-ghost" data-remove="${idx}" style="margin-left:6px;border:none;background:transparent;">×</button>
+      </div>
+    `).join("");
+    qsa('[data-remove]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const i = parseInt(btn.dataset.remove,10);
+        if (!Number.isNaN(i)) { state.customStops.splice(i,1); renderCustomPills(); }
+      };
+    });
+  }
+  function bindCustomAdd(){
+    const add = $('custom-add'); if (!add) return;
+    add.onclick = async ()=>{
+      const input = $('custom-place');
+      const when = $('custom-when')?.value || 'before';
+      const type = $('custom-type')?.value || 'coffee';
+      const durationMin = Math.max(10, parseInt(($('custom-duration')?.value || "45"),10) || 45);
+      const note = $('custom-note')?.value?.trim() || "";
+
+      // resolve via autocomplete data; if not present, try text search once
+      let name = input?.dataset.name || input?.value?.trim() || "";
+      let placeId = input?.dataset.placeId || "";
+      let lat = input?.dataset.lat ? +input.dataset.lat : null;
+      let lng = input?.dataset.lng ? +input.dataset.lng : null;
+      let url = input?.dataset.url || "";
+      let mapUrl = placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : "";
+
+      if ((!lat || !lng) && name){
+        try{
+          await waitForPlaces();
+          const svc = new google.maps.places.PlacesService(document.createElement('div'));
+          const res = await new Promise((resolve)=> {
+            svc.textSearch({ query: name }, (results, status) => resolve(status === google.maps.places.PlacesServiceStatus.OK ? (results||[])[0] : null));
+          });
+          if (res?.geometry?.location){
+            name = res.name || name;
+            placeId = res.place_id || placeId;
+            lat = res.geometry.location.lat();
+            lng = res.geometry.location.lng();
+            mapUrl = placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : mapUrl;
+          }
+        }catch{}
+      }
+      if (!name){ alert("Please enter a place name."); return; }
+
+      state.customStops.push({ name, placeId, lat, lng, url, mapUrl, when, type, durationMin, note });
+      // clear entry row
+      if (input){ input.value=""; delete input.dataset.name; delete input.dataset.placeId; delete input.dataset.lat; delete input.dataset.lng; delete input.dataset.url; }
+      $('custom-duration').value = "45"; $('custom-note').value = "";
+      renderCustomPills();
+    };
+  }
+
+  function defaultDurationByType(t){
+    return (t==="coffee")?30 : (t==="dessert")?40 : (t==="drinks")?60 : (t==="dinner")?90 : (t==="sight")?45 : 45;
+  }
+
+  // ---- Time helpers
   function parseHM(hhmm){
     if (!hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null;
     const [h,m] = hhmm.split(':').map(n=>parseInt(n,10));
@@ -357,7 +450,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
-  // ---------- generate ----------
+  // ---- Generate
   async function generate(){
     show('loading');
     try{
@@ -365,26 +458,26 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       if (state.staying) await ensureHotelResolved();
 
       const targetISO = parseShowDateTimeISO();
-      const beforeList = (state.eatWhen==="before" || state.eatWhen==="both")
-        ? await pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO }) : [];
-      const afterList  = (state.eatWhen==="after"  || state.eatWhen==="both")
-        ? await pickRestaurants({ wantOpenNow:true, state, slot:"after", targetISO }) : [];
+      const beforeList = (state.eatWhen==="before" || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}) : [];
+      const afterList  = (state.eatWhen==="after"  || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}) : [];
       const extras = await pickExtras({ state });
 
       // Cohere curate (best-effort)
       let curated = null;
-      try {
-        curated = await cohereCurate(state, beforeList, afterList, extras);
-      } catch (e) {
-        console.warn("Cohere unavailable, using base picks only:", e.message);
-      }
+      try { curated = await cohereCurate(state, beforeList, afterList, extras); } catch (e) { console.warn("Cohere unavailable:", e.message); }
 
       const diningBefore = (curated?.diningBefore && curated.diningBefore.length) ? curated.diningBefore : beforeList;
       const diningAfter  = (curated?.diningAfter  && curated.diningAfter.length)  ? curated.diningAfter  : afterList;
       const showTitle = state.artist ? `${state.artist} — Live` : "Your Concert";
       const intro = curated?.intro || `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
 
-      const dinnerPick = (state.eatWhen!=='after' ? diningBefore?.[0] : null) || null;
+      // If user added a custom dinner, make it THE dinner pick
+      const customDinner = state.customStops.find(p => p.when==='before' && p.type==='dinner');
+      const dinnerPick = customDinner ? {
+        name: customDinner.name, lat: customDinner.lat, lng: customDinner.lng, url: customDinner.url, mapUrl: customDinner.mapUrl
+      } : (state.eatWhen!=='after' ? diningBefore?.[0] : null);
+
+      // Core itinerary
       const itin = await buildItinerary({
         show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: showTitle },
         venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
@@ -392,16 +485,19 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin, merch: true, concessions: true, water: true },
         picks: { dinner: dinnerPick ? { name:dinnerPick.name, lat:dinnerPick.lat, lng:dinnerPick.lng, url:dinnerPick.url, mapUrl:dinnerPick.mapUrl } : null }
       });
-      window.__lastItinerary = itin;
+
+      // Inject user-locked custom stops into the timeline
+      const withCustoms = injectCustomStops(itin, state, targetISO);
+
+      window.__lastItinerary = withCustoms;
 
       // Header
       const showText = [state.showDate, state.showTime].filter(Boolean).join(" ");
-      const ctx = $('results-context'); if (ctx) ctx.textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
-      const introEl = $('intro-line'); if (introEl) introEl.innerHTML = intro;
+      $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
+      $('intro-line').innerHTML = intro;
 
-      // Render continuous schedule
-      const scheduleEl = $('schedule');
-      if (scheduleEl) renderSchedule(itin, scheduleEl, { before: diningBefore, after: diningAfter });
+      // Render continuous schedule + pass extras (still grouped below list)
+      renderSchedule(withCustoms, $('schedule'), { before: diningBefore, after: diningAfter, extras });
 
       show('results');
     }catch(e){
@@ -411,13 +507,59 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  // ---------- cohere ----------
+  // Compute times and inject user-locked stops
+  function injectCustomStops(items, state, targetISO){
+    const showStart = new Date(targetISO);
+    const showDur =  (state.showDurationMin || 150);
+    const arriveAt = new Date(showStart.getTime() - (state.arrivalBufferMin||45)*60000);
+    const postAnchor = new Date(showStart.getTime() + showDur*60000 + 45*60000); // 45m after show
+
+    const before = state.customStops.filter(x=>x.when==='before');
+    const after  = state.customStops.filter(x=>x.when==='after');
+
+    // BEFORE: stack back-to-front ending slightly before arrival
+    if (before.length){
+      const totalMin = before.reduce((a,b)=> a + (b.durationMin || defaultDurationByType(b.type)), 0) + (before.length-1)*10 + 10;
+      let t = new Date(arriveAt.getTime() - totalMin*60000);
+      before.forEach(p=>{
+        const dur = p.durationMin || defaultDurationByType(p.type);
+        items.push(toItem(p, t, dur, true));
+        t = new Date(t.getTime() + (dur+10)*60000);
+      });
+    }
+
+    // AFTER: chain forward from post anchor
+    if (after.length){
+      let t = new Date(postAnchor);
+      after.forEach(p=>{
+        const dur = p.durationMin || defaultDurationByType(p.type);
+        items.push(toItem(p, t, dur, true));
+        t = new Date(t.getTime() + (dur+8)*60000);
+      });
+    }
+
+    items.sort((a,b)=> new Date(a.startISO) - new Date(b.startISO));
+    return items;
+  }
+
+  function toItem(p, startDate, durationMin, userChosen){
+    const item = {
+      type: 'custom',
+      title: p.name,
+      startISO: startDate.toISOString(),
+      durationMin: durationMin,
+      note: p.note || "",
+      userChosen: !!userChosen,
+      url: p.url || "",
+      mapUrl: p.mapUrl || "",
+      lat: p.lat || null, lng: p.lng || null
+    };
+    return item;
+  }
+
+  // ---- Cohere
   async function cohereCurate(stateSnapshot, beforeList, afterList, extras){
-    const trim = p => ({
-      name: p.name, address: p.address, distance: p.distance,
-      url: p.url || "", mapUrl: p.mapUrl || "",
-      price: p.price || null, rating: p.rating || null, openNow: p.openNow ?? null
-    });
+    const trim = p => ({ name: p.name, address: p.address, distance: p.distance, url: p.url || "", mapUrl: p.mapUrl || "", price: p.price || null, rating: p.rating || null, openNow: p.openNow ?? null });
     const res = await fetch("/.netlify/functions/concerto_cohere", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

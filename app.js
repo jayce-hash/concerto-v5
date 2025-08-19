@@ -1,4 +1,4 @@
-// app.js — Concerto+ with “Your picks” locked stops (v7.4.2)
+// app.js — Concerto+ with “Your picks” locked stops + generic resolver (v7.5.0)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { renderSchedule } from './timeline-renderer.js';
@@ -7,7 +7,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v7.4.2 loaded");
+  console.log("Concerto+ app.js v7.5.0 loaded");
 
   const $ = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
@@ -24,7 +24,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
     eatWhen: "both",
     foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
-    budget: "$$,", tone: "balanced",
+    budget: "$$", tone: "balanced",               // << fixed typo here
     interests: { coffee:false, drinks:false, dessert:false, sights:false },
     arrivalBufferMin: 45, doorsBeforeMin: 90,
     // user-locked places
@@ -271,7 +271,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     });
   }
 
-  // ---- Places autocomplete
+  // ---- Places helpers
   function mapsReady(){ return !!(window.google && google.maps && google.maps.places); }
   function waitForPlaces(maxMs=10000){
     const t0 = Date.now();
@@ -387,6 +387,8 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       };
     });
   }
+
+  // REPLACED: bindCustomAdd now resolves generic brand names near the venue by distance
   function bindCustomAdd(){
     const add = $('custom-add'); if (!add) return;
     add.onclick = async ()=>{
@@ -396,7 +398,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       const durationMin = Math.max(10, parseInt(($('custom-duration')?.value || "45"),10) || 45);
       const note = $('custom-note')?.value?.trim() || "";
 
-      // resolve via autocomplete data; if not present, try text search once
+      // try autocomplete payload first
       let name = input?.dataset.name || input?.value?.trim() || "";
       let placeId = input?.dataset.placeId || "";
       let lat = input?.dataset.lat ? +input.dataset.lat : null;
@@ -404,27 +406,32 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       let url = input?.dataset.url || "";
       let mapUrl = placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : "";
 
+      // Auto-resolve generic/brand text near the venue
       if ((!lat || !lng) && name){
         try{
-          await waitForPlaces();
-          const svc = new google.maps.places.PlacesService(document.createElement('div'));
-          const res = await new Promise((resolve)=> {
-            svc.textSearch({ query: name }, (results, status) => resolve(status === google.maps.places.PlacesServiceStatus.OK ? (results||[])[0] : null));
-          });
-          if (res?.geometry?.location){
-            name = res.name || name;
-            placeId = res.place_id || placeId;
-            lat = res.geometry.location.lat();
-            lng = res.geometry.location.lng();
-            mapUrl = placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : mapUrl;
+          const resolved = await resolveGenericCustomPlace({ name, when, type, state });
+          if (resolved){
+            name    = resolved.name   || name;
+            placeId = resolved.placeId || placeId;
+            lat     = resolved.lat     ?? lat;
+            lng     = resolved.lng     ?? lng;
+            url     = resolved.url     || url;
+            mapUrl  = resolved.mapUrl  || mapUrl;
           }
-        }catch{}
+        }catch(e){
+          console.warn("Generic resolver failed:", e.message);
+        }
       }
       if (!name){ alert("Please enter a place name."); return; }
 
       state.customStops.push({ name, placeId, lat, lng, url, mapUrl, when, type, durationMin, note });
+
       // clear entry row
-      if (input){ input.value=""; delete input.dataset.name; delete input.dataset.placeId; delete input.dataset.lat; delete input.dataset.lng; delete input.dataset.url; }
+      if (input){
+        input.value = "";
+        delete input.dataset.name; delete input.dataset.placeId;
+        delete input.dataset.lat;  delete input.dataset.lng; delete input.dataset.url;
+      }
       $('custom-duration').value = "45"; $('custom-note').value = "";
       renderCustomPills();
     };
@@ -503,7 +510,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       let diningBefore = (curated?.diningBefore && curated.diningBefore.length) ? curated.diningBefore : beforeList;
       let diningAfter  = (curated?.diningAfter  && curated.diningAfter.length)  ? curated.diningAfter  : afterList;
 
-      // Respect user-locked picks in both sections (NEW)
+      // Respect user-locked picks in both sections
       const locks = state.customStops || [];
       diningBefore = enforceLocks(diningBefore, locks.filter(l=>l.when === 'before'));
       diningAfter  = enforceLocks(diningAfter,  locks.filter(l=>l.when === 'after'));
@@ -630,6 +637,82 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     });
     if (!res.ok) throw new Error("Cohere error");
     return await res.json();
+  }
+
+  /* ==================== Generic brand resolver ==================== */
+  async function resolveGenericCustomPlace({ name, when, type, state }){
+    if (!(state?.venueLat && state?.venueLng)) return null;
+    await waitForPlaces();
+    const center = new google.maps.LatLng(state.venueLat, state.venueLng);
+    const svc = new google.maps.places.PlacesService(document.createElement('div'));
+
+    const { placesType, keyword } = placeTypeFor(type, name);
+
+    const nearbyParams = {
+      location: center,
+      rankBy: google.maps.places.RankBy.DISTANCE,
+      type: placesType || undefined,
+      keyword: keyword || undefined
+      // no radius when RankBy.DISTANCE
+    };
+
+    const results = await new Promise((resolve) => {
+      svc.nearbySearch(nearbyParams, (res, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && Array.isArray(res) && res.length){
+          resolve(res);
+        } else {
+          resolve([]);
+        }
+      });
+    });
+
+    let choice = results[0] || null;
+    if (!choice){
+      const textParams = { location: center, radius: 2000, query: name };
+      choice = await new Promise((resolve) => {
+        svc.textSearch(textParams, (res, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && Array.isArray(res) && res.length){
+            resolve(res[0]);
+          } else {
+            resolve(null);
+          }
+        });
+      });
+    }
+    if (!choice || !choice.place_id || !choice.geometry) return null;
+
+    const details = await new Promise((resolve) => {
+      svc.getDetails({ placeId: choice.place_id, fields: ["website", "name"] }, (d, s) => {
+        resolve(s === google.maps.places.PlacesServiceStatus.OK ? d : null);
+      });
+    });
+
+    return {
+      name: (details?.name || choice.name || name),
+      placeId: choice.place_id,
+      lat: choice.geometry.location.lat(),
+      lng: choice.geometry.location.lng(),
+      url: details?.website || "",
+      mapUrl: `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(choice.place_id)}`
+    };
+  }
+
+  function placeTypeFor(type, rawName){
+    const low = (rawName || "").toLowerCase().trim();
+    const brandy = /\b(starbucks|dunkin|peet|philz|blue bottle|tim hortons|pret)\b/i.test(low);
+    switch (type){
+      case 'coffee':
+        return { placesType: 'cafe', keyword: brandy ? rawName : (low || 'coffee') };
+      case 'dessert':
+        return { placesType: 'bakery', keyword: low || 'dessert' };
+      case 'drinks':
+        return { placesType: 'bar', keyword: low || 'cocktail bar' };
+      case 'sight':
+        return { placesType: 'tourist_attraction', keyword: low || 'landmark' };
+      case 'dinner':
+      default:
+        return { placesType: 'restaurant', keyword: low || 'restaurant' };
+    }
   }
 
 })();

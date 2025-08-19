@@ -557,27 +557,42 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return item;
   }
 
-  // ---- Cohere
-  async function cohereCurate(stateSnapshot, beforeList, afterList, extras){
-    const trim = p => ({ name: p.name, address: p.address, distance: p.distance, url: p.url || "", mapUrl: p.mapUrl || "", price: p.price || null, rating: p.rating || null, openNow: p.openNow ?? null });
-    const res = await fetch("/.netlify/functions/concerto_cohere", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        state: {
-          artist: stateSnapshot.artist, venue: stateSnapshot.venue, time: stateSnapshot.showTime,
-          venueLat: stateSnapshot.venueLat, venueLng: stateSnapshot.venueLng,
-          eatWhen: stateSnapshot.eatWhen, foodStyles: stateSnapshot.foodStyles, placeStyle: stateSnapshot.placeStyle,
-          budget: stateSnapshot.budget, tone: stateSnapshot.tone
-        },
-        candidates: {
-          before: (beforeList || []).slice(0,10).map(trim),
-          after:  (afterList  || []).slice(0,10).map(trim),
-          extras: (extras     || []).slice(0,10).map(p => ({section:p.section, ...trim(p)}))
-        }
-      })
-    });
-    if (!res.ok) throw new Error("Cohere error");
-    return await res.json();
-  }
+  // --- Cohere: curate lists AND respect user-locked picks ("locks")
+async function cohereCurate(stateSnapshot, beforeList, afterList, extras){
+  const trim = p => ({ name: p.name, address: p.address, distance: p.distance, url: p.url || "", mapUrl: p.mapUrl || "", price: p.price || null, rating: p.rating || null, openNow: p.openNow ?? null });
+
+  // Pass the user's locked places to the function
+  const locks = (stateSnapshot.customStops || []).map(({name,when,type,placeId,lat,lng,url,mapUrl,durationMin}) => ({
+    name, when, type, placeId: placeId || "", lat: lat ?? null, lng: lng ?? null, url: url || "", mapUrl: mapUrl || "", durationMin: durationMin ?? null
+  }));
+
+  const res = await fetch("/.netlify/functions/concerto_cohere", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      state: {
+        artist: stateSnapshot.artist,
+        venue: stateSnapshot.venue,
+        time: stateSnapshot.showTime,
+        venueLat: stateSnapshot.venueLat,
+        venueLng: stateSnapshot.venueLng,
+        eatWhen: stateSnapshot.eatWhen,
+        foodStyles: stateSnapshot.foodStyles,
+        placeStyle: stateSnapshot.placeStyle,
+        budget: stateSnapshot.budget,
+        tone: stateSnapshot.tone
+      },
+      locks, // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+      candidates: {
+        before: (beforeList || []).slice(0,10).map(trim),
+        after:  (afterList  || []).slice(0,10).map(trim),
+        extras: (extras     || []).slice(0,10).map(p => ({section:p.section, ...trim(p)}))
+      }
+    })
+  });
+  if (!res.ok) throw new Error("Cohere error");
+  return await res.json();
+}
+
 
 })();

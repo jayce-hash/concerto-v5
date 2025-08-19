@@ -366,3 +366,49 @@ body.page-transition::before{
   .schedule::before { left: 8px; }
   .schedule .time { min-width: 56px; font-size: .95rem; }
 }
+/* ===== Typography ===== */
+h1,h2,h3{
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  letter-spacing: .08em;
+  color: var(--ink);
+  text-transform: uppercase;
+  font-weight: 400; /* no bold */
+}
+h1{ font-size: clamp(30px, 4.0vw, 42px); margin: 0 0 var(--s-3); }
+h2{ font-size: clamp(22px, 3.0vw, 30px); margin: 0 0 var(--s-2); }
+h3{ font-size: clamp(18px, 2.2vw, 22px); margin: 0 0 var(--s-2); }
+
+p{ line-height: 1.6; margin: 0 0 var(--s-3); font-weight: 400; }
+.muted{ color: var(--muted); font-weight: 400; }
+
+/* Labels */
+label{
+  display:block;
+  font-weight: 400; /* remove bold */
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin: 0 0 var(--s-2);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: .9rem;
+}
+
+/* Schedule titles */
+.schedule .title{
+  flex: 1;
+  font-weight: 400;            /* remove bold */
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+/* Alt headings */
+.alt h5{
+  text-transform: uppercase;
+  letter-spacing:.08em;
+  margin: var(--s-2) 0 var(--s-1);
+  color: var(--accent);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 400;
+}

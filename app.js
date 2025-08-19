@@ -1,4 +1,4 @@
-// app.js — Concerto+ with “Your picks” locked stops + generic resolver (v7.5.0)
+// app.js — Concerto+ with “Your picks” locked stops + generic resolver (v7.5.1)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { renderSchedule } from './timeline-renderer.js';
@@ -7,7 +7,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v7.5.0 loaded");
+  console.log("Concerto+ app.js v7.5.1 loaded");
 
   const $ = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
@@ -24,10 +24,9 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
     eatWhen: "both",
     foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
-    budget: "$$", tone: "balanced",               // << fixed typo here
+    budget: "$$", tone: "balanced",
     interests: { coffee:false, drinks:false, dessert:false, sights:false },
     arrivalBufferMin: 45, doorsBeforeMin: 90,
-    // user-locked places
     customStops: [] // {name, placeId, lat, lng, url, mapUrl, when:'before'|'after', type:'coffee'|'drinks'|'dessert'|'sight'|'dinner', durationMin, note}
   };
 
@@ -62,7 +61,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     if (enc) { Object.assign(state, JSON.parse(decodeURIComponent(atob(enc)))); show('form'); step = steps.length-1; renderStep(); }
   } catch {}
 
-  // ---- Steps
+  /* ==================== Steps UI ==================== */
   function renderStep(){
     setProgress();
     const w = $('step-wrapper'); if (!w) return;
@@ -246,7 +245,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  // ---- Artist suggest
+  /* ==================== Artist & Places helpers ==================== */
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{
@@ -271,7 +270,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     });
   }
 
-  // ---- Places helpers
   function mapsReady(){ return !!(window.google && google.maps && google.maps.places); }
   function waitForPlaces(maxMs=10000){
     const t0 = Date.now();
@@ -323,7 +321,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         input.dataset.placeId = p.place_id || "";
         input.dataset.lat = p.geometry.location.lat();
         input.dataset.lng = p.geometry.location.lng();
-        // try to capture website via details (best-effort)
         const svc = new google.maps.places.PlacesService(document.createElement('div'));
         svc.getDetails({ placeId: p.place_id, fields: ["website"] }, (d)=> {
           if (d && d.website) input.dataset.url = d.website;
@@ -332,7 +329,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }).catch(()=>{});
   }
 
-  // ---- Resolvers
+  /* ==================== Resolvers ==================== */
   async function ensureVenueResolved(){
     if (state.venueLat && state.venueLng) return;
     await waitForPlaces();
@@ -371,7 +368,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  // ---- Custom picks UI
+  /* ==================== Custom picks UI ==================== */
   function renderCustomPills(){
     const wrap = $('custom-pills'); if (!wrap) return;
     wrap.innerHTML = state.customStops.map((p, idx)=> `
@@ -388,7 +385,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     });
   }
 
-  // REPLACED: bindCustomAdd now resolves generic brand names near the venue by distance
+  // resolves generic brand names near the venue by distance
   function bindCustomAdd(){
     const add = $('custom-add'); if (!add) return;
     add.onclick = async ()=>{
@@ -398,7 +395,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       const durationMin = Math.max(10, parseInt(($('custom-duration')?.value || "45"),10) || 45);
       const note = $('custom-note')?.value?.trim() || "";
 
-      // try autocomplete payload first
       let name = input?.dataset.name || input?.value?.trim() || "";
       let placeId = input?.dataset.placeId || "";
       let lat = input?.dataset.lat ? +input.dataset.lat : null;
@@ -406,7 +402,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       let url = input?.dataset.url || "";
       let mapUrl = placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : "";
 
-      // Auto-resolve generic/brand text near the venue
       if ((!lat || !lng) && name){
         try{
           const resolved = await resolveGenericCustomPlace({ name, when, type, state });
@@ -426,7 +421,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       state.customStops.push({ name, placeId, lat, lng, url, mapUrl, when, type, durationMin, note });
 
-      // clear entry row
       if (input){
         input.value = "";
         delete input.dataset.name; delete input.dataset.placeId;
@@ -441,7 +435,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return (t==="coffee")?30 : (t==="dessert")?40 : (t==="drinks")?60 : (t==="dinner")?90 : (t==="sight")?45 : 45;
   }
 
-  // ---- Time helpers
+  /* ==================== Time helpers ==================== */
   function parseHM(hhmm){
     if (!hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null;
     const [h,m] = hhmm.split(':').map(n=>parseInt(n,10));
@@ -457,7 +451,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
-  // ---- Helpers for enforcing locks
+  /* ==================== Locks & ordering ==================== */
   function gmapsUrl(placeId){
     return placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : "";
   }
@@ -469,19 +463,19 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       url: l.url || "",
       mapUrl: l.mapUrl || gmapsUrl(l.placeId),
       price: null, rating: null, openNow: null,
-      blurb: "User-locked pick."
+      blurb: "You chose this"
     });
 
     const keyed = new Set();
     const out = [];
 
-    // 1) locked picks first (in input order)
+    // locked picks first (in input order)
     (locks || []).forEach(l=>{
       const key = (l.name || "") + "|" + (l.mapUrl || gmapsUrl(l.placeId) || "");
       if (!keyed.has(key)){ keyed.add(key); out.push(toPlace(l)); }
     });
 
-    // 2) curated/auto picks after (skip dups)
+    // curated/auto after (skip dups)
     (list || []).forEach(p=>{
       const key = (p.name || "") + "|" + (p.mapUrl || "");
       if (!keyed.has(key)){ keyed.add(key); out.push(p); }
@@ -490,7 +484,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return out.slice(0,6);
   }
 
-  // ---- Generate
+  /* ==================== Generate ==================== */
   async function generate(){
     show('loading');
     try{
@@ -498,31 +492,47 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       if (state.staying) await ensureHotelResolved();
 
       const targetISO = parseShowDateTimeISO();
-      const beforeList = (state.eatWhen==="before" || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}) : [];
-      const afterList  = (state.eatWhen==="after"  || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}) : [];
+      const beforeAuto = (state.eatWhen==="before" || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}) : [];
+      const afterAuto  = (state.eatWhen==="after"  || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}) : [];
       const extras = await pickExtras({ state });
 
-      // Cohere curate (best-effort)
       let curated = null;
-      try { curated = await cohereCurate(state, beforeList, afterList, extras); } catch (e) { console.warn("Cohere unavailable:", e.message); }
+      try { curated = await cohereCurate(state, beforeAuto, afterAuto, extras); } catch (e) { console.warn("Cohere unavailable:", e.message); }
 
-      // merge curated vs local
-      let diningBefore = (curated?.diningBefore && curated.diningBefore.length) ? curated.diningBefore : beforeList;
-      let diningAfter  = (curated?.diningAfter  && curated.diningAfter.length)  ? curated.diningAfter  : afterList;
+      // Use curated lists if present (pre-lock)
+      const beforeCur = (curated?.diningBefore?.length ? curated.diningBefore : beforeAuto) || [];
+      const afterCur  = (curated?.diningAfter?.length  ? curated.diningAfter  : afterAuto)  || [];
 
-      // Respect user-locked picks in both sections
+      // Decide dinner pick BEFORE merging in locks so coffee stops can't take it
       const locks = state.customStops || [];
-      diningBefore = enforceLocks(diningBefore, locks.filter(l=>l.when === 'before'));
-      diningAfter  = enforceLocks(diningAfter,  locks.filter(l=>l.when === 'after'));
+      const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
+      const dinnerPick = customDinner
+        ? { name: customDinner.name, lat: customDinner.lat, lng: customDinner.lng, url: customDinner.url, mapUrl: customDinner.mapUrl || gmapsUrl(customDinner.placeId) }
+        : (state.eatWhen!=='after' ? (beforeCur[0] || null) : null);
+
+      // Now build "before/after" lists for alternatives, placing locks AFTER the dinner pick (if any)
+      let diningBefore = enforceLocks(beforeCur, locks.filter(l=>l.when==='before' && l.type==='dinner')); // only dinner locks go in front
+      // move chosen dinner (auto or lock) to index 0
+      if (dinnerPick){
+        const i = diningBefore.findIndex(p => p.name === dinnerPick.name);
+        if (i > 0){ const [x] = diningBefore.splice(i,1); diningBefore.unshift(x); }
+      }
+      // push non-dinner locks after the chosen dinner
+      const nonDinnerLocks = locks.filter(l=>l.when==='before' && l.type!=='dinner');
+      if (nonDinnerLocks.length){
+        const appended = enforceLocks(diningBefore, nonDinnerLocks);
+        // enforceLocks would prepend; we want them after – so rebuild: keep [0] then rest + new unique locks
+        const head = appended[0] ? [appended[0]] : [];
+        const seen = new Set(head.map(p=>p.name+"|"+(p.mapUrl||"")));
+        const tail = [];
+        appended.slice(1).forEach(p=>{ const k=p.name+"|"+(p.mapUrl||""); if(!seen.has(k)){ seen.add(k); tail.push(p);} });
+        diningBefore = head.concat(tail);
+      }
+
+      let diningAfter  = enforceLocks(afterCur, locks.filter(l=>l.when==='after')); // after locks can safely sit in front
 
       const showTitle = state.artist ? `${state.artist} — Live` : "Your Concert";
       const intro = curated?.intro || `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
-
-      // If user added a custom dinner, make it THE dinner pick
-      const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
-      const dinnerPick = customDinner ? {
-        name: customDinner.name, lat: customDinner.lat, lng: customDinner.lng, url: customDinner.url, mapUrl: customDinner.mapUrl || gmapsUrl(customDinner.placeId)
-      } : (state.eatWhen!=='after' ? diningBefore?.[0] : null);
 
       // Core itinerary
       const itin = await buildItinerary({
@@ -553,17 +563,16 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  // Compute times and inject user-locked stops
+  /* ==================== Inject custom stops ==================== */
   function injectCustomStops(items, state, targetISO){
     const showStart = new Date(targetISO);
     const showDur =  (state.showDurationMin || 150);
     const arriveAt = new Date(showStart.getTime() - (state.arrivalBufferMin||45)*60000);
-    const postAnchor = new Date(showStart.getTime() + showDur*60000 + 45*60000); // 45m after show
+    const postAnchor = new Date(showStart.getTime() + showDur*60000 + 45*60000);
 
-    const before = state.customStops.filter(x=>x.when==='before');
+    const before = state.customStops.filter(x=>x.when==='before' && x.type!=='dinner'); // dinner handled by main pick
     const after  = state.customStops.filter(x=>x.when==='after');
 
-    // BEFORE: stack back-to-front ending slightly before arrival
     if (before.length){
       const totalMin = before.reduce((a,b)=> a + (b.durationMin || defaultDurationByType(b.type)), 0) + (before.length-1)*10 + 10;
       let t = new Date(arriveAt.getTime() - totalMin*60000);
@@ -574,7 +583,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       });
     }
 
-    // AFTER: chain forward from post anchor
     if (after.length){
       let t = new Date(postAnchor);
       after.forEach(p=>{
@@ -602,11 +610,9 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     };
   }
 
-  // --- Cohere: curate lists AND respect user-locked picks ("locks")
+  /* ==================== Cohere curate ==================== */
   async function cohereCurate(stateSnapshot, beforeList, afterList, extras){
     const trim = p => ({ name: p.name, address: p.address, distance: p.distance, url: p.url || "", mapUrl: p.mapUrl || "", price: p.price || null, rating: p.rating || null, openNow: p.openNow ?? null });
-
-    // Pass the user's locked places to the function
     const locks = (stateSnapshot.customStops || []).map(({name,when,type,placeId,lat,lng,url,mapUrl,durationMin}) => ({
       name, when, type, placeId: placeId || "", lat: lat ?? null, lng: lng ?? null, url: url || "", mapUrl: mapUrl || "", durationMin: durationMin ?? null
     }));
@@ -627,7 +633,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
           budget: stateSnapshot.budget,
           tone: stateSnapshot.tone
         },
-        locks, // include user-locked picks
+        locks,
         candidates: {
           before: (beforeList || []).slice(0,10).map(trim),
           after:  (afterList  || []).slice(0,10).map(trim),
@@ -647,22 +653,13 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     const svc = new google.maps.places.PlacesService(document.createElement('div'));
 
     const { placesType, keyword } = placeTypeFor(type, name);
-
-    const nearbyParams = {
-      location: center,
-      rankBy: google.maps.places.RankBy.DISTANCE,
-      type: placesType || undefined,
-      keyword: keyword || undefined
-      // no radius when RankBy.DISTANCE
-    };
+    const nearbyParams = { location: center, rankBy: google.maps.places.RankBy.DISTANCE, type: placesType || undefined, keyword: keyword || undefined };
 
     const results = await new Promise((resolve) => {
       svc.nearbySearch(nearbyParams, (res, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && Array.isArray(res) && res.length){
           resolve(res);
-        } else {
-          resolve([]);
-        }
+        } else { resolve([]); }
       });
     });
 
@@ -673,9 +670,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         svc.textSearch(textParams, (res, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OK && Array.isArray(res) && res.length){
             resolve(res[0]);
-          } else {
-            resolve(null);
-          }
+          } else { resolve(null); }
         });
       });
     }
@@ -701,18 +696,12 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     const low = (rawName || "").toLowerCase().trim();
     const brandy = /\b(starbucks|dunkin|peet|philz|blue bottle|tim hortons|pret)\b/i.test(low);
     switch (type){
-      case 'coffee':
-        return { placesType: 'cafe', keyword: brandy ? rawName : (low || 'coffee') };
-      case 'dessert':
-        return { placesType: 'bakery', keyword: low || 'dessert' };
-      case 'drinks':
-        return { placesType: 'bar', keyword: low || 'cocktail bar' };
-      case 'sight':
-        return { placesType: 'tourist_attraction', keyword: low || 'landmark' };
+      case 'coffee':  return { placesType: 'cafe',               keyword: brandy ? rawName : (low || 'coffee') };
+      case 'dessert': return { placesType: 'bakery',             keyword: low || 'dessert' };
+      case 'drinks':  return { placesType: 'bar',                keyword: low || 'cocktail bar' };
+      case 'sight':   return { placesType: 'tourist_attraction', keyword: low || 'landmark' };
       case 'dinner':
-      default:
-        return { placesType: 'restaurant', keyword: low || 'restaurant' };
+      default:        return { placesType: 'restaurant',         keyword: low || 'restaurant' };
     }
   }
-
 })();

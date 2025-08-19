@@ -81,7 +81,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
           <div>
             <label>Venue</label>
             <input id="venue" type="text" placeholder="Type a venue name" value="${esc(state.venue)}" autocomplete="off"/>
-            <div class="tiny">Tip: Press Enter to accept the top suggestion.</div>
           </div>
           <div>
             <label>Show date</label>

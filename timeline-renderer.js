@@ -183,12 +183,3 @@ function groupBy(arr, fn) {
   }
   return m;
 }
-// timeline-renderer.js
-export function fmtTime(d){
-  const date = (d instanceof Date) ? d : new Date(d);
-  const h = date.getHours();
-  const m = date.getMinutes();
-  const ampm = h>=12 ? "PM":"AM";
-  const hh = ((h%12)||12);
-  return `${hh}:${m.toString().padStart(2,'0')} ${ampm}`;
-}

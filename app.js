@@ -1,4 +1,4 @@
-// app.js — Concerto+ with “Your picks” locked stops (v7.4.0)
+// app.js — Concerto+ with “Your picks” locked stops (v7.4.2)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { renderSchedule } from './timeline-renderer.js';
@@ -7,7 +7,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v7.4.0 loaded");
+  console.log("Concerto+ app.js v7.4.2 loaded");
 
   const $ = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
@@ -24,10 +24,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
     eatWhen: "both",
     foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
-    budget: "$$", tone: "balanced",
+    budget: "$$,", tone: "balanced",
     interests: { coffee:false, drinks:false, dessert:false, sights:false },
     arrivalBufferMin: 45, doorsBeforeMin: 90,
-    // NEW: user-locked places
+    // user-locked places
     customStops: [] // {name, placeId, lat, lng, url, mapUrl, when:'before'|'after', type:'coffee'|'drinks'|'dessert'|'sight'|'dinner', durationMin, note}
   };
 
@@ -450,6 +450,39 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
+  // ---- Helpers for enforcing locks
+  function gmapsUrl(placeId){
+    return placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : "";
+  }
+  function enforceLocks(list, locks){
+    const toPlace = l => ({
+      name: l.name,
+      address: l.address || "",
+      distance: l.distance ?? null,
+      url: l.url || "",
+      mapUrl: l.mapUrl || gmapsUrl(l.placeId),
+      price: null, rating: null, openNow: null,
+      blurb: "User-locked pick."
+    });
+
+    const keyed = new Set();
+    const out = [];
+
+    // 1) locked picks first (in input order)
+    (locks || []).forEach(l=>{
+      const key = (l.name || "") + "|" + (l.mapUrl || gmapsUrl(l.placeId) || "");
+      if (!keyed.has(key)){ keyed.add(key); out.push(toPlace(l)); }
+    });
+
+    // 2) curated/auto picks after (skip dups)
+    (list || []).forEach(p=>{
+      const key = (p.name || "") + "|" + (p.mapUrl || "");
+      if (!keyed.has(key)){ keyed.add(key); out.push(p); }
+    });
+
+    return out.slice(0,6);
+  }
+
   // ---- Generate
   async function generate(){
     show('loading');
@@ -466,15 +499,22 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       let curated = null;
       try { curated = await cohereCurate(state, beforeList, afterList, extras); } catch (e) { console.warn("Cohere unavailable:", e.message); }
 
-      const diningBefore = (curated?.diningBefore && curated.diningBefore.length) ? curated.diningBefore : beforeList;
-      const diningAfter  = (curated?.diningAfter  && curated.diningAfter.length)  ? curated.diningAfter  : afterList;
+      // merge curated vs local
+      let diningBefore = (curated?.diningBefore && curated.diningBefore.length) ? curated.diningBefore : beforeList;
+      let diningAfter  = (curated?.diningAfter  && curated.diningAfter.length)  ? curated.diningAfter  : afterList;
+
+      // Respect user-locked picks in both sections (NEW)
+      const locks = state.customStops || [];
+      diningBefore = enforceLocks(diningBefore, locks.filter(l=>l.when === 'before'));
+      diningAfter  = enforceLocks(diningAfter,  locks.filter(l=>l.when === 'after'));
+
       const showTitle = state.artist ? `${state.artist} — Live` : "Your Concert";
       const intro = curated?.intro || `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
 
       // If user added a custom dinner, make it THE dinner pick
-      const customDinner = state.customStops.find(p => p.when==='before' && p.type==='dinner');
+      const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
       const dinnerPick = customDinner ? {
-        name: customDinner.name, lat: customDinner.lat, lng: customDinner.lng, url: customDinner.url, mapUrl: customDinner.mapUrl
+        name: customDinner.name, lat: customDinner.lat, lng: customDinner.lng, url: customDinner.url, mapUrl: customDinner.mapUrl || gmapsUrl(customDinner.placeId)
       } : (state.eatWhen!=='after' ? diningBefore?.[0] : null);
 
       // Core itinerary
@@ -488,7 +528,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       // Inject user-locked custom stops into the timeline
       const withCustoms = injectCustomStops(itin, state, targetISO);
-
       window.__lastItinerary = withCustoms;
 
       // Header
@@ -496,7 +535,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
       $('intro-line').innerHTML = intro;
 
-      // Render continuous schedule + pass extras (still grouped below list)
+      // Render continuous schedule + pass extras
       renderSchedule(withCustoms, $('schedule'), { before: diningBefore, after: diningAfter, extras });
 
       show('results');
@@ -543,56 +582,54 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
 
   function toItem(p, startDate, durationMin, userChosen){
-    const item = {
+    return {
       type: 'custom',
       title: p.name,
       startISO: startDate.toISOString(),
-      durationMin: durationMin,
+      durationMin,
       note: p.note || "",
       userChosen: !!userChosen,
       url: p.url || "",
-      mapUrl: p.mapUrl || "",
+      mapUrl: p.mapUrl || gmapsUrl(p.placeId),
       lat: p.lat || null, lng: p.lng || null
     };
-    return item;
   }
 
   // --- Cohere: curate lists AND respect user-locked picks ("locks")
-async function cohereCurate(stateSnapshot, beforeList, afterList, extras){
-  const trim = p => ({ name: p.name, address: p.address, distance: p.distance, url: p.url || "", mapUrl: p.mapUrl || "", price: p.price || null, rating: p.rating || null, openNow: p.openNow ?? null });
+  async function cohereCurate(stateSnapshot, beforeList, afterList, extras){
+    const trim = p => ({ name: p.name, address: p.address, distance: p.distance, url: p.url || "", mapUrl: p.mapUrl || "", price: p.price || null, rating: p.rating || null, openNow: p.openNow ?? null });
 
-  // Pass the user's locked places to the function
-  const locks = (stateSnapshot.customStops || []).map(({name,when,type,placeId,lat,lng,url,mapUrl,durationMin}) => ({
-    name, when, type, placeId: placeId || "", lat: lat ?? null, lng: lng ?? null, url: url || "", mapUrl: mapUrl || "", durationMin: durationMin ?? null
-  }));
+    // Pass the user's locked places to the function
+    const locks = (stateSnapshot.customStops || []).map(({name,when,type,placeId,lat,lng,url,mapUrl,durationMin}) => ({
+      name, when, type, placeId: placeId || "", lat: lat ?? null, lng: lng ?? null, url: url || "", mapUrl: mapUrl || "", durationMin: durationMin ?? null
+    }));
 
-  const res = await fetch("/.netlify/functions/concerto_cohere", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      state: {
-        artist: stateSnapshot.artist,
-        venue: stateSnapshot.venue,
-        time: stateSnapshot.showTime,
-        venueLat: stateSnapshot.venueLat,
-        venueLng: stateSnapshot.venueLng,
-        eatWhen: stateSnapshot.eatWhen,
-        foodStyles: stateSnapshot.foodStyles,
-        placeStyle: stateSnapshot.placeStyle,
-        budget: stateSnapshot.budget,
-        tone: stateSnapshot.tone
-      },
-      locks, // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-      candidates: {
-        before: (beforeList || []).slice(0,10).map(trim),
-        after:  (afterList  || []).slice(0,10).map(trim),
-        extras: (extras     || []).slice(0,10).map(p => ({section:p.section, ...trim(p)}))
-      }
-    })
-  });
-  if (!res.ok) throw new Error("Cohere error");
-  return await res.json();
-}
-
+    const res = await fetch("/.netlify/functions/concerto_cohere", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        state: {
+          artist: stateSnapshot.artist,
+          venue: stateSnapshot.venue,
+          time: stateSnapshot.showTime,
+          venueLat: stateSnapshot.venueLat,
+          venueLng: stateSnapshot.venueLng,
+          eatWhen: stateSnapshot.eatWhen,
+          foodStyles: stateSnapshot.foodStyles,
+          placeStyle: stateSnapshot.placeStyle,
+          budget: stateSnapshot.budget,
+          tone: stateSnapshot.tone
+        },
+        locks, // include user-locked picks
+        candidates: {
+          before: (beforeList || []).slice(0,10).map(trim),
+          after:  (afterList  || []).slice(0,10).map(trim),
+          extras: (extras     || []).slice(0,10).map(p => ({section:p.section, ...trim(p)}))
+        }
+      })
+    });
+    if (!res.ok) throw new Error("Cohere error");
+    return await res.json();
+  }
 
 })();

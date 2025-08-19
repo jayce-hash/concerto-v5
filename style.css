@@ -35,7 +35,7 @@ html,body{margin:0;padding:0}
 body{
   color: var(--ink);
   background: var(--bg);
-  font-family: 'Lora', Georgia, 'Times New Roman', serif;
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -43,7 +43,7 @@ a{ color: var(--accent-2); text-decoration: none; }
 a:hover{ text-decoration: underline; }
 
 /* ===== Typography ===== */
-h1,h2,h3{ font-family: 'Lora', Georgia, 'Times New Roman', serif; letter-spacing:.02em; color: var(--ink); }
+h1,h2,h3{ font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; letter-spacing:.02em; color: var(--ink); }
 h1{ font-size: clamp(30px, 4.2vw, 46px); margin: 0 0 var(--s-3); }
 h2{ font-size: clamp(22px, 3.2vw, 34px); margin: 0 0 var(--s-2); }
 h3{ font-size: clamp(18px, 2.2vw, 24px); margin: 0 0 var(--s-2); }

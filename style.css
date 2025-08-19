@@ -307,3 +307,22 @@ body.page-transition::before{
   display:inline-block; margin-left:8px; padding:2px 8px; border-radius:999px; font-size:.82rem;
   background:#E9EEF6; color:#2A3A63; border:1px solid #C8D3E6;
 }
+/* v7.6.3 – Final itinerary spacing polish */
+#screen-results .container { padding-top: var(--s-5); }
+#screen-results .results-header { margin-bottom: var(--s-3); }
+#screen-results h2 { line-height: 1.22; margin: 0 0 var(--s-2); }
+
+/* Timeline rhythm */
+.schedule { padding-left: 32px; }
+.schedule .row { padding: 10px 0 18px 12px; }
+.schedule .time { left: -32px; top: 10px; }
+.pin { left: -32px; top: 14px; width: 8px; height: 8px; box-shadow: 0 0 0 5px rgba(42,58,99,.12); }
+
+/* Extras block spacing */
+.extras-wrap .row { padding-bottom: 8px; border-bottom: none; }
+.extras-wrap .alt { margin-top: 8px; }
+
+/* Small phones */
+@media (max-width: 480px){
+  #screen-results h2 { font-size: 1.32rem; }
+}

@@ -1,5 +1,5 @@
 // netlify/functions/concerto_cohere.js
-// Concerto+ Cohere curator — robust, latency-aware, hallucination-safe
+// Concerto+ Cohere curator — robust, latency-aware, hallucination-safe, with user "locks"
 
 const MODEL = "command-r-plus-08-2024";           // Good JSON reliability
 const TEMP = 0.3;
@@ -14,14 +14,14 @@ export async function handler(event) {
 
   try {
     // ---- Parse & validate request ----
-    const { state, candidates } = JSON.parse(event.body || "{}");
+    const { state, candidates, locks = [] } = JSON.parse(event.body || "{}");
     const problems = validate(state, candidates);
     if (problems.length) {
-      // Don’t 4xx UX; just degrade gracefully with deterministic fallback.
-      return okJSON(fallbackCurate(state, candidates, problems));
+      // Degrade gracefully with deterministic fallback that still respects locks.
+      return okJSON(fallbackCurate(state, candidates, locks, problems));
     }
 
-    // ---- Build prompt (tight, JSON-only, grounded to candidates) ----
+    // ---- Build prompt (tight, JSON-only, grounded to candidates + locks) ----
     const system = [
       "You are Concerto, a concert-night concierge.",
       "Return JSON ONLY with keys:",
@@ -33,15 +33,16 @@ export async function handler(event) {
       "Where Place = { name, address, distance, url?, mapUrl?, price?, rating?, openNow?, blurb }",
       "",
       "Rules:",
-      "- Select ONLY from the provided candidates; never invent places.",
+      "- Select ONLY from the provided candidates or locks; never invent places.",
       `- Rank up to ${MAX_PLACES_PER_SECTION} options for each requested section.`,
-      "- Base ranking on distance, rating volume, open-now/late fit, tone, and budget match.",
-      "- Prefer open-late/‘openNow’ for after-show sections when eatWhen != 'before'.",
+      "- **Locks go first** in their section (keep input order).",
+      "- Base ranking on distance, rating, open-late fit (after-show), tone, and budget.",
+      "- Prefer open-late for after-show when eatWhen != 'before'.",
       "- Blurbs: 1 short, concrete sentence (no fluff, no emojis).",
       "- Keep JSON compact. No markdown, no extra keys."
     ].join("\n");
 
-    // Slim the payload we send to the model (keep only fields it needs)
+    // Slim payload for the model
     const slim = {
       state: {
         artist: safeStr(state?.artist),
@@ -58,24 +59,26 @@ export async function handler(event) {
       candidates: {
         before: asPlaces(candidates?.before),
         after:  asPlaces(candidates?.after),
-        extras: Array.isArray(candidates?.extras) ? candidates.extras.slice(0, 12).map(pickPlace) : []
-      }
+        // extras not used by the model in this function's schema, keep local
+      },
+      // Keep locks minimal but sufficient
+      locks: normalizeLocks(locks)
     };
 
     // ---- Call Cohere with timeout + retries ----
     const co = await callCohereJSON(system, slim);
 
-    // ---- Post-process: enforce schema & ground truth ----
-    const safe = sanitizeAndGround(co, slim, state);
+    // ---- Post-process: enforce schema, grounding, and LOCKS FIRST ----
+    const safe = sanitizeGroundAndLock(co, slim, state);
 
     return okJSON(safe);
   } catch (e) {
-    // Last-resort deterministic fallback
+    // Last-resort deterministic fallback (still respects locks)
     try {
-      const { state, candidates } = JSON.parse(event.body || "{}");
-      return okJSON(fallbackCurate(state, candidates, [e.message || "cohere_error"]));
+      const { state, candidates, locks = [] } = JSON.parse(event.body || "{}");
+      return okJSON(fallbackCurate(state, candidates, locks, [e.message || "cohere_error"]));
     } catch {
-      return okJSON(fallbackCurate({}, {}, ["parse_error"]));
+      return okJSON(fallbackCurate({}, {}, [], ["parse_error"]));
     }
   }
 }
@@ -119,6 +122,24 @@ function validate(state, candidates){
   if (!Number.isFinite(state?.venueLat) || !Number.isFinite(state?.venueLng)) errs.push("missing_venue_latlng");
   if (!candidates || ( !Array.isArray(candidates.before) && !Array.isArray(candidates.after) )) errs.push("missing_candidates");
   return errs;
+}
+
+/* ---------- Locks ---------- */
+function normalizeLocks(locks){
+  // Keep order; allow sparse info; compute mapUrl from placeId if needed.
+  return (Array.isArray(locks) ? locks : []).map(l => ({
+    name: safeStr(l?.name),
+    address: safeStr(l?.address || ""),
+    distance: numOrNull(l?.distance),
+    url: safeStr(l?.url || ""),
+    mapUrl: safeStr(l?.mapUrl || (l?.placeId ? gmapsUrl(l.placeId) : "")),
+    price: "", rating: null, openNow: null,
+    when: oneOf(l?.when, ["before","after"]) || "before",
+    blurb: "User-locked pick."
+  })).filter(x => x.name);
+}
+function gmapsUrl(placeId){
+  return placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : "";
 }
 
 /* ---------- Cohere call with retry/timeout ---------- */
@@ -187,8 +208,8 @@ function safeJSON(s){
   return (start >= 0 && end >= 0) ? s.slice(start, end+1) : "{}";
 }
 
-/* ---------- Post-processing: schema enforcement + grounding ---------- */
-function sanitizeAndGround(raw, slim, state){
+/* ---------- Post-processing: schema enforcement + grounding + LOCKS FIRST ---------- */
+function sanitizeGroundAndLock(raw, slim, state){
   // Base structure
   const out = {
     intro: safeStr(raw?.intro) || defaultIntro(state),
@@ -197,23 +218,26 @@ function sanitizeAndGround(raw, slim, state){
       venue: safeStr(raw?.show?.venue) || safeStr(state?.venue),
       time: safeStr(raw?.show?.time || state?.time || state?.showTime || "")
     },
-  // We enforce grounding: only allow candidates by exact name match from provided lists.
     diningBefore: [],
     diningAfter: [],
     tips: Array.isArray(raw?.tips) ? raw.tips.slice(0, 5).map(safeStr) : defaultTips(state)
   };
 
-  // Create lookup by name for grounding
+  // Lookups for grounding (by exact name)
   const beforeByName = new Map(slim.candidates.before.map(p => [p.name, p]));
   const afterByName  = new Map(slim.candidates.after.map(p => [p.name, p]));
 
-  // Helper to accept only grounded places and limit fields
+  // Normalize locks into sections, keep order
+  const lockBefore = slim.locks.filter(l => l.when === "before");
+  const lockAfter  = slim.locks.filter(l => l.when === "after");
+
+  // Helper: accept only grounded places and limit fields
   const takeGrounded = (arr, map, max) => {
     const out = [];
     if (!Array.isArray(arr)) return out;
     for (const x of arr){
       const name = safeStr(x?.name);
-      if (!name || !map.has(name)) continue;             // reject hallucinations
+      if (!name || !map.has(name)) continue; // reject hallucinations
       const base = map.get(name);
       out.push({
         name: base.name,
@@ -231,15 +255,62 @@ function sanitizeAndGround(raw, slim, state){
     return out;
   };
 
-  // If model omitted a section, degrade gracefully from candidates
   const wantBefore = state?.eatWhen !== "after";
   const wantAfter  = state?.eatWhen !== "before";
 
+  // Model selections (grounded)
   const modelBefore = takeGrounded(raw?.diningBefore, beforeByName, MAX_PLACES_PER_SECTION);
   const modelAfter  = takeGrounded(raw?.diningAfter,  afterByName,  MAX_PLACES_PER_SECTION);
 
-  out.diningBefore = (wantBefore && modelBefore.length) ? modelBefore : rankFallback(slim.candidates.before, "before", state).slice(0, MAX_PLACES_PER_SECTION);
-  out.diningAfter  = (wantAfter  && modelAfter.length)  ? modelAfter  : rankFallback(slim.candidates.after,  "after",  state).slice(0, MAX_PLACES_PER_SECTION);
+  // Merge: LOCKS FIRST → then model → then deterministic fallback, all de-duped, capped
+  out.diningBefore = mergeWithLocks(lockBefore, wantBefore ? modelBefore : [], rankFallback(slim.candidates.before, "before", state));
+  out.diningAfter  = mergeWithLocks(lockAfter,  wantAfter  ? modelAfter  : [], rankFallback(slim.candidates.after,  "after",  state));
+
+  return out;
+}
+
+function mergeWithLocks(locks, model, fallbackList){
+  const key = p => (safeStr(p?.name) + "|" + safeStr(p?.mapUrl));
+  const seen = new Set();
+  const out = [];
+
+  // 1) Locks first (kept as-is)
+  for (const l of locks){
+    if (!l?.name) continue;
+    const k = key(l);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({
+      name: l.name,
+      address: l.address || "",
+      distance: l.distance ?? null,
+      url: l.url || "",
+      mapUrl: l.mapUrl || "",
+      price: l.price || "",
+      rating: l.rating ?? null,
+      openNow: l.openNow ?? null,
+      blurb: oneLine(safeStr(l.blurb)) || "User-locked pick."
+    });
+    if (out.length >= MAX_PLACES_PER_SECTION) return out;
+  }
+
+  // 2) Model picks (grounded already)
+  for (const p of (model || [])){
+    const k = key(p);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(p);
+    if (out.length >= MAX_PLACES_PER_SECTION) return out;
+  }
+
+  // 3) Fallback ranked candidates (deterministic)
+  for (const p of (fallbackList || [])){
+    const k = key(p);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(p);
+    if (out.length >= MAX_PLACES_PER_SECTION) return out;
+  }
 
   return out;
 }
@@ -261,7 +332,7 @@ function defaultTips(state){
 /* ---------- Deterministic fallback ranking (no LLM) ---------- */
 function rankFallback(list, section, state){
   if (!Array.isArray(list)) return [];
-  // score: rating + log(reviews-ish via distance proxy) + proximity + budget alignment + openNow for after
+  // score: rating + proximity + budget alignment + openNow for after
   const priceToN = p => (p && typeof p === "string") ? p.length : null;
   const targetPrice = priceToN(state?.budget);
   const after = (section === "after");
@@ -292,15 +363,22 @@ function rankFallback(list, section, state){
 }
 
 /* ---------- Fallback whole-response (used on hard errors/invalid input) ---------- */
-function fallbackCurate(state, candidates, reasons=[]){
-  const before = rankFallback(asPlaces(candidates?.before), "before", state).slice(0, MAX_PLACES_PER_SECTION);
-  const after  = rankFallback(asPlaces(candidates?.after),  "after",  state).slice(0, MAX_PLACES_PER_SECTION);
+function fallbackCurate(state, candidates, locks = [], reasons=[]){
+  const beforeCand = asPlaces(candidates?.before);
+  const afterCand  = asPlaces(candidates?.after);
+
+  const beforeRanked = rankFallback(beforeCand, "before", state);
+  const afterRanked  = rankFallback(afterCand,  "after",  state);
+
+  const lockNorm = normalizeLocks(locks);
+  const beforeLocks = lockNorm.filter(l=>l.when==="before");
+  const afterLocks  = lockNorm.filter(l=>l.when==="after");
 
   return {
     intro: defaultIntro(state) + (reasons.length ? " (curated without AI due to: " + reasons.join(", ") + ")" : ""),
     show: { title: defaultShowTitle(state), venue: safeStr(state?.venue), time: safeStr(state?.time || state?.showTime || "") },
-    diningBefore: before,
-    diningAfter: after,
+    diningBefore: mergeWithLocks(beforeLocks, [], beforeRanked),
+    diningAfter:  mergeWithLocks(afterLocks,  [], afterRanked),
     tips: defaultTips(state)
   };
 }

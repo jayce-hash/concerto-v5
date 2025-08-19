@@ -552,8 +552,12 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
       $('intro-line').innerHTML = intro;
 
-      // Render continuous schedule + pass extras
-      renderSchedule(withCustoms, $('schedule'), { before: diningBefore, after: diningAfter, extras });
+      renderSchedule(withCustoms, $('schedule'), {
+  before: diningBefore,
+  after:  diningAfter,
+  extras,
+  interests: state.interests   // ← add this
+});
 
       show('results');
     }catch(e){

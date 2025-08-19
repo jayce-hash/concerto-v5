@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Concerto+ · Concert Day Planner (v7.3.2)</title>
+
+  <!-- Fonts: Lora primary -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./style.css?v=761" />
+</head>
+<body>
+  <noscript>This app requires JavaScript to run.</noscript>
+
+  <!-- ========== WELCOME ========== -->
+  <section id="screen-welcome" class="screen active">
+    <div class="container narrow hero">
+      <h1 class="headline">Concerto+</h1>
+      <p class="subhead muted">A premium, AI‑crafted itinerary for your concert day.</p>
+      <div class="music-notes"></div>
+      <div style="margin-top:24px;">
+        <button id="btn-start" class="btn btn-primary">Start planning</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== FORM STEPS ========== -->
+  <section id="screen-form" class="screen">
+    <div class="container narrow">
+      <!-- Progress -->
+      <div class="progress"><div id="progress-bar" class="progress-bar" style="width:0%"></div></div>
+
+      <!-- Dynamic step content goes here -->
+      <article class="card step-card">
+        <div id="step-wrapper"></div>
+        <div class="sticky-actions">
+          <button id="btn-prev" class="btn btn-ghost">Back</button>
+          <button id="btn-next" class="btn btn-primary">Next</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ========== LOADING ========== -->
+  <section id="screen-loading" class="screen loading">
+    <div class="container narrow" style="text-align:center;">
+      <div class="spinner"></div>
+      <p class="muted">Building your premium schedule…</p>
+    </div>
+  </section>
+
+  <!-- ========== RESULTS ========== -->
+  <section id="screen-results" class="screen">
+    <div class="container wide">
+      <div class="results-header">
+        <div>
+          <h2 id="results-context">Your Concert Day</h2>
+          <p id="intro-line" class="muted"></p>
+        </div>
+        <div class="actions" style="display:flex; gap:10px; align-items:flex-end;">
+          <button id="btn-edit" class="btn btn-ghost">Edit inputs</button>
+          <button id="btn-new" class="btn btn-ghost">New plan</button>
+          <button id="btn-share" class="btn">Share link</button>
+          <button id="btn-ics" class="btn btn-primary">Add to Calendar</button>
+        </div>
+      </div>
+
+      <!-- Continuous schedule timeline target -->
+      <div id="schedule" class="schedule"></div>
+    </div>
+  </section>
+
+  <!-- Optional: Google Maps JS (Places). If you add your key, autocomplete + distance features work. -->
+  <!-- <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_KEY_HERE&libraries=places"></script> -->
+
+  <!-- App -->
+  <script type="module" src="./app.js?v=732"></script>
+</body>
+</html>

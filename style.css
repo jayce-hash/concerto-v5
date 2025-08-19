@@ -303,3 +303,7 @@ body.page-transition::before{
 @media (prefers-reduced-motion: reduce){
   *{ animation: none !important; transition: none !important; }
 }
+.badge-chosen{
+  display:inline-block; margin-left:8px; padding:2px 8px; border-radius:999px; font-size:.82rem;
+  background:#E9EEF6; color:#2A3A63; border:1px solid #C8D3E6;
+}

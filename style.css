@@ -326,3 +326,43 @@ body.page-transition::before{
 @media (max-width: 480px){
   #screen-results h2 { font-size: 1.32rem; }
 }
+/* ==== Concerto+ itinerary spacing fix (pin • time • title) ==== */
+/* Use an inline flex header instead of absolute-positioned time/pin */
+
+.schedule { position: relative; padding-left: 18px; border-left: none; }
+.schedule::before {
+  content: ""; position: absolute; left: 9px; top: 0; bottom: 0;
+  width: 1px; background: var(--line);
+}
+
+/* row padding stays tidy on mobile too */
+.schedule .row { padding: var(--s-3) 0 var(--s-4); }
+
+/* NEW: .hdr row aligns pin, time, title */
+.schedule .hdr { display: flex; align-items: center; gap: .6rem; }
+
+/* Stop absolute positioning from older rules */
+.schedule .time { position: static !important; left: auto !important; top: auto !important;
+  min-width: 60px; font-variant-numeric: tabular-nums; color: var(--muted);
+}
+.schedule .title { flex: 1; font-weight: 700; letter-spacing: .01em; color: var(--ink); }
+
+/* Pin inline instead of absolute */
+.schedule .pin {
+  position: static !important; left: auto !important; top: auto !important;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent-2);
+  box-shadow: 0 0 0 6px rgba(42,58,99,.15);
+  margin-left: -5px; /* centers over the vertical line */
+}
+
+/* Tighten meta/note spacing a bit */
+.schedule .meta { margin-top: .25rem; }
+.schedule .note { margin-top: var(--s-2); }
+
+/* Mobile tweaks */
+@media (max-width: 720px){
+  .schedule { padding-left: 16px; }
+  .schedule::before { left: 8px; }
+  .schedule .time { min-width: 56px; font-size: .95rem; }
+}

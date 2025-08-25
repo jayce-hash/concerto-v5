@@ -1,4 +1,5 @@
-// quality-filter.js — time-aware, open-hours checks (v7.3.0)
+// quality-filter.js — time-aware, photos, stronger open-slot scoring (v7.7.0)
+
 function miles(a, b){
   const toRad = d => d*Math.PI/180, R=3958.8;
   const dLat = toRad(b.lat - a.lat), dLon = toRad(b.lng - a.lng);
@@ -17,6 +18,7 @@ function waitForPlaces(maxMs=10000){
   });
 }
 
+// ---- Timezone + open-at-slot helpers ----
 async function fetchTimeZoneId(lat, lng, timestampSec){
   const key = window.GOOGLE_MAPS_API_KEY || "";
   const url = `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestampSec}&key=${key}`;
@@ -39,29 +41,53 @@ function toVenueLocalDate(targetISO, tzid){
 function isOpenAt(placeDetails, whenLocal){
   const oh = placeDetails?.opening_hours;
   if (!oh || !Array.isArray(oh.periods)) return null;
+
   const day = whenLocal.getDay();
   const mins = whenLocal.getHours()*60 + whenLocal.getMinutes();
   const windows = [];
+
   for (const p of oh.periods){
     if (!p.open || !p.close) continue;
     const oDay = p.open.day, cDay = p.close.day;
     const oMin = (parseInt(p.open.hours||"0",10)*60) + parseInt(p.open.minutes||"0",10);
     const cMin = (parseInt(p.close.hours||"0",10)*60) + parseInt(p.close.minutes||"0",10);
+
+    // same day
     if (oDay === day && cDay === day){
       windows.push([oMin, cMin]);
-    } else if (oDay === day && ((cDay + 7 - oDay) % 7) === 1 && cMin < oMin){
+      continue;
+    }
+    // crosses midnight (open today -> close next day early AM)
+    if (oDay === day && ((cDay + 7 - oDay) % 7) === 1 && cMin < oMin){
       windows.push([oMin, cMin + 1440]);
-    } else if (((oDay + 7 - day) % 7) === 6 && cDay === day && cMin < 300){
+      continue;
+    }
+    // after midnight window (opened last night, closes today early)
+    if (((oDay + 7 - day) % 7) === 6 && cDay === day && cMin < 300){
       windows.push([0, cMin]);
+      continue;
     }
   }
+
   const m = mins;
   const inWindow = windows.some(([a,b]) => (m >= a && m <= b) || (m+1440 >= a && m+1440 <= b));
   if (!inWindow) return false;
-  const closeIn = Math.min(...windows.map(([a,b]) => (m<=b? b-m : (m+1440<=b? b-(m+1440) : 9999))));
+
+  const closeIn = Math.min(...windows.map(([a,b]) => (m<=b? b-m : (m+1440<=b? b-(m+1440) : 9e9))));
   return { open:true, minutesUntilClose: isFinite(closeIn) ? closeIn : null };
 }
 
+// ---- Photos ----
+function photoFromDetails(d, maxW=800, maxH=600){
+  try{
+    const ph = Array.isArray(d.photos) ? d.photos[0] : null;
+    return ph ? ph.getUrl({ maxWidth: maxW, maxHeight: maxH }) : "";
+  }catch{ return ""; }
+}
+
+// ================================================================
+// Restaurants (pre/post show)
+// ================================================================
 export async function pickRestaurants({ wantOpenNow, state, slot="before", targetISO }){
   await waitForPlaces();
   const svc = new google.maps.places.PlacesService(document.createElement('div'));
@@ -79,7 +105,7 @@ export async function pickRestaurants({ wantOpenNow, state, slot="before", targe
   for (const r of raw){
     if (!r.place_id || seen.has(r.place_id)) continue;
     seen.add(r.place_id); uniq.push(r);
-    if (uniq.length >= 25) break;
+    if (uniq.length >= 35) break;        // bigger candidate pool (we’ll score down later)
   }
 
   const whenISO = targetISO || new Date().toISOString();
@@ -95,14 +121,23 @@ export async function pickRestaurants({ wantOpenNow, state, slot="before", targe
   const enriched = [];
   for (const r of uniq){
     const d = await new Promise((resolve)=>{
-      svc.getDetails({ placeId: r.place_id, fields: ["name","formatted_address","website","geometry","place_id","opening_hours","price_level","rating","user_ratings_total"] },
-        (res, status)=> resolve(status === google.maps.places.PlacesServiceStatus.OK ? res : null));
+      svc.getDetails({
+        placeId: r.place_id,
+        fields: [
+          "name","formatted_address","website","geometry","place_id",
+          "opening_hours","price_level","rating","user_ratings_total","photos"
+        ]},
+        (res, status)=> resolve(status === google.maps.places.PlacesServiceStatus.OK ? res : null)
+      );
     });
     if (!d?.geometry?.location) continue;
+
     const dist = miles(venue, { lat: d.geometry.location.lat(), lng: d.geometry.location.lng() });
     const openCheck = isOpenAt(d, eatAtLocal);
+
     enriched.push({
-      name: d.name, address: d.formatted_address || r.vicinity || "",
+      name: d.name,
+      address: d.formatted_address || r.vicinity || "",
       distance: +dist.toFixed(2),
       mapUrl: gmapsUrl(d.place_id),
       url: d.website || "",
@@ -112,39 +147,55 @@ export async function pickRestaurants({ wantOpenNow, state, slot="before", targe
       openNow: d.opening_hours?.isOpen() ?? null,
       openAtSlot: openCheck ? true : (openCheck===false ? false : null),
       minutesUntilClose: typeof openCheck==='object' ? openCheck.minutesUntilClose : null,
-      lat: d.geometry.location.lat(), lng: d.geometry.location.lng()
+      lat: d.geometry.location.lat(),
+      lng: d.geometry.location.lng(),
+      photoUrl: photoFromDetails(d, 900, 600)   // ← for rails/cards
     });
   }
 
+  // Scoring
   const priceMap = { "$":1, "$$":2, "$$$":3, "$$$$":4 };
   const targetPrice = priceMap[state.budget] ?? null;
-  const after = (slot === "after");
+  const isAfter = (slot === "after");
 
   enriched.forEach(p => {
     let score = 0;
-    if (p.rating) score += (p.rating - 4.0) * 1.8;
-    if (p.reviews) score += Math.log10(Math.max(1, p.reviews)) * 0.8;
-    if (targetPrice && p.price) score += -Math.abs((p.price.length) - targetPrice) * 0.35;
+    // quality + popularity
+    if (p.rating) score += (p.rating - 4.0) * 1.9;
+    if (p.reviews) score += Math.log10(Math.max(1, p.reviews)) * 0.85;
+
+    // distance (prefer walkable)
+    score += Math.max(0, 1.8 - (p.distance||0)) * 0.45;
+
+    // budget closeness
+    if (targetPrice && p.price) score += -Math.abs((p.price.length) - targetPrice) * 0.4;
+
+    // cuisine name hints
     if (state.foodStyles?.length){
       const hit = state.foodStyles.some(c => (p.name||'').toLowerCase().includes(c.toLowerCase()));
       if (hit) score += 0.25;
     }
-    score += Math.max(0, 1.6 - (p.distance||0)) * 0.4;
-    if (p.openAtSlot === false) score -= 2.0;
-    if (after && p.openAtSlot === true) score += 0.6;
-    if (after && typeof p.minutesUntilClose === 'number' && p.minutesUntilClose < 60) score -= 0.4;
+
+    // hours
+    if (p.openAtSlot === false) score -= 2.2;
+    if (isAfter && p.openAtSlot === true) score += 0.7; // late-night friendly
+    if (isAfter && typeof p.minutesUntilClose === 'number' && p.minutesUntilClose < 60) score -= 0.5;
+
     p._score = score;
   });
 
   enriched.sort((a,b)=> (b._score||0) - (a._score||0));
-  return enriched.slice(0, 8);
+  return enriched.slice(0, 10);  // rails want 5–10 options
 }
 
+// ================================================================
+// Extras (coffee, drinks, dessert, sights) near venue
+// ================================================================
 export async function pickExtras({ state }){
   await waitForPlaces();
   const svc = new google.maps.places.PlacesService(document.createElement('div'));
   const venue = { lat: state.venueLat, lng: state.venueLng };
-  const radius = 2000;
+  const radius = 2200;
   const chosen = [];
 
   async function searchType(type, keyword){
@@ -160,42 +211,69 @@ export async function pickExtras({ state }){
   }
   async function enrich(r){
     const d = await new Promise((resolve)=>{
-      svc.getDetails({ placeId: r.place_id, fields: ["name","formatted_address","website","geometry","place_id","opening_hours","rating","user_ratings_total"] },
-        (res, status)=> resolve(status === google.maps.places.PlacesServiceStatus.OK ? res : null));
+      svc.getDetails({
+        placeId: r.place_id,
+        fields: ["name","formatted_address","website","geometry","place_id","opening_hours","rating","user_ratings_total","photos"]
+      }, (res, status)=> resolve(status === google.maps.places.PlacesServiceStatus.OK ? res : null));
     });
     if (!d?.geometry?.location) return null;
     const dist = miles(venue, { lat: d.geometry.location.lat(), lng: d.geometry.location.lng() });
     return {
-      name: d.name, address: d.formatted_address || r.vicinity || "",
+      name: d.name,
+      address: d.formatted_address || r.vicinity || "",
       distance: +dist.toFixed(2),
       mapUrl: gmapsUrl(d.place_id),
       url: d.website || "",
       rating: typeof d.rating === "number" ? d.rating : null,
       reviews: typeof d.user_ratings_total === "number" ? d.user_ratings_total : null,
       lat: d.geometry.location.lat(),
-      lng: d.geometry.location.lng()
+      lng: d.geometry.location.lng(),
+      photoUrl: photoFromDetails(d, 900, 600)
     };
   }
 
   if (state.interests.coffee){
     const res = await searchType("cafe");
-    for (const r of res){ const e = await enrich(r); if (e){ chosen.push({ section:"Coffee", ...e }); if (chosen.filter(x=>x.section==="Coffee").length>=4) break; } }
+    for (const r of res){
+      const e = await enrich(r); if (e){
+        chosen.push({ section:"Coffee", ...e });
+        if (chosen.filter(x=>x.section==="Coffee").length>=6) break;
+      }
+    }
   }
   if (state.interests.drinks){
     const res = await searchType("bar","cocktail lounge");
-    for (const r of res){ const e = await enrich(r); if (e){ chosen.push({ section:"Drinks", ...e }); if (chosen.filter(x=>x.section==="Drinks").length>=4) break; } }
+    for (const r of res){
+      const e = await enrich(r); if (e){
+        chosen.push({ section:"Drinks", ...e });
+        if (chosen.filter(x=>x.section==="Drinks").length>=6) break;
+      }
+    }
   }
   if (state.interests.dessert){
     const res = await searchType("restaurant","dessert");
-    for (const r of res){ const e = await enrich(r); if (e){ chosen.push({ section:"Dessert", ...e }); if (chosen.filter(x=>x.section==="Dessert").length>=4) break; } }
+    for (const r of res){
+      const e = await enrich(r); if (e){
+        chosen.push({ section:"Dessert", ...e });
+        if (chosen.filter(x=>x.section==="Dessert").length>=6) break;
+      }
+    }
   }
   if (state.interests.sights){
     const res = await searchType("tourist_attraction");
-    for (const r of res){ const e = await enrich(r); if (e){ chosen.push({ section:"Sights", ...e }); if (chosen.filter(x=>x.section==="Sights").length>=4) break; } }
+    for (const r of res){
+      const e = await enrich(r); if (e){
+        chosen.push({ section:"Sights", ...e });
+        if (chosen.filter(x=>x.section==="Sights").length>=6) break;
+      }
+    }
   }
   return chosen;
 }
 
+// ================================================================
+// Param builder
+// ================================================================
 function buildSearchParams({ wantOpenNow, state }){
   const venue = { lat: state.venueLat, lng: state.venueLng };
   const radius = 2400;

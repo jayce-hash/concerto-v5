@@ -1,4 +1,4 @@
-// app.js — Concerto+ with “Your picks” locked stops + generic resolver (v7.5.1)
+// app.js — Concerto+ with rails, photos, sticky top-card (v7.7.0)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { renderSchedule } from './timeline-renderer.js';
@@ -7,13 +7,21 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v7.5.1 loaded");
+  console.log("Concerto+ app.js v7.7.0 loaded");
 
-  const $ = (id) => document.getElementById(id);
+  const $  = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
   const esc = (s) => (s || "").replace(/[&<>\"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-  const show = (name)=>{ ["welcome","form","loading","results"].forEach(k=>$( "screen-"+k)?.classList.remove('active')); $("screen-"+name)?.classList.add('active'); document.body.classList.add('page-transition'); setTimeout(()=>document.body.classList.remove('page-transition'), 350); };
-  const setProgress = ()=>{ const bar=$('progress-bar'); if(!bar) return; const pct = Math.max(0, Math.min(100, Math.round((step/(steps.length-1))*100))); bar.style.width = pct+"%"; };
+  const show = (name)=>{
+    ["welcome","form","loading","results"].forEach(k=>$("screen-"+k)?.classList.remove('active'));
+    $("screen-"+name)?.classList.add('active');
+    document.body.classList.add('page-transition'); setTimeout(()=>document.body.classList.remove('page-transition'), 350);
+  };
+  const setProgress = ()=>{
+    const bar=$('progress-bar'); if(!bar) return;
+    const pct = Math.max(0, Math.min(100, Math.round((step/(steps.length-1))*100)));
+    bar.style.width = pct+"%";
+  };
 
   let step = 0;
   const steps = ["concert","stay","dining","activities"];
@@ -30,7 +38,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     customStops: [] // {name, placeId, lat, lng, url, mapUrl, when:'before'|'after', type:'coffee'|'drinks'|'dessert'|'sight'|'dinner', durationMin, note}
   };
 
-  // ---- Nav buttons
+  /* ==================== Nav ==================== */
   $('btn-start')?.addEventListener('click', () => { show('form'); renderStep(); });
   $('btn-prev')?.addEventListener('click', () => { if (step>0){ step--; renderStep(); } });
   $('btn-next')?.addEventListener('click', async () => {
@@ -509,9 +517,9 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         ? { name: customDinner.name, lat: customDinner.lat, lng: customDinner.lng, url: customDinner.url, mapUrl: customDinner.mapUrl || gmapsUrl(customDinner.placeId) }
         : (state.eatWhen!=='after' ? (beforeCur[0] || null) : null);
 
-      // Now build "before/after" lists for alternatives, placing locks AFTER the dinner pick (if any)
-      let diningBefore = enforceLocks(beforeCur, locks.filter(l=>l.when==='before' && l.type==='dinner')); // only dinner locks go in front
-      // move chosen dinner (auto or lock) to index 0
+      // Build before/after lists w/ locks
+      let diningBefore = enforceLocks(beforeCur, locks.filter(l=>l.when==='before' && l.type==='dinner')); // dinner locks first
+      // move chosen dinner to index 0
       if (dinnerPick){
         const i = diningBefore.findIndex(p => p.name === dinnerPick.name);
         if (i > 0){ const [x] = diningBefore.splice(i,1); diningBefore.unshift(x); }
@@ -520,7 +528,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       const nonDinnerLocks = locks.filter(l=>l.when==='before' && l.type!=='dinner');
       if (nonDinnerLocks.length){
         const appended = enforceLocks(diningBefore, nonDinnerLocks);
-        // enforceLocks would prepend; we want them after – so rebuild: keep [0] then rest + new unique locks
         const head = appended[0] ? [appended[0]] : [];
         const seen = new Set(head.map(p=>p.name+"|"+(p.mapUrl||"")));
         const tail = [];
@@ -528,7 +535,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         diningBefore = head.concat(tail);
       }
 
-      let diningAfter  = enforceLocks(afterCur, locks.filter(l=>l.when==='after')); // after locks can safely sit in front
+      let diningAfter  = enforceLocks(afterCur, locks.filter(l=>l.when==='after'));
 
       const showTitle = state.artist ? `${state.artist} — Live` : "Your Concert";
       const intro = curated?.intro || `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
@@ -551,12 +558,18 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
       $('intro-line').innerHTML = intro;
 
+      // Render schedule (existing renderer)
       renderSchedule(withCustoms, $('schedule'), {
-  before: diningBefore,
-  after:  diningAfter,
-  extras,
-  interests: state.interests   // ← add this
-});
+        before: diningBefore,
+        after:  diningAfter,
+        extras,
+        interests: state.interests
+      });
+
+      // Top sticky card + horizontal rails
+      const city = await venueCityName();
+      renderTopCard(city, withCustoms);
+      await renderRails({ before: diningBefore, after: diningAfter, extras });
 
       show('results');
     }catch(e){
@@ -564,6 +577,145 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
       show('form');
     }
+  }
+
+  /* ==================== Sticky Top Card ==================== */
+  async function venueCityName(){
+    try{
+      await waitForPlaces();
+      if (!(state.venueLat && state.venueLng)) return "";
+      const geocoder = new google.maps.Geocoder();
+      const res = await new Promise((resolve)=> geocoder.geocode(
+        { location: { lat: state.venueLat, lng: state.venueLng } },
+        (r, s)=> resolve(s===google.maps.GeocoderStatus.OK ? r : [])
+      ));
+      const comp = (res?.[0]?.address_components || []);
+      const city = comp.find(c=>c.types.includes("locality"))?.long_name
+                || comp.find(c=>c.types.includes("postal_town"))?.long_name
+                || comp.find(c=>c.types.includes("administrative_area_level_2"))?.long_name
+                || "";
+      return city;
+    }catch{ return ""; }
+  }
+
+  function renderTopCard(city, items){
+    const el = $('top-card'); if (!el) return;
+    const titleCity = city ? `YOUR NIGHT IN ${esc(city).toUpperCase()}` : "YOUR NIGHT";
+    // Build a quick visual sequence from itinerary core beats
+    const bits = [];
+    const hotel = items.find(i=>i.type==='hotel-depart');
+    const arrive = items.find(i=>i.type==='arrive-venue');
+    const show = items.find(i=>i.type==='show');
+    const post = items.find(i=>i.type==='post-move') || items.find(i=>i.type==='custom' && new Date(i.startISO) > new Date(show?.startISO||0));
+
+    function fmtTimeISO(iso){ const d=new Date(iso); const h=d.getHours()%12||12; const m=d.getMinutes().toString().padStart(2,'0'); const ampm=d.getHours()>=12?'PM':'AM'; return `${h}:${m} ${ampm}`; }
+
+    if (hotel)  bits.push(`<div class="chip">${fmtTimeISO(hotel.startISO)} • Leave ${esc(state.hotel || "hotel")}</div>`);
+    if (arrive) bits.push(`<div class="chip">${fmtTimeISO(arrive.startISO)} • Arrive at ${esc(state.venue)}</div>`);
+    if (show)   bits.push(`<div class="chip">${fmtTimeISO(show.startISO)} • Show starts</div>`);
+    if (post)   bits.push(`<div class="chip">${fmtTimeISO(post.startISO)} • After-party</div>`);
+
+    el.innerHTML = `
+      <article class="card sticky">
+        <header><h3>${titleCity}</h3></header>
+        <div class="chips">${bits.join("")}</div>
+      </article>
+    `;
+  }
+
+  /* ==================== Rails (Dinner / Dessert / Drinks / Coffee) ==================== */
+  // Pull place_id from mapUrl like "...query_place_id=XYZ"
+  function placeIdFromMapUrl(u){
+    try{
+      const url = new URL(u);
+      const pid = url.searchParams.get('query_place_id');
+      return pid || "";
+    }catch{ return ""; }
+  }
+
+  const photoCache = new Map(); // placeId -> url
+  async function getPhotoUrl(placeId, maxW=480){
+    if (!placeId) return "";
+    if (photoCache.has(placeId)) return photoCache.get(placeId);
+    try{
+      await waitForPlaces();
+      const svc = new google.maps.places.PlacesService(document.createElement('div'));
+      const details = await new Promise((resolve)=> svc.getDetails(
+        { placeId, fields: ["photos"] },
+        (d,s)=> resolve(s===google.maps.places.PlacesServiceStatus.OK ? d : null)
+      ));
+      const url = details?.photos?.[0]?.getUrl({ maxWidth: maxW }) || "";
+      photoCache.set(placeId, url || "");
+      return url || "";
+    }catch{ return ""; }
+  }
+
+  function metricBits(p){
+    const bits = [];
+    if (typeof p.distance === "number") bits.push(`${p.distance.toFixed(1)} mi`);
+    if (p.rating) bits.push(`★ ${Number(p.rating).toFixed(1)}`);
+    if (p.price) bits.push(p.price);
+    return bits.join(" · ");
+  }
+
+  function cardSkeleton(){
+    return `<div class="card place-card skeleton">
+      <div class="img"></div>
+      <div class="meta"><div class="line"></div><div class="line small"></div></div>
+    </div>`;
+  }
+
+  function rowClearAndSkeleton(rowId, n=5){
+    const row = $(rowId); if (!row) return;
+    row.innerHTML = new Array(n).fill(0).map(()=>cardSkeleton()).join("");
+  }
+
+  async function placeCardHTML(p){
+    const pid = placeIdFromMapUrl(p.mapUrl || "");
+    const img = await getPhotoUrl(pid);
+    const imgTag = img
+      ? `<img src="${img}" alt="${esc(p.name)}" loading="lazy"/>`
+      : `<div class="img-fallback"></div>`;
+    const metrics = metricBits(p);
+    const actions = [
+      p.mapUrl ? `<a href="${p.mapUrl}" target="_blank" rel="noopener">Map</a>` : "",
+      p.url    ? `<a href="${p.url}" target="_blank" rel="noopener">Website</a>` : ""
+    ].filter(Boolean).join(" · ");
+    return `
+      <div class="card place-card">
+        <div class="thumb">${imgTag}</div>
+        <div class="content">
+          <div class="title">${esc(p.name || "")}</div>
+          <div class="muted">${esc(p.address || "")}</div>
+          <div class="meta">${esc(metrics)}</div>
+          <div class="actions">${actions}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function renderRow(rowId, places){
+    const row = $(rowId); if (!row) return;
+    rowClearAndSkeleton(rowId, Math.min(Math.max(places.length,5),10));
+    const htmls = [];
+    for (const p of places.slice(0,10)){
+      htmls.push(await placeCardHTML(p));
+    }
+    row.innerHTML = htmls.join("");
+  }
+
+  async function renderRails({ before, after, extras }){
+    // Dinner: prefer "before" list
+    await renderRow("row-dinner", before || []);
+    // Dessert: extras where section is Dessert, fallback to after list
+    const dessert = (extras || []).filter(x=>/dessert/i.test(x.section||""));
+    await renderRow("row-dessert", dessert.length ? dessert : (after || []));
+    // Drinks:
+    const drinks = (extras || []).filter(x=>/drinks?/i.test(x.section||""));
+    await renderRow("row-drinks", drinks);
+    // Coffee:
+    const coffee = (extras || []).filter(x=>/coffee/i.test(x.section||""));
+    await renderRow("row-coffee", coffee);
   }
 
   /* ==================== Inject custom stops ==================== */

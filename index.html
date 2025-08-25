@@ -56,6 +56,8 @@
   <!-- ========== RESULTS ========== -->
   <section id="screen-results" class="screen">
     <div class="container wide">
+
+      <!-- Header + intro -->
       <div class="results-header">
         <div>
           <h2 id="results-context">Your Concert Day</h2>
@@ -69,8 +71,59 @@
         </div>
       </div>
 
-      <!-- Continuous schedule timeline target -->
-      <div id="schedule" class="schedule"></div>
+      <!-- Sticky top card: “Your Night in {City}” -->
+      <div id="top-card" class="sticky-topcard">
+        <!-- app.js will inject city name + summary timeline -->
+      </div>
+
+      <!-- Schedule / timeline (non-breaking) -->
+      <div id="schedule" class="schedule">
+        <div id="timeline" class="timeline">
+          <!-- app.js will render timeline items here -->
+        </div>
+      </div>
+
+      <!-- Horizontal carousels -->
+      <section class="rail">
+        <header class="rail-head">
+          <h3 class="rail-title">Dinner near the venue</h3>
+          <div class="rail-actions"></div>
+        </header>
+        <div id="row-dinner" class="h-scroll cards-rail">
+          <!-- app.js populates place cards -->
+        </div>
+      </section>
+
+      <section class="rail">
+        <header class="rail-head">
+          <h3 class="rail-title">Dessert & Late-night bites</h3>
+          <div class="rail-actions"></div>
+        </header>
+        <div id="row-dessert" class="h-scroll cards-rail">
+          <!-- app.js populates place cards -->
+        </div>
+      </section>
+
+      <section class="rail">
+        <header class="rail-head">
+          <h3 class="rail-title">Drinks & Lounges</h3>
+          <div class="rail-actions"></div>
+        </header>
+        <div id="row-drinks" class="h-scroll cards-rail">
+          <!-- app.js populates place cards -->
+        </div>
+      </section>
+
+      <section class="rail">
+        <header class="rail-head">
+          <h3 class="rail-title">Coffee & Cafés</h3>
+          <div class="rail-actions"></div>
+        </header>
+        <div id="row-coffee" class="h-scroll cards-rail">
+          <!-- app.js populates place cards -->
+        </div>
+      </section>
+
     </div>
   </section>
 

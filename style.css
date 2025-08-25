@@ -339,9 +339,3 @@ body.page-transition::before{
 @media (prefers-reduced-motion: reduce){
   *{ animation: none !important; transition: none !important; }
 }
-/* Tour card spacing tweak */
-.tour-steps{ display:grid; gap:12px; }
-.tstep{ padding: 2px 0; }
-.tstep .t-time{ min-width:72px; }
-}
-

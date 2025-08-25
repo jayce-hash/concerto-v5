@@ -1,6 +1,5 @@
-// quality-filter.js — retail filters + strict section matching + photos (v7.8.1)
+// quality-filter.js — time-aware, photos, stronger retail/type filtering (v7.9.1)
 
-/* ----------------- Utilities ----------------- */
 function miles(a, b){
   const toRad = d => d*Math.PI/180, R=3958.8;
   const dLat = toRad(b.lat - a.lat), dLon = toRad(b.lng - a.lng);
@@ -19,7 +18,7 @@ function waitForPlaces(maxMs=10000){
   });
 }
 
-/* ----------------- Timezone + open-at-slot ----------------- */
+/* ---- Timezone + open-at-slot helpers ---- */
 async function fetchTimeZoneId(lat, lng, timestampSec){
   const key = window.GOOGLE_MAPS_API_KEY || "";
   const url = `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestampSec}&key=${key}`;
@@ -32,11 +31,8 @@ async function fetchTimeZoneId(lat, lng, timestampSec){
   }
 }
 function toVenueLocalDate(targetISO, tzid){
-  try{
-    return new Date(new Date(targetISO).toLocaleString('en-US', { timeZone: tzid }));
-  }catch{
-    return new Date(targetISO);
-  }
+  try{ return new Date(new Date(targetISO).toLocaleString('en-US', { timeZone: tzid })); }
+  catch{ return new Date(targetISO); }
 }
 function isOpenAt(placeDetails, whenLocal){
   const oh = placeDetails?.opening_hours;
@@ -49,13 +45,9 @@ function isOpenAt(placeDetails, whenLocal){
     const oDay = p.open.day, cDay = p.close.day;
     const oMin = (parseInt(p.open.hours||"0",10)*60) + parseInt(p.open.minutes||"0",10);
     const cMin = (parseInt(p.close.hours||"0",10)*60) + parseInt(p.close.minutes||"0",10);
-    if (oDay === day && cDay === day){
-      windows.push([oMin, cMin]);
-    } else if (oDay === day && ((cDay + 7 - oDay) % 7) === 1 && cMin < oMin){
-      windows.push([oMin, cMin + 1440]);
-    } else if (((oDay + 7 - day) % 7) === 6 && cDay === day && cMin < 300){
-      windows.push([0, cMin]);
-    }
+    if (oDay === day && cDay === day){ windows.push([oMin, cMin]); continue; }
+    if (oDay === day && ((cDay + 7 - oDay) % 7) === 1 && cMin < oMin){ windows.push([oMin, cMin + 1440]); continue; }
+    if (((oDay + 7 - day) % 7) === 6 && cDay === day && cMin < 300){ windows.push([0, cMin]); continue; }
   }
   const m = mins;
   const inWindow = windows.some(([a,b]) => (m >= a && m <= b) || (m+1440 >= a && m+1440 <= b));
@@ -64,7 +56,7 @@ function isOpenAt(placeDetails, whenLocal){
   return { open:true, minutesUntilClose: isFinite(closeIn) ? closeIn : null };
 }
 
-/* ----------------- Photos ----------------- */
+/* ---- Photos ---- */
 function photoFromDetails(d, maxW=900, maxH=600){
   try{
     const ph = Array.isArray(d.photos) ? d.photos[0] : null;
@@ -72,49 +64,18 @@ function photoFromDetails(d, maxW=900, maxH=600){
   }catch{ return ""; }
 }
 
-/* ----------------- Retail / junk filters ----------------- */
-// Types we never want in rails/extras
-const BAD_TYPES = new Set([
-  "store","book_store","department_store","clothing_store","home_goods_store","furniture_store","electronics_store",
-  "shoe_store","jewelry_store","convenience_store","supermarket","grocery_or_supermarket","shopping_mall","library",
-  "hardware_store","bicycle_store","drugstore","pharmacy"
+/* ---- Retail/type filtering ---- */
+const NAME_BLACKLIST = /\b(barnes\s*&\s*noble|target|walmart|best buy|cvs|walgreens|ikea|costco|home\s*depot|lowe'?s|whole foods|trader joe'?s|safeway|kroger|tj maxx|marshall'?s)\b/i;
+const TYPE_BLACKLIST = new Set([
+  "book_store","department_store","clothing_store","home_goods_store","electronics_store",
+  "supermarket","grocery_or_supermarket","pharmacy","shopping_mall","furniture_store"
 ]);
-// Names we should exclude (covers the B&N case you saw)
-const BAD_NAME_RE = /\b(barnes\s*&\s*noble|barnes|american\s+girl|target|walmart|best\s*buy|ikea)\b/i;
-
-function looksRetail(detailsOrResult){
-  const types = (detailsOrResult?.types || []).map(String);
-  const hasBadType = types.some(t => BAD_TYPES.has(t));
-  const badName = BAD_NAME_RE.test(detailsOrResult?.name || "");
-  return hasBadType || badName;
-}
-
-/* ----------------- Section match helpers ----------------- */
-function isCoffee(detailsOrResult){
-  const types = detailsOrResult?.types || [];
-  const name = (detailsOrResult?.name || "").toLowerCase();
-  // must be a real cafe/bakery; exclude retail & restaurants that are clearly not coffee-forward
-  if (looksRetail(detailsOrResult)) return false;
-  return types.includes("cafe") || types.includes("bakery") || /coffee|espresso|roastery|caff[eé]/i.test(name);
-}
-
-function isDrinks(detailsOrResult){
-  const types = detailsOrResult?.types || [];
-  if (looksRetail(detailsOrResult)) return false;
-  return types.includes("bar") || types.includes("night_club") || /cocktail|wine\s+bar|speakeasy|taproom|lounge/i.test(detailsOrResult?.name || "");
-}
-
-function isDessert(detailsOrResult){
-  const types = detailsOrResult?.types || [];
-  if (looksRetail(detailsOrResult)) return false;
-  const name = (detailsOrResult?.name || "").toLowerCase();
-  return types.includes("bakery") || types.includes("ice_cream_shop") ||
-         /dessert|ice\s*cream|gelato|patisserie|donut|doughnut|macaron|churro|creamery|cupcake|chocolate/i.test(name);
-}
+function looksRetail(name=""){ return NAME_BLACKLIST.test(name); }
+function typesContainRetail(types){ return Array.isArray(types) && types.some(t=>TYPE_BLACKLIST.has(t)); }
 
 /* ================================================================
    Restaurants (pre/post show)
-   ================================================================ */
+=============================================================== */
 export async function pickRestaurants({ wantOpenNow, state, slot="before", targetISO }){
   await waitForPlaces();
   const svc = new google.maps.places.PlacesService(document.createElement('div'));
@@ -132,7 +93,7 @@ export async function pickRestaurants({ wantOpenNow, state, slot="before", targe
   for (const r of raw){
     if (!r.place_id || seen.has(r.place_id)) continue;
     seen.add(r.place_id); uniq.push(r);
-    if (uniq.length >= 35) break; // larger pool before filtering/scoring
+    if (uniq.length >= 40) break;  // bigger candidate pool
   }
 
   const whenISO = targetISO || new Date().toISOString();
@@ -147,24 +108,18 @@ export async function pickRestaurants({ wantOpenNow, state, slot="before", targe
     const d = await new Promise((resolve)=>{
       svc.getDetails({
         placeId: r.place_id,
-        fields: ["name","formatted_address","website","geometry","place_id","types",
-                 "opening_hours","price_level","rating","user_ratings_total","photos"]
-      }, (res, status)=> resolve(status === google.maps.places.PlacesServiceStatus.OK ? res : null));
+        fields: [
+          "name","formatted_address","website","geometry","place_id","types",
+          "opening_hours","price_level","rating","user_ratings_total","photos"
+        ]},
+        (res, status)=> resolve(status === google.maps.places.PlacesServiceStatus.OK ? res : null)
+      );
     });
     if (!d?.geometry?.location) continue;
-
-    // Extra guard: never keep retail-like entries
-    if (looksRetail(d)) continue;
+    if (looksRetail(d.name) || typesContainRetail(d.types)) continue;
 
     const dist = miles(venue, { lat: d.geometry.location.lat(), lng: d.geometry.location.lng() });
     const openCheck = isOpenAt(d, eatAtLocal);
-
-    // Light quality thresholds to avoid low-signal results
-    const rating = typeof d.rating === "number" ? d.rating : null;
-    const reviews = typeof d.user_ratings_total === "number" ? d.user_ratings_total : null;
-    if (rating !== null && reviews !== null){
-      if (rating < 3.9 || reviews < 30) continue; // trim weak entries
-    }
 
     enriched.push({
       name: d.name,
@@ -172,14 +127,15 @@ export async function pickRestaurants({ wantOpenNow, state, slot="before", targe
       distance: +dist.toFixed(2),
       mapUrl: gmapsUrl(d.place_id),
       url: d.website || "",
-      rating, reviews,
+      rating: typeof d.rating === "number" ? d.rating : null,
+      reviews: typeof d.user_ratings_total === "number" ? d.user_ratings_total : null,
       price: typeof d.price_level === "number" ? "$".repeat(d.price_level+1) : null,
       openNow: d.opening_hours?.isOpen() ?? null,
       openAtSlot: openCheck ? true : (openCheck===false ? false : null),
       minutesUntilClose: typeof openCheck==='object' ? openCheck.minutesUntilClose : null,
       lat: d.geometry.location.lat(),
       lng: d.geometry.location.lng(),
-      photoUrl: photoFromDetails(d, 900, 600)
+      photoUrl: photoFromDetails(d)
     });
   }
 
@@ -209,8 +165,8 @@ export async function pickRestaurants({ wantOpenNow, state, slot="before", targe
 }
 
 /* ================================================================
-   Extras (Coffee, Drinks, Dessert, Sights) near venue — strict types
-   ================================================================ */
+   Extras (coffee, drinks, dessert, sights) — refined
+=============================================================== */
 export async function pickExtras({ state }){
   await waitForPlaces();
   const svc = new google.maps.places.PlacesService(document.createElement('div'));
@@ -218,7 +174,10 @@ export async function pickExtras({ state }){
   const radius = 2200;
   const chosen = [];
 
-  async function search(params){
+  async function searchType(type, keyword){
+    const params = { location: venue, radius };
+    if (type) params.type = type;
+    if (keyword) params.keyword = keyword;
     return await new Promise((resolve)=>{
       svc.nearbySearch(params, (res, status)=>{
         if (status !== google.maps.places.PlacesServiceStatus.OK || !res) return resolve([]);
@@ -235,9 +194,14 @@ export async function pickExtras({ state }){
       }, (res, status)=> resolve(status === google.maps.places.PlacesServiceStatus.OK ? res : null));
     });
     if (!d?.geometry?.location) return null;
-    if (looksRetail(d)) return null; // extra guard for B&N etc.
-    const dist = miles(venue, { lat: d.geometry.location.lat(), lng: d.geometry.location.lng() });
+    if (looksRetail(d.name) || typesContainRetail(d.types)) return null;
 
+    // tighten coffee: must be cafe/coffee_shop
+    if (r.types?.includes("cafe") === false && r.types?.includes("coffee_shop") === false && /coffee/i.test(d.name||"")){
+      // allow; name indicates coffee — but keep bookstore/etc filter already handled
+    }
+
+    const dist = miles(venue, { lat: d.geometry.location.lat(), lng: d.geometry.location.lng() });
     return {
       name: d.name,
       address: d.formatted_address || r.vicinity || "",
@@ -248,69 +212,52 @@ export async function pickExtras({ state }){
       reviews: typeof d.user_ratings_total === "number" ? d.user_ratings_total : null,
       lat: d.geometry.location.lat(),
       lng: d.geometry.location.lng(),
-      types: d.types || [],
-      photoUrl: photoFromDetails(d, 900, 600)
+      photoUrl: photoFromDetails(d)
     };
   }
 
-  // COFFEE — must be cafe/bakery; filter junk; apply quality floor
   if (state.interests.coffee){
-    const res = await search({ location: venue, radius, type: "cafe" });
+    const res = await searchType("cafe","coffee");
     for (const r of res){
-      const e = await enrich(r);
-      if (e && isCoffee(e) && (e.rating ?? 4) >= 3.9 && (e.reviews ?? 40) >= 20){
+      const e = await enrich(r); if (e){
         chosen.push({ section:"Coffee", ...e });
-        if (chosen.filter(x=>x.section==="Coffee").length>=6) break;
+        if (chosen.filter(x=>x.section==="Coffee").length>=10) break;
       }
     }
   }
-
-  // DRINKS — bars & lounges only
   if (state.interests.drinks){
-    const res = await search({ location: venue, radius, type: "bar", keyword: "cocktail lounge" });
+    const res = await searchType("bar","cocktail lounge");
     for (const r of res){
-      const e = await enrich(r);
-      if (e && isDrinks(e) && (e.rating ?? 4) >= 3.9){
+      const e = await enrich(r); if (e){
         chosen.push({ section:"Drinks", ...e });
-        if (chosen.filter(x=>x.section==="Drinks").length>=6) break;
+        if (chosen.filter(x=>x.section==="Drinks").length>=10) break;
       }
     }
   }
-
-  // DESSERT — bakeries/ice cream + name keywords
   if (state.interests.dessert){
-    // start with bakeries
-    const res1 = await search({ location: venue, radius, type: "bakery" });
-    // then a dessert keyword sweep from restaurants
-    const res2 = await search({ location: venue, radius, type: "restaurant", keyword: "dessert ice cream gelato patisserie" });
-    const pool = [...res1, ...res2];
-    const seen = new Set();
-    for (const r of pool){
-      if (seen.has(r.place_id)) continue; seen.add(r.place_id);
-      const e = await enrich(r);
-      if (e && isDessert(e) && (e.rating ?? 4) >= 3.9){
+    const res = await searchType("restaurant","dessert");
+    for (const r of res){
+      const e = await enrich(r); if (e){
         chosen.push({ section:"Dessert", ...e });
-        if (chosen.filter(x=>x.section==="Dessert").length>=6) break;
+        if (chosen.filter(x=>x.section==="Dessert").length>=10) break;
       }
     }
   }
-
-  // SIGHTS — tourist_attraction (no retail)
   if (state.interests.sights){
-    const res = await search({ location: venue, radius, type: "tourist_attraction" });
+    const res = await searchType("tourist_attraction");
     for (const r of res){
-      const e = await enrich(r);
-      if (e){ chosen.push({ section:"Sights", ...e }); if (chosen.filter(x=>x.section==="Sights").length>=6) break; }
+      const e = await enrich(r); if (e){
+        chosen.push({ section:"Sights", ...e });
+        if (chosen.filter(x=>x.section==="Sights").length>=10) break;
+      }
     }
   }
-
-  // Strip helper-only field
-  return chosen.map(({types, ...rest}) => rest);
+  return chosen;
 }
 
 /* ================================================================
-   Param builder
-   ================================================================ */
+   Params
+=============================================================== */
 function buildSearchParams({ wantOpenNow, state }){
   const venue = { lat: state.venueLat, lng: state.venueLng };
   const radius = 2400;

@@ -672,35 +672,44 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return out.slice(0, Math.max(min, Math.min(max, out.length)));
   }
   function fillRail(id, list){
-    const row = $(id); if (!row) return;
-    if (!Array.isArray(list) || !list.length){ row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`; return; }
-    const cards = list.map(p => {
-      const name = esc(p.name || "");
-      const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
-      const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-      const price = p.price || "";
-      const map = p.mapUrl || "";
-      const img = p.photoUrl || "";
-      const site = p.url || "";
-      return `
-        <article class="place-card" data-map-open="${esc(map)}" title="Open on Google Maps">
-          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-          <div class="pc-body">
-            <div class="pc-title">${name}</div>
-            <div class="pc-meta">
-              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-              ${rating ? `<span>${esc(rating)}</span>` : ""}
-              ${price ? `<span>${esc(price)}</span>` : ""}
-            </div>
-            <div class="pc-actions">
-              ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
-              ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
-            </div>
+  const row = $(id); if (!row) return;
+  if (!Array.isArray(list) || !list.length){
+    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+    return;
+  }
+  const cards = list.map(p => {
+    const name = esc(p.name || "");
+    const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
+    const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
+    const price = p.price || "";
+    const map = p.mapUrl || "";
+    const img = p.photoUrl || "";
+    const site = p.url || "";
+
+    return `
+      <article class="place-card">
+        <a class="pc-img" ${map ? `href="${esc(map)}" target="_blank" rel="noopener"` : ""}>
+          ${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}
+        </a>
+        <div class="pc-body">
+          <div class="pc-title">
+            ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">${name}</a>` : name}
           </div>
-        </article>
-      `;
-    }).join("");
-    row.innerHTML = cards;
+          <div class="pc-meta">
+            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+            ${rating ? `<span>${esc(rating)}</span>` : ""}
+            ${price ? `<span>${esc(price)}</span>` : ""}
+          </div>
+          <div class="pc-actions">
+            ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
+            ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener">Website</a>` : ""}
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
+  row.innerHTML = cards;
+}
 
     qsa('[data-map-open]', row).forEach(el=>{
       el.onclick = (e)=>{

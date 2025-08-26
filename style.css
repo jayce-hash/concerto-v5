@@ -339,3 +339,8 @@ body.page-transition::before{
 @media (prefers-reduced-motion: reduce){
   *{ animation: none !important; transition: none !important; }
 }
+/* Center the tour card */
+.tour-card{
+  max-width: 760px;
+  margin: 0 auto 18px;   /* center + a little breathing room */
+}

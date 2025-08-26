@@ -1,4 +1,4 @@
-// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.1 single-file)
+// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.2)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { shareLinkOrCopy, toICS } from './export-tools.js';
@@ -6,11 +6,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v8.0.1 loaded");
+  console.log("Concerto+ app.js v8.0.2 loaded");
 
   const $  = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
-  // fixed mapping for ">" (was "&gt;" key in some versions)
   const esc = (s) => (s || "").replace(/[&<>\"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
 
   const show = (name)=>{
@@ -130,8 +129,9 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       bindTmSearch();                 // Ticketmaster
       bindArtistSuggest();            // Manual
       bindVenueAutocomplete();
-      $('showTime').onchange = (e)=> state.showTime = e.target.value;
-      $('showDate').onchange = (e)=> state.showDate = e.target.value;
+
+      $('showTime')?.addEventListener('change', (e)=> state.showTime = e.target.value);
+      $('showDate')?.addEventListener('change', (e)=> state.showDate = e.target.value);
 
       $('btn-prev').disabled = true;
       $('btn-next').textContent = "Next";
@@ -151,7 +151,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         </div>
       `;
       const cb = $('staying'); const hotelInput = $('hotel');
-      cb.onchange = ()=>{ state.staying = cb.checked; hotelInput.disabled = !cb.checked; };
+      cb?.addEventListener('change', ()=>{ state.staying = cb.checked; hotelInput.disabled = !cb.checked; });
       bindHotelAutocomplete();
       $('btn-prev').disabled = false;
       $('btn-next').textContent = "Next";
@@ -207,10 +207,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
           </div>
         </div>
       `;
-      $('eatWhen').onchange = (e)=> state.eatWhen = e.target.value;
-      $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
-      $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
-      $('tone').onchange = (e)=> state.tone = e.target.value;
+      $('eatWhen')?.addEventListener('change', (e)=> state.eatWhen = e.target.value);
+      $('placeStyle')?.addEventListener('change', (e)=> state.placeStyle = e.target.value);
+      $('foodStyleOther')?.addEventListener('input', (e)=> state.foodStyleOther = e.target.value.trim());
+      $('tone')?.addEventListener('change', (e)=> state.tone = e.target.value);
       qsa('#cuisine-pills .pill').forEach(p=>{
         p.onclick=()=>{ const v = p.dataset.val; const i = state.foodStyles.indexOf(v); if (i>=0) state.foodStyles.splice(i,1); else state.foodStyles.push(v); p.classList.toggle('active'); };
       });
@@ -282,7 +282,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  /* ==================== Ticketmaster (inlined helper) ==================== */
+  /* ==================== Ticketmaster ==================== */
   const TM_KEY = "oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh";
   function tmUrl(path, params){
     const u = new URL(`https://app.ticketmaster.com${path}`);
@@ -306,7 +306,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       const at = (ev?._embedded?.attractions || [])[0];
       const vn = (ev?._embedded?.venues || [])[0] || {};
       const dtISO = ev?.dates?.start?.dateTime || null;
-      const tz = ev?.dates?.timezone || vn?.timezone || null;
       const loc = vn?.location || {};
       return {
         id: ev?.id || "",
@@ -316,7 +315,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         city: [vn?.city?.name, vn?.state?.stateCode].filter(Boolean).join(", "),
         address: [vn?.address?.line1, vn?.city?.name, vn?.state?.stateCode, vn?.postalCode].filter(Boolean).join(", "),
         dateTime: dtISO,
-        timezone: tz || "",
         venueLat: loc?.latitude ? Number(loc.latitude) : null,
         venueLng: loc?.longitude ? Number(loc.longitude) : null
       };
@@ -571,7 +569,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  /* ==================== Tour Card (aligned to itinerary-engine types) ==================== */
+  /* ==================== Tour Card ==================== */
   async function venueCityName(){
     try{
       await waitForPlaces();
@@ -593,32 +591,22 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     const date = (d instanceof Date) ? d : new Date(d);
     try{ return date.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }catch{ return ''; }
   };
-
   function renderTourCard(city, items, dinnerPick){
     const el = $('schedule'); if (!el) return;
 
-    const arrive = items.find(i=>i.type==='arrive'); // arrive window start→doors
-    const dine   = items.find(i=>i.type==='dine');   // dinner block if present
+    const arrive = items.find(i=>i.type==='arrive');
+    const dine   = items.find(i=>i.type==='dine');
     const show   = items.find(i=>i.type==='show');
     const post   = items.find(i=>i.type==='post');
 
     const parts = [];
-
-    // Leave hotel (only if staying and we have an arrive window)
     if (state.staying && arrive?.start){
-      parts.push({
-        time: fmtLocal(arrive.start),
-        label: `Leave ${state.hotel ? esc(state.hotel) : 'hotel'}`
-      });
+      parts.push({ time: fmtLocal(arrive.start), label: `Leave ${state.hotel ? esc(state.hotel) : 'hotel'}` });
     }
-
-    // Dinner (arrive/leave) if we have a dine block
     if (dine){
       parts.push({ time: fmtLocal(dine.start), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
       parts.push({ time: fmtLocal(dine.end),   label: `Leave ${esc(dinnerPick?.name || 'restaurant')} for ${esc(state.venue)}` });
     }
-
-    // Arrive at venue (use arrive.start if present, else show.start minus buffer)
     if (arrive){
       parts.push({
         time: fmtLocal(arrive.start),
@@ -626,14 +614,8 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         note: `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`
       });
     }
-
-    if (show){
-      parts.push({ time: fmtLocal(show.start), label: `Show starts` });
-    }
-
-    if (post){
-      parts.push({ time: fmtLocal(post.start), label: `Leave the venue for dessert/drinks` });
-    }
+    if (show){ parts.push({ time: fmtLocal(show.start), label: `Show starts` }); }
+    if (post){ parts.push({ time: fmtLocal(post.start), label: `Leave the venue for dessert/drinks` }); }
 
     el.innerHTML = `
       <article class="card tour-card">
@@ -671,93 +653,64 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     if (out.length < min){ out = uniqMerge(max, out, fallback); }
     return out.slice(0, Math.max(min, Math.min(max, out.length)));
   }
+
+  // ✅ Links fixed: image/title are anchors; no card-level click swallowing
   function fillRail(id, list){
-  const row = $(id); if (!row) return;
-  if (!Array.isArray(list) || !list.length){
-    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
-    return;
+    const row = $(id); if (!row) return;
+    if (!Array.isArray(list) || !list.length){
+      row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+      return;
+    }
+    const cards = list.map(p => {
+      const name = esc(p.name || "");
+      const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
+      const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
+      const price = p.price || "";
+      const map = p.mapUrl || "";
+      const img = p.photoUrl || "";
+      const site = p.url || "";
+      return `
+        <article class="place-card">
+          ${map ? `<a class="pc-img" href="${esc(map)}" target="_blank" rel="noopener">` : `<div class="pc-img">`}
+            ${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}
+          ${map ? `</a>` : `</div>`}
+          <div class="pc-body">
+            <div class="pc-title">
+              ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">${name}</a>` : name}
+            </div>
+            <div class="pc-meta">
+              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+              ${rating ? `<span>${esc(rating)}</span>` : ""}
+              ${price ? `<span>${esc(price)}</span>` : ""}
+            </div>
+            <div class="pc-actions">
+              ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
+              ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener">Website</a>` : ""}
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("");
+    row.innerHTML = cards;
   }
-  const cards = list.map(p => {
-    const name = esc(p.name || "");
-    const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
-    const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-    const price = p.price || "";
-    const map = p.mapUrl || "";
-    const img = p.photoUrl || "";
-    const site = p.url || "";
 
-    return `
-      <article class="place-card">
-        <a class="pc-img" ${map ? `href="${esc(map)}" target="_blank" rel="noopener"` : ""}>
-          ${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}
-        </a>
-        <div class="pc-body">
-          <div class="pc-title">
-            ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">${name}</a>` : name}
-          </div>
-          <div class="pc-meta">
-            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-            ${rating ? `<span>${esc(rating)}</span>` : ""}
-            ${price ? `<span>${esc(price)}</span>` : ""}
-          </div>
-          <div class="pc-actions">
-            ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
-            ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener">Website</a>` : ""}
-          </div>
-        </div>
-      </article>
-    `;
-  }).join("");
-  row.innerHTML = cards;
-}
+  async function renderRails({ before, after, extras }){
+    const dessert = (extras||[]).filter(x=>/dessert/i.test(x.section||""));
+    const drinks  = (extras||[]).filter(x=>/drinks?/i.test(x.section||""));
+    const coffee  = (extras||[]).filter(x=>/coffee/i.test(x.section||""));
+    const sights  = (extras||[]).filter(x=>/sights?/i.test(x.section||""));
 
-    qsa('[data-map-open]', row).forEach(el=>{
-      el.onclick = (e)=>{
-        if ((e.target.closest('a') && e.target.closest('a').dataset.link === 'site') || (e.target.dataset.link === 'site')) return;
-        const url = el.dataset.mapOpen;
-        if (url) window.open(url, '_blank', 'noopener');
-      };
-    });
-  }
- function fillRail(id, list){
-  const row = $(id); if (!row) return;
-  if (!Array.isArray(list) || !list.length){
-    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
-    return;
-  }
-  const cards = list.map(p => {
-    const name = esc(p.name || "");
-    const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
-    const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-    const price = p.price || "";
-    const map = p.mapUrl || "";
-    const img = p.photoUrl || "";
-    const site = p.url || "";
+    const dinnerRow  = pickRange(before, 5, 10, after);
+    const dessertRow = pickRange(uniqMerge(10, dessert, after), 5, 10, before);
+    const drinksRow  = pickRange(uniqMerge(10, drinks, after), 5, 10, before);
+    const sightsRow  = pickRange(sights, 5, 10);
+    const coffeeRow  = pickRange(coffee, 5, 10);
 
-    return `
-      <article class="place-card">
-        <a class="pc-img" ${map ? `href="${esc(map)}" target="_blank" rel="noopener"` : ""}>
-          ${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}
-        </a>
-        <div class="pc-body">
-          <div class="pc-title">
-            ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">${name}</a>` : name}
-          </div>
-          <div class="pc-meta">
-            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-            ${rating ? `<span>${esc(rating)}</span>` : ""}
-            ${price ? `<span>${esc(price)}</span>` : ""}
-          </div>
-          <div class="pc-actions">
-            ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
-            ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener">Website</a>` : ""}
-          </div>
-        </div>
-      </article>
-    `;
-  }).join("");
-  row.innerHTML = cards;
-}
+    fillRail('row-dinner',  dinnerRow);
+    fillRail('row-dessert', dessertRow);
+    fillRail('row-drinks',  drinksRow);
+    fillRail('row-sights',  sightsRow);   // ← new rail
+    fillRail('row-coffee',  coffeeRow);
   }
 
   /* ==================== Custom picks UI ==================== */
@@ -804,7 +757,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
             mapUrl  = resolved.mapUrl  || mapUrl;
           }
         }catch(e){
-          console.warn("Generic resolver failed:", e.message);
         }
       }
       if (!name){ alert("Please enter a place name."); return; }

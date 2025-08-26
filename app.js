@@ -1,17 +1,18 @@
-// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.0)
+// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.1 single-file)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { shareLinkOrCopy, toICS } from './export-tools.js';
-import { tmSearch } from './ticketmaster.js';
 
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v8.0.0 loaded");
+  console.log("Concerto+ app.js v8.0.1 loaded");
 
   const $  = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
-  const esc = (s) => (s || "").replace(/[&<>\"']/g, m => ({ "&":"&amp;","<":"&lt;","&gt;":">&gt;","\"":"&quot;","'":"&#39;" }[m]));
+  // fixed mapping for ">" (was "&gt;" key in some versions)
+  const esc = (s) => (s || "").replace(/[&<>\"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
+
   const show = (name)=>{
     ["welcome","form","loading","results"].forEach(k=>$("screen-"+k)?.classList.remove('active'));
     $("screen-"+name)?.classList.add('active');
@@ -126,10 +127,9 @@ import { tmSearch } from './ticketmaster.js';
         </article>
       `;
 
-      // Ticketmaster bindings
-      bindTmSearch();
-      // Manual bindings (unchanged)
-      bindArtistSuggest(); bindVenueAutocomplete();
+      bindTmSearch();                 // Ticketmaster
+      bindArtistSuggest();            // Manual
+      bindVenueAutocomplete();
       $('showTime').onchange = (e)=> state.showTime = e.target.value;
       $('showDate').onchange = (e)=> state.showDate = e.target.value;
 
@@ -282,11 +282,49 @@ import { tmSearch } from './ticketmaster.js';
     }
   }
 
-  /* ==================== Ticketmaster search bindings ==================== */
+  /* ==================== Ticketmaster (inlined helper) ==================== */
+  const TM_KEY = "oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh";
+  function tmUrl(path, params){
+    const u = new URL(`https://app.ticketmaster.com${path}`);
+    Object.entries(params||{}).forEach(([k,v])=>{
+      if (v==null || v==="") return; u.searchParams.set(k,String(v));
+    });
+    u.searchParams.set("apikey", TM_KEY);
+    return u.toString();
+  }
+  async function tmSearch({ keyword, city="", size=10, startDateTime, endDateTime }){
+    if (!keyword) return [];
+    const url = tmUrl("/discovery/v2/events.json", {
+      keyword, city: city || undefined, classificationName: "music",
+      size: Math.max(1, Math.min(20, size)), startDateTime, endDateTime
+    });
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    const list = json?._embedded?.events || [];
+    return list.map(ev=>{
+      const at = (ev?._embedded?.attractions || [])[0];
+      const vn = (ev?._embedded?.venues || [])[0] || {};
+      const dtISO = ev?.dates?.start?.dateTime || null;
+      const tz = ev?.dates?.timezone || vn?.timezone || null;
+      const loc = vn?.location || {};
+      return {
+        id: ev?.id || "",
+        name: ev?.name || "",
+        artist: at?.name || (ev?.name || "").replace(/\s+-\s+.*$/, ""),
+        venue: vn?.name || "",
+        city: [vn?.city?.name, vn?.state?.stateCode].filter(Boolean).join(", "),
+        address: [vn?.address?.line1, vn?.city?.name, vn?.state?.stateCode, vn?.postalCode].filter(Boolean).join(", "),
+        dateTime: dtISO,
+        timezone: tz || "",
+        venueLat: loc?.latitude ? Number(loc.latitude) : null,
+        venueLng: loc?.longitude ? Number(loc.longitude) : null
+      };
+    });
+  }
   function bindTmSearch(){
     const q = $('tm-q'), city = $('tm-city'), btn = $('tm-search'), list = $('tm-results');
     if (!q || !btn || !list) return;
-
     async function run(){
       list.style.display = "block";
       list.innerHTML = `<div class="suggest-item muted">Searching Ticketmaster…</div>`;
@@ -302,7 +340,6 @@ import { tmSearch } from './ticketmaster.js';
           </div>`;
         }).join("");
 
-        // click: pick event
         qsa('.suggest-item', list).forEach(item=>{
           item.querySelector('button')?.addEventListener('click', async (e)=>{
             e.stopPropagation();
@@ -310,9 +347,7 @@ import { tmSearch } from './ticketmaster.js';
               const ev = JSON.parse(item.dataset.ev || "{}");
               await applyTicketmasterEvent(ev);
               list.style.display = "none";
-              // Jump to next step for speed
-              step = 1;
-              renderStep();
+              step = 1; renderStep();
             }catch(err){ console.warn(err); }
           });
         });
@@ -321,12 +356,10 @@ import { tmSearch } from './ticketmaster.js';
         list.innerHTML = `<div class="suggest-item muted">Error contacting Ticketmaster.</div>`;
       }
     }
-
     btn.onclick = run;
     q.addEventListener('keydown', (e)=>{ if (e.key === "Enter") run(); });
     city.addEventListener('keydown', (e)=>{ if (e.key === "Enter") run(); });
   }
-
   async function applyTicketmasterEvent(ev){
     state.artist = ev.artist || ev.name || state.artist;
     state.venue  = ev.venue  || state.venue;
@@ -335,16 +368,13 @@ import { tmSearch } from './ticketmaster.js';
       state.showDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       state.showTime = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
-    // use TM lat/lng if available, otherwise resolve with Places
     if (typeof ev.venueLat === 'number' && typeof ev.venueLng === 'number'){
       state.venueLat = ev.venueLat; state.venueLng = ev.venueLng; state.venuePlaceId = "";
-      // Try to resolve a proper Place ID in the background
       try{ await ensureVenueResolvedByName(`${ev.venue}, ${ev.city}`); }catch{}
     } else {
       await ensureVenueResolvedByName(`${ev.venue}, ${ev.city}`);
     }
   }
-
   async function ensureVenueResolvedByName(query){
     if (!query) return;
     await waitForPlaces();
@@ -362,30 +392,6 @@ import { tmSearch } from './ticketmaster.js';
   }
 
   /* ==================== Places helpers ==================== */
-  function bindArtistSuggest(){
-    const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
-    input.addEventListener('input', async ()=>{
-      state.artist = input.value.trim();
-      const q = input.value.trim(); if (!q){ list.style.display="none"; list.innerHTML=""; return; }
-      try{
-        const res = await fetch(`https://itunes.apple.com/search?entity=musicArtist&limit=6&term=${encodeURIComponent(q)}`);
-        const data = await res.json();
-        list.innerHTML = "";
-        (data.results||[]).forEach((r, idx)=>{
-          const d = document.createElement('div');
-          d.className = "suggest-item"; d.textContent = r.artistName;
-          if (idx===0) d.dataset.first = "1";
-          d.onclick = ()=>{ input.value = r.artistName; state.artist = r.artistName; list.style.display="none"; };
-          list.appendChild(d);
-        });
-        list.style.display = (data.results||[]).length ? "block" : "none";
-      }catch{ list.style.display="none"; }
-    });
-    input.addEventListener('keydown', (e)=>{
-      if (e.key === "Enter"){ const first = $('artist-list')?.querySelector('[data-first="1"]'); if (first){ e.preventDefault(); first.click(); } }
-    });
-  }
-
   function mapsReady(){ return !!(window.google && google.maps && google.maps.places); }
   function waitForPlaces(maxMs=10000){
     const t0 = Date.now();
@@ -443,6 +449,29 @@ import { tmSearch } from './ticketmaster.js';
         });
       });
     }).catch(()=>{});
+  }
+  function bindArtistSuggest(){
+    const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
+    input.addEventListener('input', async ()=>{
+      state.artist = input.value.trim();
+      const q = input.value.trim(); if (!q){ list.style.display="none"; list.innerHTML=""; return; }
+      try{
+        const res = await fetch(`https://itunes.apple.com/search?entity=musicArtist&limit=6&term=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        list.innerHTML = "";
+        (data.results||[]).forEach((r, idx)=>{
+          const d = document.createElement('div');
+          d.className = "suggest-item"; d.textContent = r.artistName;
+          if (idx===0) d.dataset.first = "1";
+          d.onclick = ()=>{ input.value = r.artistName; state.artist = r.artistName; list.style.display="none"; };
+          list.appendChild(d);
+        });
+        list.style.display = (data.results||[]).length ? "block" : "none";
+      }catch{ list.style.display="none"; }
+    });
+    input.addEventListener('keydown', (e)=>{
+      if (e.key === "Enter"){ const first = $('artist-list')?.querySelector('[data-first="1"]'); if (first){ e.preventDefault(); first.click(); } }
+    });
   }
 
   /* ==================== Resolvers ==================== */
@@ -530,13 +559,10 @@ import { tmSearch } from './ticketmaster.js';
       $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
       $('intro-line').innerHTML = `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
 
-      // Single Tour Card
       const city = await venueCityName();
       renderTourCard(city, itin, dinnerPick);
 
-      // Rails with min 5 / max 10 cards each, deduped
       await renderRails({ before: beforeAuto, after: afterAuto, extras });
-
       show('results');
     }catch(e){
       console.error(e);
@@ -545,7 +571,7 @@ import { tmSearch } from './ticketmaster.js';
     }
   }
 
-  /* ==================== Tour Card ==================== */
+  /* ==================== Tour Card (aligned to itinerary-engine types) ==================== */
   async function venueCityName(){
     try{
       await waitForPlaces();
@@ -563,47 +589,68 @@ import { tmSearch } from './ticketmaster.js';
       return city;
     }catch{ return ""; }
   }
-  function fmtLocal(when){
-    const d = (when instanceof Date) ? when : new Date(when);
-    try{ return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }catch{ return ''; }
-  }
+  const fmtLocal = (d)=> {
+    const date = (d instanceof Date) ? d : new Date(d);
+    try{ return date.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }catch{ return ''; }
+  };
+
   function renderTourCard(city, items, dinnerPick){
     const el = $('schedule'); if (!el) return;
-    const head = `
+
+    const arrive = items.find(i=>i.type==='arrive'); // arrive window start→doors
+    const dine   = items.find(i=>i.type==='dine');   // dinner block if present
+    const show   = items.find(i=>i.type==='show');
+    const post   = items.find(i=>i.type==='post');
+
+    const parts = [];
+
+    // Leave hotel (only if staying and we have an arrive window)
+    if (state.staying && arrive?.start){
+      parts.push({
+        time: fmtLocal(arrive.start),
+        label: `Leave ${state.hotel ? esc(state.hotel) : 'hotel'}`
+      });
+    }
+
+    // Dinner (arrive/leave) if we have a dine block
+    if (dine){
+      parts.push({ time: fmtLocal(dine.start), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
+      parts.push({ time: fmtLocal(dine.end),   label: `Leave ${esc(dinnerPick?.name || 'restaurant')} for ${esc(state.venue)}` });
+    }
+
+    // Arrive at venue (use arrive.start if present, else show.start minus buffer)
+    if (arrive){
+      parts.push({
+        time: fmtLocal(arrive.start),
+        label: `Arrive at ${esc(state.venue)}`,
+        note: `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`
+      });
+    }
+
+    if (show){
+      parts.push({ time: fmtLocal(show.start), label: `Show starts` });
+    }
+
+    if (post){
+      parts.push({ time: fmtLocal(post.start), label: `Leave the venue for dessert/drinks` });
+    }
+
+    el.innerHTML = `
       <article class="card tour-card">
         <div class="tour-head">
           <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
         </div>
         <div class="tour-steps">
-          ${items.map(it => {
-            const time = fmtLocal(it.start);
-            let label = "";
-            if (it.type === "hotel-depart"){
-              if (!state.staying) return "";
-              label = \`Leave ${esc(state.hotel || 'hotel')}\`;
-            } else if (it.type === "dine-arrive"){
-              label = \`Arrive at ${esc(dinnerPick?.name || 'restaurant')}\`;
-            } else if (it.type === "dine-leave"){
-              label = \`Leave ${esc(dinnerPick?.name || 'restaurant')} for ${esc(state.venue)}\`;
-            } else if (it.type === "arrive-venue"){
-              label = \`Arrive at ${esc(state.venue)}\`;
-            } else if (it.type === "show"){
-              label = "Show starts";
-            } else if (it.type === "post-leave"){
-              label = "Leave the venue for dessert/drinks";
-            } else { return ""; }
-            const note = (it.type === "arrive-venue") ? \`No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time\` : "";
-            return \`
-              <div class="tstep">
-                <div class="t-time">\${esc(time)}</div>
-                <div class="t-label">\${label}</div>
-                \${note ? \`<div class="t-note">· \${esc(note)}</div>\` : ""}
-              </div>\`;
-          }).join("")}
+          ${parts.map(p => `
+            <div class="tstep">
+              <div class="t-time">${esc(p.time || '')}</div>
+              <div class="t-label">${p.label}</div>
+              ${p.note ? `<div class="t-note">· ${esc(p.note)}</div>` : ""}
+            </div>
+          `).join("")}
         </div>
       </article>
     `;
-    el.innerHTML = head;
   }
 
   /* ==================== Rails ==================== */
@@ -679,7 +726,7 @@ import { tmSearch } from './ticketmaster.js';
     fillRail('row-coffee', coffeeRow);
   }
 
-  /* ==================== Custom picks UI (unchanged) ==================== */
+  /* ==================== Custom picks UI ==================== */
   function renderCustomPills(){
     const wrap = $('custom-pills'); if (!wrap) return;
     wrap.innerHTML = state.customStops.map((p, idx)=> `

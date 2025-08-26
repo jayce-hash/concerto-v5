@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Concerto+ · Concert Day Planner (v7.3.2)</title>
+  <title>Concerto+ · Concert Day Planner (v7.9.1)</title>
 
   <!-- Fonts: Lora for body, Cormorant Garamond for headings -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,7 +34,7 @@
       <!-- Progress -->
       <div class="progress"><div id="progress-bar" class="progress-bar" style="width:0%"></div></div>
 
-      <!-- Dynamic step content goes here -->
+      <!-- Dynamic step content -->
       <article class="card step-card">
         <div id="step-wrapper"></div>
         <div class="sticky-actions">
@@ -71,13 +71,8 @@
         </div>
       </div>
 
-      <!-- Sticky top card: “Your Night in {City}” -->
-      <div id="top-card" class="sticky-topcard"></div>
-
-      <!-- Schedule / timeline -->
-      <div id="schedule" class="schedule">
-        <div id="timeline" class="timeline"></div>
-      </div>
+      <!-- Tour Card gets injected here -->
+      <div id="schedule" class="schedule"></div>
 
       <!-- Horizontal rails -->
       <section class="rail">
@@ -115,6 +110,6 @@
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
 
   <!-- App -->
-  <script type="module" src="./app.js?v=770"></script>
+  <script type="module" src="./app.js?v=791"></script>
 </body>
 </html>

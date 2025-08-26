@@ -1,17 +1,18 @@
-// app.js — Tour Card only + refined rails (v7.9.1)
+// app.js — Tour Card only + refined rails (v7.9.2)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
-// ⬇️ removed timeline-renderer import
 import { shareLinkOrCopy, toICS } from './export-tools.js';
 
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v7.9.1 loaded");
+  console.log("Concerto+ app.js v7.9.2 loaded");
 
-  const $  = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
-  const esc = (s) => (s || "").replace(/[&<>\"']/g, m => ({ "&":"&amp;","<":"&lt;","&gt;":">&gt;","\"":"&quot;","'":"&#39;" }[m]));
+  const esc = (s) => (s || "").replace(/[&<>\"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[m]));
   const show = (name)=>{
     ["welcome","form","loading","results"].forEach(k=>$("screen-"+k)?.classList.remove('active'));
     $("screen-"+name)?.classList.add('active');
@@ -69,7 +70,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     if (enc) { Object.assign(state, JSON.parse(decodeURIComponent(atob(enc)))); show('form'); step = steps.length-1; renderStep(); }
   } catch {}
 
-  /* ==================== Step UI (unchanged) ==================== */
+  /* ==================== Step UI ==================== */
   function renderStep(){
     setProgress();
     const w = $('step-wrapper'); if (!w) return;
@@ -252,7 +253,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  /* ==================== Places helpers (unchanged) ==================== */
+  /* ==================== Places helpers ==================== */
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{
@@ -454,6 +455,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
+  const addMin = (d, min)=> new Date(new Date(d).getTime() + min*60000);
 
   /* ==================== Generate ==================== */
   async function generate(){
@@ -485,11 +487,11 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
       $('intro-line').innerHTML = `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
 
-      // ⬇️ Single Tour Card (replaces any vertical schedule)
+      // Single Tour Card
       const city = await venueCityName();
       renderTourCard(city, itin, dinnerPick);
 
-      // Rails with min 5 / max 10 cards each, deduped
+      // Rails (5–10, deduped + refined)
       await renderRails({ before: beforeAuto, after: afterAuto, extras });
 
       show('results');
@@ -527,45 +529,60 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
   function renderTourCard(city, items, dinnerPick){
     const el = $('schedule'); if (!el) return;
-    const head = `
+
+    // Map current engine’s items to requested milestones
+    const dine = items.find(i=>i.type==='dine') || null;
+    const arrive = items.find(i=>i.type==='arrive') || null;
+    const show = items.find(i=>i.type==='show') || null;
+    const post = items.find(i=>i.type==='post') || null;
+
+    const steps = [];
+
+    // Leave hotel (only if staying + we have a prior target)
+    if (state.staying && state.hotel && (dine || arrive)){
+      const tgt = dine ? dine.start : arrive.start;
+      const leaveHotel = addMin(tgt, -15); // light buffer; no routing
+      steps.push({ t: leaveHotel, label: `Leave ${state.hotel}` });
+    }
+
+    if (dine){
+      steps.push({ t: dine.start, label: `Arrive at ${dinnerPick?.name || 'restaurant'}` });
+      steps.push({ t: dine.end,   label: `Leave ${dinnerPick?.name || 'restaurant'} for ${state.venue}` });
+    }
+
+    if (arrive){
+      const note = `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`;
+      steps.push({ t: arrive.start, label: `Arrive at ${state.venue}`, note });
+    }
+
+    if (show){
+      steps.push({ t: show.start, label: `Show starts` });
+    }
+
+    if (post){
+      steps.push({ t: post.start, label: `Leave the venue for dessert/drinks` });
+    }
+
+    const html = `
       <article class="card tour-card">
         <div class="tour-head">
           <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
         </div>
         <div class="tour-steps">
-          ${items.map(it => {
-            const time = fmtLocal(it.start);
-            let label = "";
-            if (it.type === "hotel-depart"){
-              if (!state.staying) return "";
-              label = \`Leave ${esc(state.hotel || 'hotel')}\`;
-            } else if (it.type === "dine-arrive"){
-              label = \`Arrive at ${esc(dinnerPick?.name || 'restaurant')}\`;
-            } else if (it.type === "dine-leave"){
-              label = \`Leave ${esc(dinnerPick?.name || 'restaurant')} for ${esc(state.venue)}\`;
-            } else if (it.type === "arrive-venue"){
-              label = \`Arrive at ${esc(state.venue)}\`;
-            } else if (it.type === "show"){
-              label = "Show starts";
-            } else if (it.type === "post-leave"){
-              label = "Leave the venue for dessert/drinks";
-            } else { return ""; }
-            const note = (it.type === "arrive-venue") ? \`No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time\` : "";
-            return \`
-              <div class="tstep">
-                <div class="t-time">\${esc(time)}</div>
-                <div class="t-label">\${label}</div>
-                \${note ? \`<div class="t-note">· \${esc(note)}</div>\` : ""}
-              </div>\`;
-          }).join("")}
+          ${steps.map(s => `
+            <div class="tstep">
+              <div class="t-time">${esc(fmtLocal(s.t))}</div>
+              <div class="t-label">${esc(s.label)}</div>
+              ${s.note ? `<div class="t-note">· ${esc(s.note)}</div>` : ""}
+            </div>
+          `).join("")}
         </div>
       </article>
     `;
-    el.innerHTML = head; // tour card only
+    el.innerHTML = html;
   }
 
   /* ==================== Rails ==================== */
-  function samePlace(a,b){ return ((a?.name||"")+"|"+(a?.mapUrl||"")) === ((b?.name||"")+"|"+(b?.mapUrl||"")); }
   function uniqMerge(max, ...lists){
     const out=[]; const seen=new Set();
     for (const list of lists){
@@ -580,15 +597,17 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
   function pickRange(list, min=5, max=10, fallback=[]){
     let out = (list||[]).slice(0, max);
-    if (out.length < min){
-      out = uniqMerge(max, out, fallback);
-    }
+    if (out.length < min){ out = uniqMerge(max, out, fallback); }
     return out.slice(0, Math.max(min, Math.min(max, out.length)));
   }
+
+  // simple name-based refinement to avoid bookstores/retail etc.
+  const BAD_NAME = /(barnes\s*&\s*noble|target|walmart|walgreens|cvs|dollar|supermarket|grocery|outlet|store|gift shop)/i;
 
   function fillRail(id, list){
     const row = $(id); if (!row) return;
     if (!Array.isArray(list) || !list.length){ row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`; return; }
+
     const cards = list.map(p => {
       const name = esc(p.name || "");
       const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
@@ -627,14 +646,22 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
 
   async function renderRails({ before, after, extras }){
-    const dessert = (extras||[]).filter(x=>/dessert/i.test(x.section||""));
-    const drinks  = (extras||[]).filter(x=>/drinks?/i.test(x.section||""));
-    const coffee  = (extras||[]).filter(x=>/coffee/i.test(x.section||""));
+    const dessertRaw = (extras||[]).filter(x=>/dessert/i.test(x.section||""));
+    const drinksRaw  = (extras||[]).filter(x=>/drinks?/i.test(x.section||""));
+    const coffeeRaw  = (extras||[]).filter(x=>/coffee/i.test(x.section||""));
+
+    // refine coffee/drinks: drop obvious non-destinations & weak picks
+    const refine = (arr)=> (arr||[]).filter(p=>{
+      if (!p?.name) return false;
+      if (BAD_NAME.test(p.name)) return false;
+      if (p.rating && p.rating < 3.8) return false;
+      return true;
+    });
 
     const dinnerRow  = pickRange(before, 5, 10, after);
-    const dessertRow = pickRange(uniqMerge(10, dessert, after), 5, 10, before);
-    const drinksRow  = pickRange(uniqMerge(10, drinks, after), 5, 10, before);
-    const coffeeRow  = pickRange(coffee, 5, 10);
+    const dessertRow = pickRange(uniqMerge(10, refine(dessertRaw), after), 5, 10, before);
+    const drinksRow  = pickRange(uniqMerge(10, refine(drinksRaw), after), 5, 10, before);
+    const coffeeRow  = pickRange(refine(coffeeRaw), 5, 10);
 
     fillRail('row-dinner', dinnerRow);
     fillRail('row-dessert', dessertRow);

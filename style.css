@@ -344,3 +344,12 @@ body.page-transition::before{
   max-width: 760px;
   margin: 0 auto 18px;   /* center + a little breathing room */
 }
+.tour-card {
+  display: block;
+  text-align: left; /* keep text aligned left inside */
+}
+
+.schedule {
+  display: flex;
+  justify-content: center; /* ensures the card sits centered */
+}

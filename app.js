@@ -710,20 +710,45 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       };
     });
   }
-  async function renderRails({ before, after, extras }){
-    const dessert = (extras||[]).filter(x=>/dessert/i.test(x.section||""));
-    const drinks  = (extras||[]).filter(x=>/drinks?/i.test(x.section||""));
-    const coffee  = (extras||[]).filter(x=>/coffee/i.test(x.section||""));
+ function fillRail(id, list){
+  const row = $(id); if (!row) return;
+  if (!Array.isArray(list) || !list.length){
+    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+    return;
+  }
+  const cards = list.map(p => {
+    const name = esc(p.name || "");
+    const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
+    const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
+    const price = p.price || "";
+    const map = p.mapUrl || "";
+    const img = p.photoUrl || "";
+    const site = p.url || "";
 
-    const dinnerRow  = pickRange(before, 5, 10, after);
-    const dessertRow = pickRange(uniqMerge(10, dessert, after), 5, 10, before);
-    const drinksRow  = pickRange(uniqMerge(10, drinks, after), 5, 10, before);
-    const coffeeRow  = pickRange(coffee, 5, 10);
-
-    fillRail('row-dinner', dinnerRow);
-    fillRail('row-dessert', dessertRow);
-    fillRail('row-drinks', drinksRow);
-    fillRail('row-coffee', coffeeRow);
+    return `
+      <article class="place-card">
+        <a class="pc-img" ${map ? `href="${esc(map)}" target="_blank" rel="noopener"` : ""}>
+          ${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}
+        </a>
+        <div class="pc-body">
+          <div class="pc-title">
+            ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">${name}</a>` : name}
+          </div>
+          <div class="pc-meta">
+            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+            ${rating ? `<span>${esc(rating)}</span>` : ""}
+            ${price ? `<span>${esc(price)}</span>` : ""}
+          </div>
+          <div class="pc-actions">
+            ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
+            ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener">Website</a>` : ""}
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
+  row.innerHTML = cards;
+}
   }
 
   /* ==================== Custom picks UI ==================== */

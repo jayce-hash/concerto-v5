@@ -12,19 +12,90 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="./style.css?v=780" />
+
+  <!-- Inline additions for the new concierge hero -->
+  <style>
+    /* --- Welcome (Concierge hero) --- */
+    .hero-pro{
+      display:grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 28px;
+      align-items: center;
+      padding-top: var(--s-10);
+    }
+    .hero-copy .subhead{ font-size: 1.08rem; margin-bottom: 10px; }
+    .kp-list{ margin: 10px 0 14px; padding: 0; list-style: none; color: var(--ink); }
+    .kp-list li{
+      display:flex; align-items:center; gap:.6rem;
+      padding: 6px 0; position: relative;
+    }
+    .kp-list li::before{
+      content:""; width:8px; height:8px; border-radius:999px;
+      background: var(--accent-2); opacity:.28; margin-top:1px;
+    }
+    .hero-cta{ display:flex; align-items:center; gap: 12px; margin-top: 6px; }
+    .hero-previews{
+      display:grid; gap: 12px;
+      grid-template-columns: 1fr; align-self: start;
+    }
+    .mini-card{
+      background:#fff; border:1px solid var(--line); border-radius: 14px;
+      box-shadow: var(--shadow); overflow:hidden; padding: 10px;
+    }
+    .mini-img{ width:100%; aspect-ratio: 16/9; background:#EEF2F7; border-radius: 10px; margin-bottom: 8px; }
+    .mini-img.ph{ background: repeating-linear-gradient(45deg, #f3f6fb 0 8px, #e9eef6 8px 16px); }
+    .mini-title{ font-weight:600; line-height:1.2; margin: 0 0 4px; font-size: .98rem; color: var(--ink); }
+    .mini-meta{ font-size:.92rem; }
+    @media (max-width: 900px){
+      .hero-pro{ grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
   <noscript>This app requires JavaScript to run.</noscript>
 
-  <!-- ========== WELCOME ========== -->
+  <!-- ========== WELCOME (Concierge hero) ========== -->
   <section id="screen-welcome" class="screen active">
-    <div class="container narrow hero">
-      <h1 class="headline">CONCERTO+</h1>
-      <p class="subhead muted">Get a personalized plan for dinner, drinks, and late-night fun around your venue! </p>
-      <div class="music-notes"></div>
-      <div style="margin-top:24px;">
-        <button id="btn-start" class="btn btn-primary">Plan My Night</button>
+    <div class="container narrow hero hero-pro">
+      <div class="hero-copy">
+        <h1 class="headline">CONCERTO+</h1>
+        <p class="subhead muted">
+          Your private concert-day concierge. We’ll plan dinner, drinks, and late-night
+          around your venue, then build a timeline you can save and share.
+        </p>
+
+        <ul class="kp-list">
+          <li>Handpicked spots within walking distance</li>
+          <li>Smart timing around doors and showtime</li>
+          <li>One tap to save to your calendar</li>
+        </ul>
+
+        <div class="hero-cta">
+          <button id="btn-start" class="btn btn-primary">Plan My Night</button>
+          <span class="tiny muted">Takes about 60 seconds</span>
+        </div>
       </div>
+
+      <!-- visual preview tiles (static mock) -->
+      <div class="hero-previews">
+        <article class="mini-card">
+          <div class="mini-img ph"></div>
+          <div class="mini-title">Dinner near the venue</div>
+          <div class="mini-meta muted">★ 4.6 · 0.5 mi</div>
+        </article>
+        <article class="mini-card">
+          <div class="mini-img ph"></div>
+          <div class="mini-title">Dessert &amp; late-night</div>
+          <div class="mini-meta muted">Open after show</div>
+        </article>
+        <article class="mini-card">
+          <div class="mini-img ph"></div>
+          <div class="mini-title">Drinks &amp; lounges</div>
+          <div class="mini-meta muted">Walkable picks</div>
+        </article>
+      </div>
+
+      <div class="music-notes"></div>
     </div>
   </section>
 
@@ -97,11 +168,11 @@
       </section>
       
       <section class="rail">
-  <header class="rail-head">
-    <h3 class="rail-title">Sights &amp; landmarks</h3>
-  </header>
-  <div id="row-sights" class="h-scroll cards-rail"></div>
-</section>
+        <header class="rail-head">
+          <h3 class="rail-title">Sights &amp; landmarks</h3>
+        </header>
+        <div id="row-sights" class="h-scroll cards-rail"></div>
+      </section>
 
       <section class="rail">
         <header class="rail-head">

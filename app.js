@@ -1,4 +1,4 @@
-// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.2)
+// app.js — Concert step with Ticketmaster + Manual cards, stacked header (v8.0.3)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { shareLinkOrCopy, toICS } from './export-tools.js';
@@ -6,7 +6,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v8.0.2 loaded");
+  console.log("Concerto+ app.js v8.0.3 loaded");
 
   const $  = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
@@ -126,9 +126,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         </article>
       `;
 
-      bindTmSearch();
-      bindArtistSuggest();
-      bindVenueAutocomplete();
+      bindTmSearch(); bindArtistSuggest(); bindVenueAutocomplete();
       $('showTime').onchange = (e)=> state.showTime = e.target.value;
       $('showDate').onchange = (e)=> state.showDate = e.target.value;
 
@@ -528,6 +526,29 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
+  // Formatters for stacked header
+  function fmtDateMDY(d){
+    // accepts 'YYYY-MM-DD' or Date
+    try{
+      if (!d) return "";
+      if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)){
+        const [Y,M,D] = d.split('-').map(n=>parseInt(n,10));
+        return `${String(M).padStart(2,'0')}/${String(D).padStart(2,'0')}/${Y}`;
+      }
+      const dt = (d instanceof Date) ? d : new Date(d);
+      return `${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}/${dt.getFullYear()}`;
+    }catch{ return ""; }
+  }
+  function fmtTimeHM(t){
+    // accepts 'HH:MM' 24h
+    try{
+      if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return "";
+      const [H,M] = t.split(':').map(n=>parseInt(n,10));
+      const date = new Date(); date.setHours(H); date.setMinutes(M); date.setSeconds(0);
+      return date.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+    }catch{ return ""; }
+  }
+
   /* ==================== Generate ==================== */
   async function generate(){
     show('loading');
@@ -554,9 +575,29 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       window.__lastItinerary = itin;
 
-      const showText = [state.showDate, state.showTime].filter(Boolean).join(" ");
-      $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
-      $('intro-line').innerHTML = `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
+      // === Stacked centered header (Artist / Venue / Date • Time)
+      const header = $('results-context');
+      const hdrWrap = header?.closest('.results-header');
+      if (hdrWrap){
+        hdrWrap.style.flexDirection = 'column';
+        hdrWrap.style.alignItems = 'center';
+        hdrWrap.style.gap = '10px';
+      }
+      if (header){
+        const datePart = fmtDateMDY(state.showDate);
+        const timePart = fmtTimeHM(state.showTime);
+        header.innerHTML = `
+          <div class="event-header" style="text-align:center;">
+            <h1 class="event-artist" style="margin:0;">${esc(state.artist || 'Your Concert')}</h1>
+            <h2 class="event-venue"  style="margin:.25rem 0 0;">${esc(state.venue)}</h2>
+            <p class="event-datetime muted" style="margin:.35rem 0 0; font-weight:500;">
+              ${esc([datePart, timePart].filter(Boolean).join(' • '))}
+            </p>
+            <p class="muted tiny" style="margin:.35rem 0 0;">Distances are from the venue.</p>
+          </div>
+        `;
+      }
+      const intro = $('intro-line'); if (intro){ intro.style.display = 'none'; intro.textContent = ''; }
 
       const city = await venueCityName();
       renderTourCard(city, itin, dinnerPick);
@@ -580,11 +621,11 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         { location: { lat: state.venueLat, lng: state.venueLng } },
         (r, s)=> resolve(s===google.maps.GeocoderStatus.OK ? r : [])
       ));
-    const comp = (res?.[0]?.address_components || []);
-    const city = comp.find(c=>c.types.includes("locality"))?.long_name
-              || comp.find(c=>c.types.includes("postal_town"))?.long_name
-              || comp.find(c=>c.types.includes("administrative_area_level_2"))?.long_name
-              || "";
+      const comp = (res?.[0]?.address_components || []);
+      const city = comp.find(c=>c.types.includes("locality"))?.long_name
+                || comp.find(c=>c.types.includes("postal_town"))?.long_name
+                || comp.find(c=>c.types.includes("administrative_area_level_2"))?.long_name
+                || "";
       return city;
     }catch{ return ""; }
   }

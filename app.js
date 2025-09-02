@@ -1,4 +1,4 @@
-// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.2)
+// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.2 + stacked header)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { shareLinkOrCopy, toICS } from './export-tools.js';
@@ -6,7 +6,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v8.0.2 loaded");
+  console.log("Concerto+ app.js v8.0.2 (stacked header) loaded");
 
   const $  = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
@@ -126,8 +126,8 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         </article>
       `;
 
-      bindTmSearch();
-      bindArtistSuggest();
+      bindTmSearch();                 // Ticketmaster
+      bindArtistSuggest();            // Manual
       bindVenueAutocomplete();
       $('showTime').onchange = (e)=> state.showTime = e.target.value;
       $('showDate').onchange = (e)=> state.showDate = e.target.value;
@@ -281,7 +281,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  /* ==================== Ticketmaster ==================== */
+  /* ==================== Ticketmaster (inlined helper) ==================== */
   const TM_KEY = "oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh";
   function tmUrl(path, params){
     const u = new URL(`https://app.ticketmaster.com${path}`);
@@ -528,6 +528,23 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
+  // NEW: tiny formatters for stacked header
+  function fmtDateMDY(yyyy_mm_dd){
+    try{
+      if (!yyyy_mm_dd) return "";
+      const [Y,M,D] = yyyy_mm_dd.split('-').map(n=>parseInt(n,10));
+      return `${String(M).padStart(2,'0')}/${String(D).padStart(2,'0')}/${Y}`;
+    }catch{ return ""; }
+  }
+  function fmtTimeHM(hhmm){
+    try{
+      if (!hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return "";
+      const [H,M] = hhmm.split(':').map(n=>parseInt(n,10));
+      const d = new Date(); d.setHours(H); d.setMinutes(M); d.setSeconds(0);
+      return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+    }catch{ return ""; }
+  }
+
   /* ==================== Generate ==================== */
   async function generate(){
     show('loading');
@@ -554,9 +571,23 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       window.__lastItinerary = itin;
 
-      const showText = [state.showDate, state.showTime].filter(Boolean).join(" ");
-      $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
-      $('intro-line').innerHTML = `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
+      // === Stacked header (Artist / Venue / MM/DD/YYYY • HH:MM), centered
+      const header = $('results-context');
+      const wrap = header?.closest('.results-header');
+      if (wrap){ wrap.style.flexDirection = 'column'; wrap.style.alignItems = 'center'; wrap.style.gap = '10px'; }
+      if (header){
+        const datePart = fmtDateMDY(state.showDate);
+        const timePart = fmtTimeHM(state.showTime);
+        header.innerHTML = `
+          <div style="text-align:center;">
+            <h1 style="margin:0;">${esc(state.artist || 'Your Concert')}</h1>
+            <h2 style="margin:.25rem 0 0;">${esc(state.venue)}</h2>
+            <p class="muted" style="margin:.35rem 0 0; font-weight:500;">${esc([datePart, timePart].filter(Boolean).join(' • '))}</p>
+            <p class="muted tiny" style="margin:.35rem 0 0;">Distances are from the venue.</p>
+          </div>
+        `;
+      }
+      const intro = $('intro-line'); if (intro){ intro.style.display='none'; intro.textContent=''; }
 
       const city = await venueCityName();
       renderTourCard(city, itin, dinnerPick);
@@ -570,7 +601,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }
   }
 
-  /* ==================== Tour Card ==================== */
+  /* ==================== Tour Card (aligned to itinerary-engine types) ==================== */
   async function venueCityName(){
     try{
       await waitForPlaces();
@@ -580,11 +611,11 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         { location: { lat: state.venueLat, lng: state.venueLng } },
         (r, s)=> resolve(s===google.maps.GeocoderStatus.OK ? r : [])
       ));
-    const comp = (res?.[0]?.address_components || []);
-    const city = comp.find(c=>c.types.includes("locality"))?.long_name
-              || comp.find(c=>c.types.includes("postal_town"))?.long_name
-              || comp.find(c=>c.types.includes("administrative_area_level_2"))?.long_name
-              || "";
+      const comp = (res?.[0]?.address_components || []);
+      const city = comp.find(c=>c.types.includes("locality"))?.long_name
+                || comp.find(c=>c.types.includes("postal_town"))?.long_name
+                || comp.find(c=>c.types.includes("administrative_area_level_2"))?.long_name
+                || "";
       return city;
     }catch{ return ""; }
   }
@@ -596,20 +627,28 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   function renderTourCard(city, items, dinnerPick){
     const el = $('schedule'); if (!el) return;
 
-    const arrive = items.find(i=>i.type==='arrive');
-    const dine   = items.find(i=>i.type==='dine');
+    const arrive = items.find(i=>i.type==='arrive'); // arrive window start→doors
+    const dine   = items.find(i=>i.type==='dine');   // dinner block if present
     const show   = items.find(i=>i.type==='show');
     const post   = items.find(i=>i.type==='post');
 
     const parts = [];
 
+    // Leave hotel (only if staying and we have an arrive window)
     if (state.staying && arrive?.start){
-      parts.push({ time: fmtLocal(arrive.start), label: `Leave ${state.hotel ? esc(state.hotel) : 'hotel'}` });
+      parts.push({
+        time: fmtLocal(arrive.start),
+        label: `Leave ${state.hotel ? esc(state.hotel) : 'hotel'}`
+      });
     }
+
+    // Dinner (arrive/leave) if we have a dine block
     if (dine){
       parts.push({ time: fmtLocal(dine.start), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
       parts.push({ time: fmtLocal(dine.end),   label: `Leave ${esc(dinnerPick?.name || 'restaurant')} for ${esc(state.venue)}` });
     }
+
+    // Arrive at venue
     if (arrive){
       parts.push({
         time: fmtLocal(arrive.start),
@@ -617,8 +656,14 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         note: `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`
       });
     }
-    if (show){ parts.push({ time: fmtLocal(show.start), label: `Show starts` }); }
-    if (post){ parts.push({ time: fmtLocal(post.start), label: `Leave the venue for dessert/drinks` }); }
+
+    if (show){
+      parts.push({ time: fmtLocal(show.start), label: `Show starts` });
+    }
+
+    if (post){
+      parts.push({ time: fmtLocal(post.start), label: `Leave the venue for dessert/drinks` });
+    }
 
     el.innerHTML = `
       <article class="card tour-card">
@@ -638,7 +683,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     `;
   }
 
-  /* ==================== Rails (incl. Sights) ==================== */
+  /* ==================== Rails ==================== */
   function uniqMerge(max, ...lists){
     const out=[]; const seen=new Set();
     for (const list of lists){
@@ -661,6 +706,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     if (!Array.isArray(list) || !list.length){ row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`; return; }
     const cards = list.map(p => {
       const name = esc(p.name || "");
+      the
       const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
       const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
       const price = p.price || "";
@@ -687,7 +733,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }).join("");
     row.innerHTML = cards;
 
-    // click the whole card to open Maps unless the Website link was clicked
     qsa('[data-map-open]', row).forEach(el=>{
       el.onclick = (e)=>{
         if ((e.target.closest('a') && e.target.closest('a').dataset.link === 'site') || (e.target.dataset.link === 'site')) return;
@@ -715,7 +760,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     fillRail('row-sights', sightsRow); // NEW
   }
 
-  /* ==================== Custom picks ==================== */
+  /* ==================== Custom picks UI ==================== */
   function renderCustomPills(){
     const wrap = $('custom-pills'); if (!wrap) return;
     wrap.innerHTML = state.customStops.map((p, idx)=> `

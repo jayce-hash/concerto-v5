@@ -353,3 +353,21 @@ body.page-transition::before{
   display: flex;
   justify-content: center; /* ensures the card sits centered */
 }
+
+/* --- Center the results title block across the full header row --- */
+.results-header { align-items: center; }                   /* vertically center row items */
+.results-header > div:first-child{
+  flex: 1 1 0;                                             /* let the title block span the row */
+  text-align: center;                                      /* center Artist / Venue / Date • Time */
+}
+.results-header h2,
+.results-header #intro-line{
+  margin-left: auto;                                       /* make sure these center even if */
+  margin-right: auto;                                      /* other styles tweak margins     */
+}
+
+/* keep it centered on small screens, too */
+@media (max-width: 900px){
+  .results-header{ flex-direction: column; align-items: center; }
+  .results-header > div:first-child{ width: 100%; text-align: center; }
+}

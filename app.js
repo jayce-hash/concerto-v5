@@ -1,4 +1,4 @@
-Here’s the full app.js so nothing gets messed up: // app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.2)
+// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.2)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { shareLinkOrCopy, toICS } from './export-tools.js';

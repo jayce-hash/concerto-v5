@@ -1,163 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Concerto+ · Concert Day Planner (v7.9.1)</title>
+<!-- ========== WELCOME ========== -->
+<section id="screen-welcome" class="screen active">
+  <div class="container narrow hero">
 
-  <!-- Fonts: Lora for body, Cormorant Garamond for headings -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Concerto logo -->
+    <img src="./assets/concerto-logo.png" alt="Concerto" class="hero-logo" />
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="./style.css?v=780" />
+    <h1 class="headline">CONCERTO+</h1>
+    <p class="subhead muted">
+      Your private concert-day concierge. We’ll plan dinner, drinks, and late-night around your venue, then build a timeline you can save and share.
+    </p>
 
-  <!-- Tiny add-ons just for hero visuals -->
-  <style>
-    .hero-logo {
-      max-width: 220px;
-      margin: 0 auto 12px;
-      display: block;
-      opacity: .95;
-    }
-    .hero .headline { margin-top: 4px; }
-    /* subtle skyline under the dotted notes */
-    .skyline {
-      width: min(780px, 92vw);
-      margin: 18px auto 0;
-      opacity: .14;
-    }
-    .skyline svg { width: 100%; height: 56px; display: block; }
-    /* keep welcome screen airy (no preview cards) */
-    #screen-welcome .after-hero { display:none; }
-  </style>
-</head>
-<body>
-  <noscript>This app requires JavaScript to run.</noscript>
+    <!-- subtle music ticks -->
+    <div class="music-notes"></div>
 
-  <!-- ========== WELCOME ========== -->
-  <section id="screen-welcome" class="screen active">
-    <div class="container narrow hero">
-
-      <!-- Split branding: Concerto masthead logo + feature name -->
-      <img src="./assets/concerto-logo.png" alt="Concerto" class="hero-logo" />
-
-      <h1 class="headline">CONCERTO+</h1>
-      <p class="subhead muted">
-        Your private concert-day concierge. We’ll plan dinner, drinks, and late-night around your venue, then build a timeline you can save and share.
-      </p>
-
-      <!-- subtle music ticks already in your theme -->
-      <div class="music-notes"></div>
-
-      <!-- faint skyline silhouette -->
-      <div class="skyline" aria-hidden="true">
-        <svg viewBox="0 0 1200 120" fill="none">
-          <path d="M0 100 L40 100 L40 70 L70 70 L70 90 L110 90 L110 60 L150 60 L150 95 L210 95 L210 50 L230 50 L230 30 L245 30 L245 75 L300 75 L300 100 L360 100 L360 40 L380 40 L380 85 L450 85 L450 55 L520 55 L520 100 L600 100 L600 20 L615 20 L615 100 L700 100 L700 65 L740 65 L740 95 L820 95 L820 45 L860 45 L860 100 L930 100 L930 70 L980 70 L980 100 L1040 100 L1040 60 L1100 60 L1100 100 L1200 100"
-                stroke="#1F2B4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-
-      <div style="margin-top:24px; display:flex; gap:14px; align-items:center; justify-content:center;">
-        <button id="btn-start" class="btn btn-primary">Plan My Night</button>
-        <span class="muted" style="font-size:.98rem;">Takes about 60 seconds</span>
-      </div>
-
-      <!-- nothing else on welcome (no preview cards) -->
-      <div class="after-hero"></div>
+    <!-- faint skyline silhouette -->
+    <div class="skyline" aria-hidden="true">
+      <svg viewBox="0 0 1200 120" fill="none">
+        <path d="M0 100 L40 100 L40 70 L70 70 L70 90 L110 90 L110 60 L150 60 L150 95 L210 95 L210 50 L230 50 L230 30 L245 30 L245 75 L300 75 L300 100 L360 100 L360 40 L380 40 L380 85 L450 85 L450 55 L520 55 L520 100 L600 100 L600 20 L615 20 L615 100 L700 100 L700 65 L740 65 L740 95 L820 95 L820 45 L860 45 L860 100 L930 100 L930 70 L980 70 L980 100 L1040 100 L1040 60 L1100 60 L1100 100 L1200 100"
+              stroke="#1F2B4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
     </div>
-  </section>
 
-  <!-- ========== FORM STEPS ========== -->
-  <section id="screen-form" class="screen">
-    <div class="container narrow">
-      <!-- Progress -->
-      <div class="progress"><div id="progress-bar" class="progress-bar" style="width:0%"></div></div>
-
-      <!-- Dynamic step content -->
-      <article class="card step-card">
-        <div id="step-wrapper"></div>
-        <div class="sticky-actions">
-          <button id="btn-prev" class="btn btn-ghost">Back</button>
-          <button id="btn-next" class="btn btn-primary">Next</button>
-        </div>
-      </article>
+    <!-- Main call-to-action -->
+    <div style="margin-top:36px; text-align:center;">
+      <button id="btn-start" class="btn btn-primary big-btn">Plan My Night</button>
     </div>
-  </section>
-
-  <!-- ========== LOADING ========== -->
-  <section id="screen-loading" class="screen loading">
-    <div class="container narrow" style="text-align:center;">
-      <div class="spinner"></div>
-      <p class="muted">Creating your curated itinerary…</p>
-    </div>
-  </section>
-
-  <!-- ========== RESULTS ========== -->
-  <section id="screen-results" class="screen">
-    <div class="container wide">
-
-      <!-- Header + intro -->
-      <div class="results-header">
-        <div>
-          <h2 id="results-context">Your Concert Day</h2>
-          <p id="intro-line" class="muted"></p>
-        </div>
-        <div class="actions" style="display:flex; gap:10px; align-items:flex-end;">
-          <button id="btn-edit" class="btn btn-ghost">Edit inputs</button>
-          <button id="btn-new" class="btn btn-ghost">New plan</button>
-          <button id="btn-share" class="btn">Share link</button>
-          <button id="btn-ics" class="btn btn-primary">Add to Calendar</button>
-        </div>
-      </div>
-
-      <!-- Tour Card gets injected here -->
-      <div id="schedule" class="schedule"></div>
-
-      <!-- Horizontal rails -->
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Dinner near the venue</h3>
-        </header>
-        <div id="row-dinner" class="h-scroll cards-rail"></div>
-      </section>
-
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Dessert &amp; late-night</h3>
-        </header>
-        <div id="row-dessert" class="h-scroll cards-rail"></div>
-      </section>
-
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Drinks &amp; lounges</h3>
-        </header>
-        <div id="row-drinks" class="h-scroll cards-rail"></div>
-      </section>
-
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Sights &amp; landmarks</h3>
-        </header>
-        <div id="row-sights" class="h-scroll cards-rail"></div>
-      </section>
-
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Coffee &amp; cafés</h3>
-        </header>
-        <div id="row-coffee" class="h-scroll cards-rail"></div>
-      </section>
-
-    </div>
-  </section>
-
-  <!-- Google Maps JS (Places API) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
-
-  <!-- App -->
-  <script type="module" src="./app.js?v=791"></script>
-</body>
-</html>
+  </div>
+</section>

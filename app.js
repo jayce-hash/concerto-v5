@@ -528,38 +528,77 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
+  // --- tiny helpers for resiliency + debug
+const setLoadingNote = (msg) => {
+  const el = document.querySelector('#screen-loading .muted');
+  if (el) el.textContent = msg;
+};
+const withTimeout = (promise, ms, label) =>
+  Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error(`${label} timeout after ${ms}ms`)), ms))
+  ]);
+
 /* ==================== Generate ==================== */
 async function generate(){
   show('loading');
   try{
-    await ensureVenueResolved();
-    if (state.staying) await ensureHotelResolved();
+    setLoadingNote('Locking in your venue…');
+    await withTimeout(ensureVenueResolved(), 10000, 'ensureVenueResolved');
+    if (state.staying){
+      setLoadingNote('Checking your hotel…');
+      try {
+        await withTimeout(ensureHotelResolved(), 8000, 'ensureHotelResolved');
+      } catch (e) {
+        console.warn('[concerto] hotel resolve skipped:', e.message);
+      }
+    }
 
     const targetISO = parseShowDateTimeISO();
-    const beforeAuto = (state.eatWhen==="before" || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}) : [];
-    const afterAuto  = (state.eatWhen==="after"  || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}) : [];
-    const extras = await pickExtras({ state });
+
+    // fetch picks, but never hang
+    setLoadingNote('Curating restaurants…');
+    let beforeAuto = [];
+    let afterAuto  = [];
+    try {
+      beforeAuto = (state.eatWhen==="before" || state.eatWhen==="both")
+        ? await withTimeout(pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}), 10000, 'pickRestaurants(before)')
+        : [];
+    } catch (e) { console.warn('[concerto] before picks failed:', e.message); }
+
+    try {
+      setLoadingNote('Finding after-show spots…');
+      afterAuto = (state.eatWhen==="after" || state.eatWhen==="both")
+        ? await withTimeout(pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}), 10000, 'pickRestaurants(after)')
+        : [];
+    } catch (e) { console.warn('[concerto] after picks failed:', e.message); }
+
+    setLoadingNote('Adding extras…');
+    let extras = [];
+    try {
+      extras = await withTimeout(pickExtras({ state }), 8000, 'pickExtras');
+    } catch (e) { console.warn('[concerto] extras failed:', e.message); }
 
     const locks = state.customStops || [];
     const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
     const dinnerPick = customDinner || beforeAuto[0] || null;
 
-    const itin = await buildItinerary({
+    setLoadingNote('Building your timeline…');
+    const itin = await withTimeout(buildItinerary({
       show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
       venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
       hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
       prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
       picks: { dinner: dinnerPick ? { name:dinnerPick.name, lat:dinnerPick.lat, lng:dinnerPick.lng, url:dinnerPick.url, mapUrl:dinnerPick.mapUrl } : null }
-    });
+    }), 8000, 'buildItinerary');
 
     window.__lastItinerary = itin;
 
-    // --- Build stacked header (Artist / Venue / Date • Time)
+    // --- Stacked header (Artist / Venue / Date • Time)
     const d = new Date(parseShowDateTimeISO());
     const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
     const timeStr = (() => { 
-      try { return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); } 
-      catch { return ''; } 
+      try { return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); } catch { return ''; }
     })();
 
     $('results-context').innerHTML = `
@@ -567,22 +606,23 @@ async function generate(){
       <div>${esc(state.venue || '')}</div>
       <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
     `;
-
-    // Keep the note simple
     $('intro-line').textContent = 'Distances are from the venue.';
 
-    const city = await venueCityName();
+    // render the card + rails (even if some lists are empty)
+    const city = await venueCityName().catch(()=> '');
     renderTourCard(city, itin, dinnerPick);
 
-    await renderRails({ before: beforeAuto, after: afterAuto, extras });
+    await renderRails({ before: beforeAuto, after: afterAuto, extras }).catch(e=>{
+      console.warn('[concerto] renderRails issue:', e.message);
+    });
+
     show('results');
   }catch(e){
-    console.error(e);
+    console.error('[concerto] generate failed:', e);
     alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
     show('form');
   }
 }
-
   /* ==================== Tour Card ==================== */
   async function venueCityName(){
     try{

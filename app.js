@@ -578,6 +578,10 @@ async function generate(){
     ctx.style.textAlign = 'center';
     ctx.style.width = '100%';
 
+    // ensure the parent block spans the row and centers content
+const ctxParent = $('results-context')?.parentElement;
+if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'center'; }
+
     ctx.innerHTML = `
       <div>${esc(state.artist || 'Your Concert')}</div>
       <div>${esc(state.venue || '')}</div>

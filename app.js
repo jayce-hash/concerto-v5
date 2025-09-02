@@ -552,22 +552,22 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         picks: { dinner: dinnerPick ? { name:dinnerPick.name, lat:dinnerPick.lat, lng:dinnerPick.lng, url:dinnerPick.url, mapUrl:dinnerPick.mapUrl } : null }
       });
 
-      window.__lastItinerary = itin;
+      // --- Build stacked header (Artist / Venue / Date • Time)
+const d = new Date(parseShowDateTimeISO());
+const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+const timeStr = (() => { 
+  try { return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); } 
+  catch { return ''; } 
+})();
 
-      const showText = [state.showDate, state.showTime].filter(Boolean).join(" ");
-      $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
-      $('intro-line').innerHTML = `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
+$('results-context').innerHTML = `
+  <div>${esc(state.artist || 'Your Concert')}</div>
+  <div>${esc(state.venue || '')}</div>
+  <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
+`;
 
-      const city = await venueCityName();
-      renderTourCard(city, itin, dinnerPick);
-
-      await renderRails({ before: beforeAuto, after: afterAuto, extras });
-      show('results');
-    }catch(e){
-      console.error(e);
-      alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
-      show('form');
-    }
+// Keep the note simple
+$('intro-line').textContent = 'Distances are from the venue.';
   }
 
   /* ==================== Tour Card ==================== */

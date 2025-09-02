@@ -536,18 +536,26 @@ async function generate(){
     if (state.staying) await ensureHotelResolved();
 
     const targetISO = parseShowDateTimeISO();
-    const beforeAuto = (state.eatWhen==="before" || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}) : [];
-    const afterAuto  = (state.eatWhen==="after"  || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}) : [];
-    const extras = await pickExtras({ state });
+
+    // Run picks in parallel (faster)
+    const beforeP = (state.eatWhen==="before" || state.eatWhen==="both")
+      ? pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO })
+      : Promise.resolve([]);
+    const afterP  = (state.eatWhen==="after"  || state.eatWhen==="both")
+      ? pickRestaurants({ wantOpenNow:true, state, slot:"after", targetISO })
+      : Promise.resolve([]);
+    const extrasP = pickExtras({ state });
+
+    const [beforeAuto, afterAuto, extras] = await Promise.all([beforeP, afterP, extrasP]);
 
     const locks = state.customStops || [];
     const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
-    const dinnerPick = customDinner || beforeAuto[0] || null;
+    const dinnerPick = customDinner || (beforeAuto[0] || null);
 
     const itin = await buildItinerary({
       show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
       venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
-      hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
+      hotel: (state.staying && state.hotelLat && state.hotelLng) ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
       prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
       picks: { dinner: dinnerPick ? { name:dinnerPick.name, lat:dinnerPick.lat, lng:dinnerPick.lng, url:dinnerPick.url, mapUrl:dinnerPick.mapUrl } : null }
     });
@@ -562,18 +570,25 @@ async function generate(){
       catch { return ''; }
     })();
 
-    $('results-context').innerHTML = `
-      <div style="text-align:center; line-height:1.5;">
-        <div>${esc(state.artist || 'Your Concert')}</div>
-        <div>${esc(state.venue || '')}</div>
-        <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
-      </div>
+    // force the container itself to be a centered column and take full width
+    const ctx = $('results-context');
+    ctx.style.display = 'flex';
+    ctx.style.flexDirection = 'column';
+    ctx.style.alignItems = 'center';
+    ctx.style.textAlign = 'center';
+    ctx.style.width = '100%';
+
+    ctx.innerHTML = `
+      <div>${esc(state.artist || 'Your Concert')}</div>
+      <div>${esc(state.venue || '')}</div>
+      <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
     `;
 
-    // small, separate note under the header
-    $('intro-line').style.textAlign = "center";
-    $('intro-line').style.fontSize = "0.9rem";
-    $('intro-line').textContent = 'Distances are from the venue.';
+    // small, separate note centered under the header
+    const note = $('intro-line');
+    note.style.textAlign = 'center';
+    note.style.fontSize = '0.9rem';
+    note.textContent = 'Distances are from the venue.';
 
     const city = await venueCityName();
     renderTourCard(city, itin, dinnerPick);

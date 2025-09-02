@@ -528,7 +528,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
-  /* ==================== Generate ==================== */
+/* ==================== Generate ==================== */
 async function generate(){
   show('loading');
   try{
@@ -536,8 +536,10 @@ async function generate(){
     if (state.staying) await ensureHotelResolved();
 
     const targetISO = parseShowDateTimeISO();
-    const beforeAuto = (state.eatWhen==="before" || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}) : [];
-    const afterAuto  = (state.eatWhen==="after"  || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}) : [];
+    const beforeAuto = (state.eatWhen==="before" || state.eatWhen==="both")
+      ? await pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO }) : [];
+    const afterAuto  = (state.eatWhen==="after"  || state.eatWhen==="both")
+      ? await pickRestaurants({ wantOpenNow:true, state, slot:"after",  targetISO }) : [];
     const extras = await pickExtras({ state });
 
     const locks = state.customStops || [];
@@ -545,38 +547,54 @@ async function generate(){
     const dinnerPick = customDinner || beforeAuto[0] || null;
 
     const itin = await buildItinerary({
-      show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
+      show:  { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin,
+               title: state.artist ? `${state.artist} — Live` : "Your Concert" },
       venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
-      hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
+      hotel: state.staying && state.hotelLat && state.hotelLng
+               ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
       prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
       picks: { dinner: dinnerPick ? { name:dinnerPick.name, lat:dinnerPick.lat, lng:dinnerPick.lng, url:dinnerPick.url, mapUrl:dinnerPick.mapUrl } : null }
     });
 
     window.__lastItinerary = itin;
 
-    // --- Stacked header: Artist / Venue / Date • Time (centered)
+    // --- Centered stacked header: Artist / Venue / Date • Time
     const d = new Date(parseShowDateTimeISO());
     const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
-    const timeStr = (() => {
-      try { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
-      catch { return ''; }
-    })();
+    const timeStr = (()=>{ try { return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); } catch { return ''; } })();
 
-    $('results-context').innerHTML = `
-      <span style="display:block; text-align:center;">${esc(state.artist || 'Your Concert')}</span>
-      <span style="display:block; text-align:center;">${esc(state.venue || '')}</span>
-      <span style="display:block; text-align:center;">${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</span>
-    `;
+    // make the left header column expand and center its contents
+    const ctxWrap = $('results-context')?.parentElement;
+    if (ctxWrap) { ctxWrap.style.flex = '1'; ctxWrap.style.textAlign = 'center'; }
 
-    // small, separate note
-    $('intro-line').textContent = 'Distances are from the venue.';
+    // ensure the H2 itself doesn’t fight centering in the flex row
+    const ctx = $('results-context');
+    if (ctx) {
+      ctx.style.display = 'block';
+      ctx.style.margin = '0 auto';
+      ctx.style.textAlign = 'center';
+      ctx.innerHTML = `
+        <div>${esc(state.artist || 'Your Concert')}</div>
+        <div>${esc(state.venue || '')}</div>
+        <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
+      `;
+    }
+
+    // small, centered note under the heading
+    const intro = $('intro-line');
+    if (intro) {
+      intro.textContent = 'Distances are from the venue.';
+      intro.style.textAlign = 'center';
+      intro.style.fontSize = '0.95rem';
+      intro.style.marginTop = '6px';
+    }
 
     const city = await venueCityName();
     renderTourCard(city, itin, dinnerPick);
 
     await renderRails({ before: beforeAuto, after: afterAuto, extras });
     show('results');
-  }catch(e){
+  } catch(e){
     console.error(e);
     alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
     show('form');

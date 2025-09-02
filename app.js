@@ -529,51 +529,59 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
 
   /* ==================== Generate ==================== */
-  async function generate(){
-    show('loading');
-    try{
-      await ensureVenueResolved();
-      if (state.staying) await ensureHotelResolved();
+async function generate(){
+  show('loading');
+  try{
+    await ensureVenueResolved();
+    if (state.staying) await ensureHotelResolved();
 
-      const targetISO = parseShowDateTimeISO();
-      const beforeAuto = (state.eatWhen==="before" || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}) : [];
-      const afterAuto  = (state.eatWhen==="after"  || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}) : [];
-      const extras = await pickExtras({ state });
+    const targetISO = parseShowDateTimeISO();
+    const beforeAuto = (state.eatWhen==="before" || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:false, state, slot:"before", targetISO}) : [];
+    const afterAuto  = (state.eatWhen==="after"  || state.eatWhen==="both") ? await pickRestaurants({wantOpenNow:true, state, slot:"after", targetISO}) : [];
+    const extras = await pickExtras({ state });
 
-      const locks = state.customStops || [];
-      const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
-      const dinnerPick = customDinner || beforeAuto[0] || null;
+    const locks = state.customStops || [];
+    const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
+    const dinnerPick = customDinner || beforeAuto[0] || null;
 
-      const itin = await buildItinerary({
-        show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
-        venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
-        hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
-        prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
-        picks: { dinner: dinnerPick ? { name:dinnerPick.name, lat:dinnerPick.lat, lng:dinnerPick.lng, url:dinnerPick.url, mapUrl:dinnerPick.mapUrl } : null }
-      });
+    const itin = await buildItinerary({
+      show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
+      venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
+      hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
+      prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
+      picks: { dinner: dinnerPick ? { name:dinnerPick.name, lat:dinnerPick.lat, lng:dinnerPick.lng, url:dinnerPick.url, mapUrl:dinnerPick.mapUrl } : null }
+    });
 
-      window.__lastItinerary = itin;
+    window.__lastItinerary = itin;
 
-      // --- Stacked header: Artist / Venue / Date • Time (centered)
-const d = new Date(parseShowDateTimeISO());
-const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
-const timeStr = (() => { 
-  try { return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); } 
-  catch { return ''; } 
-})();
+    // --- Stacked header: Artist / Venue / Date • Time (centered)
+    const d = new Date(parseShowDateTimeISO());
+    const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+    const timeStr = (() => {
+      try { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+      catch { return ''; }
+    })();
 
-// center each line by making them block-level spans
-$('results-context').innerHTML = `
-  <span style="display:block; text-align:center;">${esc(state.artist || 'Your Concert')}</span>
-  <span style="display:block; text-align:center;">${esc(state.venue || '')}</span>
-  <span style="display:block; text-align:center;">${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</span>
-`;
+    $('results-context').innerHTML = `
+      <span style="display:block; text-align:center;">${esc(state.artist || 'Your Concert')}</span>
+      <span style="display:block; text-align:center;">${esc(state.venue || '')}</span>
+      <span style="display:block; text-align:center;">${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</span>
+    `;
 
-// small, separate note
-$('intro-line').textContent = 'Distances are from the venue.';
-    }
+    // small, separate note
+    $('intro-line').textContent = 'Distances are from the venue.';
+
+    const city = await venueCityName();
+    renderTourCard(city, itin, dinnerPick);
+
+    await renderRails({ before: beforeAuto, after: afterAuto, extras });
+    show('results');
+  }catch(e){
+    console.error(e);
+    alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
+    show('form');
   }
-
+}
   /* ==================== Tour Card ==================== */
   async function venueCityName(){
     try{

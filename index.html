@@ -17,17 +17,15 @@
   <style>
     /* Center the hero block vertically and tighten spacing */
     .hero{
-      min-height: 88vh;             /* pulls the section up so there isn't a huge bottom gap */
+      min-height: 88vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       text-align: center;
-      padding: 0 20px;              /* reduce extra vertical padding */
+      padding: 0 20px;
     }
-    .hero .headline{
-      margin-bottom: 10px;
-    }
+    .hero .headline{ margin-bottom: 10px; }
     .hero .subhead{
       max-width: 560px;
       margin: 0 auto 22px;
@@ -37,18 +35,17 @@
     /* Match the button’s typography to the paragraph above and scale it up */
     #btn-start.btn.btn-primary{
       font-family: 'Cormorant Garamond', Georgia, serif;
-      font-size: 1.12rem;           /* harmonizes with .subhead */
+      font-size: 1.12rem;
       letter-spacing: .02em;
       font-weight: 400;
       text-transform: none;
-      padding: 1rem 2rem;           /* bigger tap target */
+      padding: 1rem 2rem;
       border-radius: 999px;
     }
-    /* Nudge the decorative divider and remove extra top margin before the button */
     .music-notes{ margin-top: 8px; }
     .hero .cta-wrap{ margin-top: 18px; }
     @media (max-width: 720px){
-      .hero{ min-height: 84vh; }    /* a hair tighter on small screens */
+      .hero{ min-height: 84vh; }
       #btn-start.btn.btn-primary{ font-size: 1.08rem; }
     }
   </style>
@@ -62,6 +59,7 @@
       <h1 class="headline">CONCERTO+</h1>
       <p class="subhead muted">
         Choose your concert, set your preferences, and get a tailored itinerary with curated spots and a smart timeline that fits your evening.
+      </p>
       <div class="music-notes"></div>
       <div class="cta-wrap">
         <button id="btn-start" class="btn btn-primary">PLAN MY NIGHT</button>
@@ -158,6 +156,6 @@
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
 
   <!-- App -->
-  <script type="module" src="./app.js?v=791"></script>
+  <script type="module" src="./app.js?v=792"></script>
 </body>
 </html>

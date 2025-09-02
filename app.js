@@ -554,19 +554,23 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       window.__lastItinerary = itin;
 
-      const showText = [state.showDate, state.showTime].filter(Boolean).join(" ");
-      $('results-context').textContent = `${state.artist ? state.artist + " at " : ""}${state.venue}${showText ? " · " + showText : ""}`;
-      $('intro-line').innerHTML = `Your schedule is centered on <strong>${esc(state.venue)}</strong>. Distances are from the venue.`;
+      // --- Stacked header: Artist / Venue / Date • Time (centered)
+const d = new Date(parseShowDateTimeISO());
+const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+const timeStr = (() => { 
+  try { return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); } 
+  catch { return ''; } 
+})();
 
-      const city = await venueCityName();
-      renderTourCard(city, itin, dinnerPick);
+// center each line by making them block-level spans
+$('results-context').innerHTML = `
+  <span style="display:block; text-align:center;">${esc(state.artist || 'Your Concert')}</span>
+  <span style="display:block; text-align:center;">${esc(state.venue || '')}</span>
+  <span style="display:block; text-align:center;">${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</span>
+`;
 
-      await renderRails({ before: beforeAuto, after: afterAuto, extras });
-      show('results');
-    }catch(e){
-      console.error(e);
-      alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
-      show('form');
+// small, separate note
+$('intro-line').textContent = 'Distances are from the venue.';
     }
   }
 

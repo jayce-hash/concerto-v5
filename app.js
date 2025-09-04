@@ -453,27 +453,40 @@ function mapUrlFor(p) {
   const base = 'https://www.google.com/maps/search/?api=1';
   const obj = (p && typeof p === 'object') ? p : {};
 
-  // If you already have a full URL, trust it.
-  if (obj.mapUrl) return obj.mapUrl;
+  // accept many possible field names coming from different sources
+  const placeId =
+    obj.placeId ||
+    obj.place_id ||
+    obj.googlePlaceId ||
+    obj.google_place_id ||
+    obj.google_place ||
+    null;
 
-  const hasId = !!obj.placeId;
-  const hasLL = Number.isFinite(obj.lat) && Number.isFinite(obj.lng);
-  const name  = (obj.name || '').toString().trim();
-  const addr  = (obj.address || '').toString().trim();
+  // accept numbers or numeric strings
+  const lat = (typeof obj.lat === 'number') ? obj.lat : parseFloat(obj.lat);
+  const lng = (typeof obj.lng === 'number') ? obj.lng : parseFloat(obj.lng);
 
-  // Best case: placeId + a human query (name preferred, else lat/lng)
-  if (hasId && name)    return `${base}&query=${encodeURIComponent(name)}&query_place_id=${encodeURIComponent(obj.placeId)}`;
-  if (hasId && hasLL)   return `${base}&query=${encodeURIComponent(`${obj.lat},${obj.lng}`)}&query_place_id=${encodeURIComponent(obj.placeId)}`;
-  if (hasId && addr)    return `${base}&query=${encodeURIComponent(addr)}&query_place_id=${encodeURIComponent(obj.placeId)}`;
+  const name    = obj.name || obj.title || '';
+  const address = obj.address || obj.formatted_address || obj.vicinity || '';
 
-  // Next best: lat/lng, then name/address
-  if (hasLL) {
-    return `${base}&query=${encodeURIComponent(`${obj.lat},${obj.lng}`)}`;
+  // if an explicit maps url was provided, use it
+  if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
+
+  // BEST: include both query and place_id so Maps pins the exact place
+  if (placeId) {
+    const q = [name, address].filter(Boolean).join(' ');
+    return `${base}&query=${encodeURIComponent(q || name || 'pin')}&query_place_id=${encodeURIComponent(placeId)}`;
   }
-  const q = [name, addr].filter(Boolean).join(' ');
+
+  // NEXT: coords (accept numeric strings too)
+  if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+    return `${base}&query=${encodeURIComponent(`${lat},${lng}`)}`;
+  }
+
+  // LAST: name/address search
+  const q = [name, address].filter(Boolean).join(' ');
   return q ? `${base}&query=${encodeURIComponent(q)}` : '';
 }
-
 function bindArtistSuggest(){
   const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
   input.addEventListener('input', async ()=>{
@@ -726,35 +739,57 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
   function fillRail(id, list){
     const row = $(id); if (!row) return;
     if (!Array.isArray(list) || !list.length){ row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`; return; }
-    const cards = list.map(p => {
-      const name = esc(p.name || "");
-      const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
-      const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-      const price = p.price || "";
-      const map = mapUrlFor(p);
-      console.log("[rail] map for", p?.name, p);
-      console.log("[rail] url =>", map);
-      const img = p.photoUrl || "";
-      const site = p.url || "";
-      return `
-        <article class="place-card" data-map-open="${esc(map)}" title="Open on Google Maps">
-          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-          <div class="pc-body">
-            <div class="pc-title">${name}</div>
-            <div class="pc-meta">
-              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-              ${rating ? `<span>${esc(rating)}</span>` : ""}
-              ${price ? `<span>${esc(price)}</span>` : ""}
-            </div>
-            <div class="pc-actions">
-              ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
-              ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
-            </div>
-          </div>
-        </article>
-      `;
-    }).join("");
-    row.innerHTML = cards;
+   const cards = list.map(p => {
+  // normalize fields we’ll need for a reliable map URL
+  const norm = {
+    name: p.name || p.title || '',
+    address: p.address || p.formatted_address || p.vicinity || '',
+    placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
+    lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : null),
+    lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : null),
+    url: p.url || '',
+    mapUrl: p.mapUrl || p.mapsUrl || ''
+  };
+
+  const name = esc(norm.name);
+  const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
+  const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
+  const price = p.price || "";
+  const map = mapUrlFor(norm);            // <- build with the normalized object
+  const img = p.photoUrl || "";
+  const site = norm.url || "";
+
+  // store a compact fallback payload on the card (not HTML-escaped)
+  const dataP = encodeURIComponent(JSON.stringify({
+    name: norm.name,
+    address: norm.address,
+    placeId: norm.placeId,
+    lat: norm.lat,
+    lng: norm.lng
+  }));
+
+  return `
+    <article class="place-card"
+             data-map-open="${esc(map)}"
+             data-p="${dataP}"
+             title="Open on Google Maps">
+      <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+      <div class="pc-body">
+        <div class="pc-title">${name}</div>
+        <div class="pc-meta">
+          ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+          ${rating ? `<span>${esc(rating)}</span>` : ""}
+          ${price ? `<span>${esc(price)}</span>` : ""}
+        </div>
+        <div class="pc-actions">
+          ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
+          ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
+        </div>
+      </div>
+    </article>
+  `;
+}).join("");
+row.innerHTML = cards;
 
 qsa('[data-map-open]', row).forEach(el=>{
   el.onclick = (e)=>{

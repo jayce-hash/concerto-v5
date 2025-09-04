@@ -449,8 +449,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       });
     }).catch(()=>{});
   }
-  // Build a robust Google Maps URL from whatever we have
-function mapUrlFor(p = {}) {
+function mapUrlFor(p = {}{
   const base = 'https://www.google.com/maps/search/?api=1';
   if (p.mapUrl) return p.mapUrl;
   if (p.placeId) return `${base}&query_place_id=${encodeURIComponent(p.placeId)}`;
@@ -563,20 +562,21 @@ async function generate(){
     const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
     const dinnerPick = customDinner || (beforeAuto[0] || null);
 
-    const itin = await buildItinerary({
-      show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
-      venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
-      hotel: (state.staying && state.hotelLat && state.hotelLng) ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
-      prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
-      picks: {
-  dinner: dinnerPick ? {
-    name: dinnerPick.name,
-    lat:  dinnerPick.lat,
-    lng:  dinnerPick.lng,
-    url:  dinnerPick.url,
-    mapUrl: mapUrlFor(dinnerPick)
-  } : null
-    });
+   const itin = await buildItinerary({
+  show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
+  venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
+  hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
+  prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
+  picks: {
+    dinner: dinnerPick ? {
+      name: dinnerPick.name,
+      lat:  dinnerPick.lat,
+      lng:  dinnerPick.lng,
+      url:  dinnerPick.url,
+      mapUrl: mapUrlFor(dinnerPick)
+    } : null
+  }
+});
 
     window.__lastItinerary = itin;
 

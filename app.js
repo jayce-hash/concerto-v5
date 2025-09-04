@@ -450,11 +450,14 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }).catch(()=>{});
   }
 function mapUrlFor(p) {
-  const baseSearch = 'https://www.google.com/maps/search/?api=1';
-  const basePlace  = 'https://www.google.com/maps/place/?q=place_id:';
-
+  const base = 'https://www.google.com/maps/search/?api=1';
   const obj = (p && typeof p === 'object') ? p : {};
-  const placeId =
+
+  // 1) if an explicit maps url was provided, use it
+  if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
+
+  // 2) try hard to find a Google Place ID from various fields
+  let placeId =
     obj.placeId ||
     obj.place_id ||
     obj.googlePlaceId ||
@@ -462,23 +465,37 @@ function mapUrlFor(p) {
     obj.google_place ||
     null;
 
-  const lat = (typeof obj.lat === 'number') ? obj.lat : parseFloat(obj.lat);
-  const lng = (typeof obj.lng === 'number') ? obj.lng : parseFloat(obj.lng);
+  // Sometimes the data object uses a generic "id" that is actually a Place ID
+  if (!placeId && typeof obj.id === 'string' && /^ChI[A-Za-z0-9_-]{20,}$/.test(obj.id)) {
+    placeId = obj.id;
+  }
 
+  // 3) normalize name / address / coords
   const name    = obj.name || obj.title || '';
   const address = obj.address || obj.formatted_address || obj.vicinity || '';
 
-  // Best: exact profile via place_id
-  if (placeId) return `${basePlace}${encodeURIComponent(placeId)}`;
+  // accept numbers or numeric strings (but don't NaN out)
+  const lat = (obj.lat != null && obj.lat !== '') ? Number(obj.lat) : NaN;
+  const lng = (obj.lng != null && obj.lng !== '') ? Number(obj.lng) : NaN;
 
-  // Next: lat/lng
-  if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-    return `${baseSearch}&query=${encodeURIComponent(`${lat},${lng}`)}`;
+  // 4) BEST: have a placeId -> this opens the actual profile
+  if (placeId) {
+    const q = [name, address].filter(Boolean).join(' ').trim();
+    return `${base}&query=${encodeURIComponent(q || name || 'pin')}&query_place_id=${encodeURIComponent(placeId)}`;
   }
 
-  // Last: name/address search
-  const q = [name, address].filter(Boolean).join(' ');
-  return q ? `${baseSearch}&query=${encodeURIComponent(q)}` : '';
+  // 5) NEXT BEST: no placeId, but we have a name/address -> use a search (often lands on the profile)
+  const q = [name, address].filter(Boolean).join(' ').trim();
+  if (q) {
+    return `${base}&query=${encodeURIComponent(q)}`;
+  }
+
+  // 6) LAST RESORT: coordinates -> shows a pin (your current behavior)
+  if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+    return `${base}&query=${encodeURIComponent(`${lat},${lng}`)}`;
+  }
+
+  return '';
 }
 function bindArtistSuggest(){
   const input = $('artist'), list = $('artist-list'); if (!input || !list) return;

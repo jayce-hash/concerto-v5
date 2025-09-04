@@ -452,7 +452,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 function mapUrlFor(p) {
   const base = 'https://www.google.com/maps/search/?api=1';
   const obj = (p && typeof p === 'object') ? p : {};
-
   if (obj.mapUrl) return obj.mapUrl;
   if (obj.placeId) return base + '&query_place_id=' + encodeURIComponent(obj.placeId);
   if (typeof obj.lat === 'number' && typeof obj.lng === 'number') {
@@ -461,32 +460,30 @@ function mapUrlFor(p) {
   const q = [obj.name, obj.address].filter(Boolean).join(' ');
   return q ? base + '&query=' + encodeURIComponent(q) : '';
 }
-  function bindArtistSuggest(){
-    const input = $('artist'), list = $('artist-list'); ...
-  function bindArtistSuggest(){
-    const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
-    input.addEventListener('input', async ()=>{
-      state.artist = input.value.trim();
-      const q = input.value.trim(); if (!q){ list.style.display="none"; list.innerHTML=""; return; }
-      try{
-        const res = await fetch(`https://itunes.apple.com/search?entity=musicArtist&limit=6&term=${encodeURIComponent(q)}`);
-        const data = await res.json();
-        list.innerHTML = "";
-        (data.results||[]).forEach((r, idx)=>{
-          const d = document.createElement('div');
-          d.className = "suggest-item"; d.textContent = r.artistName;
-          if (idx===0) d.dataset.first = "1";
-          d.onclick = ()=>{ input.value = r.artistName; state.artist = r.artistName; list.style.display="none"; };
-          list.appendChild(d);
-        });
-        list.style.display = (data.results||[]).length ? "block" : "none";
-      }catch{ list.style.display="none"; }
-    });
-    input.addEventListener('keydown', (e)=>{
-      if (e.key === "Enter"){ const first = $('artist-list')?.querySelector('[data-first="1"]'); if (first){ e.preventDefault(); first.click(); } }
-    });
-  }
 
+function bindArtistSuggest(){
+  const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
+  input.addEventListener('input', async ()=>{
+    state.artist = input.value.trim();
+    const q = input.value.trim(); if (!q){ list.style.display="none"; list.innerHTML=""; return; }
+    try{
+      const res = await fetch(`https://itunes.apple.com/search?entity=musicArtist&limit=6&term=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      list.innerHTML = "";
+      (data.results||[]).forEach((r, idx)=>{
+        const d = document.createElement('div');
+        d.className = "suggest-item"; d.textContent = r.artistName;
+        if (idx===0) d.dataset.first = "1";
+        d.onclick = ()=>{ input.value = r.artistName; state.artist = r.artistName; list.style.display="none"; };
+        list.appendChild(d);
+      });
+      list.style.display = (data.results||[]).length ? "block" : "none";
+    }catch{ list.style.display="none"; }
+  });
+  input.addEventListener('keydown', (e)=>{
+    if (e.key === "Enter"){ const first = $('artist-list')?.querySelector('[data-first="1"]'); if (first){ e.preventDefault(); first.click(); } }
+  });
+}
   /* ==================== Resolvers ==================== */
   async function ensureVenueResolved(){
     if (state.venueLat && state.venueLng) return;

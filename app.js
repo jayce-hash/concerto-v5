@@ -449,7 +449,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       });
     }).catch(()=>{});
   }
-function mapUrlFor(p = {}{
+function mapUrlFor(p = {}) {
   const base = 'https://www.google.com/maps/search/?api=1';
   if (p.mapUrl) return p.mapUrl;
   if (p.placeId) return `${base}&query_place_id=${encodeURIComponent(p.placeId)}`;

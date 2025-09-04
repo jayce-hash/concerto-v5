@@ -450,10 +450,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }).catch(()=>{});
   }
 function mapUrlFor(p) {
-  const base = 'https://www.google.com/maps/search/?api=1';
-  const obj = (p && typeof p === 'object') ? p : {};
+  const baseSearch = 'https://www.google.com/maps/search/?api=1';
+  const basePlace  = 'https://www.google.com/maps/place/?q=place_id:';
 
-  // accept many possible field names coming from different sources
+  const obj = (p && typeof p === 'object') ? p : {};
   const placeId =
     obj.placeId ||
     obj.place_id ||
@@ -462,30 +462,23 @@ function mapUrlFor(p) {
     obj.google_place ||
     null;
 
-  // accept numbers or numeric strings
   const lat = (typeof obj.lat === 'number') ? obj.lat : parseFloat(obj.lat);
   const lng = (typeof obj.lng === 'number') ? obj.lng : parseFloat(obj.lng);
 
   const name    = obj.name || obj.title || '';
   const address = obj.address || obj.formatted_address || obj.vicinity || '';
 
-  // if an explicit maps url was provided, use it
-  if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
+  // Best: exact profile via place_id
+  if (placeId) return `${basePlace}${encodeURIComponent(placeId)}`;
 
-  // BEST: include both query and place_id so Maps pins the exact place
-  if (placeId) {
-    const q = [name, address].filter(Boolean).join(' ');
-    return `${base}&query=${encodeURIComponent(q || name || 'pin')}&query_place_id=${encodeURIComponent(placeId)}`;
-  }
-
-  // NEXT: coords (accept numeric strings too)
+  // Next: lat/lng
   if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-    return `${base}&query=${encodeURIComponent(`${lat},${lng}`)}`;
+    return `${baseSearch}&query=${encodeURIComponent(`${lat},${lng}`)}`;
   }
 
-  // LAST: name/address search
+  // Last: name/address search
   const q = [name, address].filter(Boolean).join(' ');
-  return q ? `${base}&query=${encodeURIComponent(q)}` : '';
+  return q ? `${baseSearch}&query=${encodeURIComponent(q)}` : '';
 }
 function bindArtistSuggest(){
   const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
@@ -782,7 +775,7 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
           ${price ? `<span>${esc(price)}</span>` : ""}
         </div>
         <div class="pc-actions">
-          ${map ? `<a href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
+          ${map ? `<a class="map-link" href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
           ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
         </div>
       </div>
@@ -793,25 +786,19 @@ row.innerHTML = cards;
 
 qsa('[data-map-open]', row).forEach(el=>{
   el.onclick = (e)=>{
-    // let Website link clicks pass through
-    if ((e.target.closest('a') && e.target.closest('a').dataset.link === 'site') || (e.target.dataset.link === 'site')) return;
+    // If the user clicked any link inside, let the link work.
+    if (e.target.closest('a')) return;
 
-    // decode &amp; back to &
+    // Otherwise open the precomputed Map URL from data-map-open (already escaped in the HTML)
     let url = (el.dataset.mapOpen || '').replace(/&amp;/g, '&');
-
-    // fallback: if somehow empty, rebuild from the card’s dataset if present
     if (!url) {
-  try {
-    const raw = el.dataset.p || '{}';
-    // in case some cards were created with encodeURIComponent earlier:
-    const json = raw.includes('%7B') ? decodeURIComponent(raw) : raw;
-    const p = JSON.parse(json);
-    url = mapUrlFor(p);
-  } catch (err) {
-    console.warn('Failed to rebuild map URL from data-p', err);
-  }
-}
-
+      try {
+        const raw = el.dataset.p || '{}';
+        const json = raw.includes('%7B') ? decodeURIComponent(raw) : raw;
+        const p = JSON.parse(json);
+        url = mapUrlFor(p);
+      } catch {}
+    }
     if (url) window.open(url, '_blank', 'noopener');
   };
 });

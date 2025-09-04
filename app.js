@@ -449,6 +449,17 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       });
     }).catch(()=>{});
   }
+  // Build a robust Google Maps URL from whatever we have
+function mapUrlFor(p = {}) {
+  const base = 'https://www.google.com/maps/search/?api=1';
+  if (p.mapUrl) return p.mapUrl;
+  if (p.placeId) return `${base}&query_place_id=${encodeURIComponent(p.placeId)}`;
+  if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+    return `${base}&query=${encodeURIComponent(`${p.lat},${p.lng}`)}`;
+  }
+  const q = [p.name, p.address].filter(Boolean).join(' ');
+  return q ? `${base}&query=${encodeURIComponent(q)}` : '';
+}
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{
@@ -557,7 +568,14 @@ async function generate(){
       venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
       hotel: (state.staying && state.hotelLat && state.hotelLng) ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
       prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
-      picks: { dinner: dinnerPick ? { name:dinnerPick.name, lat:dinnerPick.lat, lng:dinnerPick.lng, url:dinnerPick.url, mapUrl:dinnerPick.mapUrl } : null }
+      picks: {
+  dinner: dinnerPick ? {
+    name: dinnerPick.name,
+    lat:  dinnerPick.lat,
+    lng:  dinnerPick.lng,
+    url:  dinnerPick.url,
+    mapUrl: mapUrlFor(dinnerPick)
+  } : null
     });
 
     window.__lastItinerary = itin;
@@ -699,7 +717,7 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
       const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
       const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
       const price = p.price || "";
-      const map = p.mapUrl || "";
+      const map = mapUrlFor(p);
       const img = p.photoUrl || "";
       const site = p.url || "";
       return `
@@ -780,7 +798,7 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
       let lat = input?.dataset.lat ? +input.dataset.lat : null;
       let lng = input?.dataset.lng ? +input.dataset.lng : null;
       let url = input?.dataset.url || "";
-      let mapUrl = placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : "";
+      let mapUrl = mapUrlFor({ placeId, lat, lng, name });
 
       if ((!lat || !lng) && name){
         try{

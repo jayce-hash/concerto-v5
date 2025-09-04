@@ -452,13 +452,26 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 function mapUrlFor(p) {
   const base = 'https://www.google.com/maps/search/?api=1';
   const obj = (p && typeof p === 'object') ? p : {};
+
+  // If you already have a full URL, trust it.
   if (obj.mapUrl) return obj.mapUrl;
-  if (obj.placeId) return base + '&query_place_id=' + encodeURIComponent(obj.placeId);
-  if (typeof obj.lat === 'number' && typeof obj.lng === 'number') {
-    return base + '&query=' + encodeURIComponent(obj.lat + ',' + obj.lng);
+
+  const hasId = !!obj.placeId;
+  const hasLL = Number.isFinite(obj.lat) && Number.isFinite(obj.lng);
+  const name  = (obj.name || '').toString().trim();
+  const addr  = (obj.address || '').toString().trim();
+
+  // Best case: placeId + a human query (name preferred, else lat/lng)
+  if (hasId && name)    return `${base}&query=${encodeURIComponent(name)}&query_place_id=${encodeURIComponent(obj.placeId)}`;
+  if (hasId && hasLL)   return `${base}&query=${encodeURIComponent(`${obj.lat},${obj.lng}`)}&query_place_id=${encodeURIComponent(obj.placeId)}`;
+  if (hasId && addr)    return `${base}&query=${encodeURIComponent(addr)}&query_place_id=${encodeURIComponent(obj.placeId)}`;
+
+  // Next best: lat/lng, then name/address
+  if (hasLL) {
+    return `${base}&query=${encodeURIComponent(`${obj.lat},${obj.lng}`)}`;
   }
-  const q = [obj.name, obj.address].filter(Boolean).join(' ');
-  return q ? base + '&query=' + encodeURIComponent(q) : '';
+  const q = [name, addr].filter(Boolean).join(' ');
+  return q ? `${base}&query=${encodeURIComponent(q)}` : '';
 }
 
 function bindArtistSuggest(){
@@ -741,14 +754,18 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
     }).join("");
     row.innerHTML = cards;
 
-    // click the whole card to open Maps unless the Website link was clicked
-    qsa('[data-map-open]', row).forEach(el=>{
-      el.onclick = (e)=>{
-        if ((e.target.closest('a') && e.target.closest('a').dataset.link === 'site') || (e.target.dataset.link === 'site')) return;
-        const url = el.dataset.mapOpen;
-        if (url) window.open(url, '_blank', 'noopener');
-      };
-    });
+qsa('[data-map-open]', row).forEach(el=>{
+  el.onclick = (e)=>{
+    // Let the dedicated "Website" link behave normally.
+    if ((e.target.closest('a') && e.target.closest('a').dataset.link === 'site') || (e.target.dataset.link === 'site')) return;
+
+    // Read from data-attr and unescape HTML entities (&amp; -> &)
+    let url = el.dataset.mapOpen || '';
+    url = url.replace(/&amp;/g, '&');
+
+    if (url) window.open(url, '_blank', 'noopener');
+  };
+});
   }
   async function renderRails({ before, after, extras }){
     const dessert = (extras||[]).filter(x=>/dessert/i.test(x.section||""));

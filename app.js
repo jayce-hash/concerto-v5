@@ -450,49 +450,41 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }).catch(()=>{});
   }
 function mapUrlFor(p) {
-  const base = 'https://www.google.com/maps/search/?api=1';
   const obj = (p && typeof p === 'object') ? p : {};
 
-  // 1) if an explicit maps url was provided, use it
+  // explicit url wins
   if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
 
-  // 2) try hard to find a Google Place ID from various fields
-  let placeId =
-    obj.placeId ||
-    obj.place_id ||
-    obj.googlePlaceId ||
-    obj.google_place_id ||
-    obj.google_place ||
+  // harvest likely place id / name / address / coords
+  const placeId =
+    obj.placeId || obj.place_id || obj.googlePlaceId || obj.google_place_id ||
+    (obj.place && (obj.place.place_id || obj.place.id)) ||
+    (obj.google && (obj.google.place_id || obj.google.id)) ||
     null;
 
-  // Sometimes the data object uses a generic "id" that is actually a Place ID
-  if (!placeId && typeof obj.id === 'string' && /^ChI[A-Za-z0-9_-]{20,}$/.test(obj.id)) {
-    placeId = obj.id;
-  }
+  const name =
+    obj.name || obj.title ||
+    (obj.place && (obj.place.name || obj.place.title)) || '';
 
-  // 3) normalize name / address / coords
-  const name    = obj.name || obj.title || '';
-  const address = obj.address || obj.formatted_address || obj.vicinity || '';
+  const address =
+    obj.address || obj.formatted_address || obj.vicinity ||
+    (obj.location && (obj.location.address || obj.location.formatted_address)) || '';
 
-  // accept numbers or numeric strings (but don't NaN out)
-  const lat = (obj.lat != null && obj.lat !== '') ? Number(obj.lat) : NaN;
-  const lng = (obj.lng != null && obj.lng !== '') ? Number(obj.lng) : NaN;
-
-  // 4) BEST: have a placeId -> this opens the actual profile
+  // 1) BEST: open the *profile* directly via place_id
   if (placeId) {
-    const q = [name, address].filter(Boolean).join(' ').trim();
-    return `${base}&query=${encodeURIComponent(q || name || 'pin')}&query_place_id=${encodeURIComponent(placeId)}`;
+    // This deep link opens the business profile reliably
+    return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
   }
 
-  // 5) NEXT BEST: no placeId, but we have a name/address -> use a search (often lands on the profile)
+  // 2) NEXT: name/address search (often resolves to profile)
   const q = [name, address].filter(Boolean).join(' ').trim();
-  if (q) {
-    return `${base}&query=${encodeURIComponent(q)}`;
-  }
+  if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 
-  // 6) LAST RESORT: coordinates -> shows a pin (your current behavior)
+  // 3) LAST: coordinates (dropped pin)
+  const lat = obj.lat != null ? Number(obj.lat) : (obj.location && obj.location.lat != null ? Number(obj.location.lat) : NaN);
+  const lng = obj.lng != null ? Number(obj.lng) : (obj.location && obj.location.lng != null ? Number(obj.location.lng) : NaN);
   if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-    return `${base}&query=${encodeURIComponent(`${lat},${lng}`)}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
   }
 
   return '';

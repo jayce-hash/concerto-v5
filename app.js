@@ -759,8 +759,8 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
   const img = p.photoUrl || "";
   const site = norm.url || "";
 
-  // store a compact fallback payload on the card (not HTML-escaped)
-  const dataP = encodeURIComponent(JSON.stringify({
+    // store a compact fallback payload on the card (HTML-escaped via esc)
+  const dataP = esc(JSON.stringify({
     name: norm.name,
     address: norm.address,
     placeId: norm.placeId,
@@ -801,11 +801,16 @@ qsa('[data-map-open]', row).forEach(el=>{
 
     // fallback: if somehow empty, rebuild from the card’s dataset if present
     if (!url) {
-      try {
-        const p = JSON.parse(el.dataset.p || '{}'); // only if you choose to store it
-        url = mapUrlFor(p);
-      } catch {}
-    }
+  try {
+    const raw = el.dataset.p || '{}';
+    // in case some cards were created with encodeURIComponent earlier:
+    const json = raw.includes('%7B') ? decodeURIComponent(raw) : raw;
+    const p = JSON.parse(json);
+    url = mapUrlFor(p);
+  } catch (err) {
+    console.warn('Failed to rebuild map URL from data-p', err);
+  }
+}
 
     if (url) window.open(url, '_blank', 'noopener');
   };

@@ -449,16 +449,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       });
     }).catch(()=>{});
   }
-function mapUrlFor(p = {}) {
-  const base = 'https://www.google.com/maps/search/?api=1';
-  if (p.mapUrl) return p.mapUrl;
-  if (p.placeId) return `${base}&query_place_id=${encodeURIComponent(p.placeId)}`;
-  if (typeof p.lat === 'number' && typeof p.lng === 'number') {
-    return `${base}&query=${encodeURIComponent(`${p.lat},${p.lng}`)}`;
-  }
-  const q = [p.name, p.address].filter(Boolean).join(' ');
-  return q ? `${base}&query=${encodeURIComponent(q)}` : '';
-}
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{

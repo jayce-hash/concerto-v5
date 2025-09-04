@@ -761,48 +761,63 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
   const img = p.photoUrl || "";
   const site = norm.url || "";
 
-    // store a compact fallback payload on the card (HTML-escaped via esc)
-  const dataP = esc(JSON.stringify({
-    name: norm.name,
-    address: norm.address,
-    placeId: norm.placeId,
-    lat: norm.lat,
-    lng: norm.lng
-  }));
+// store a compact payload safely (use encodeURIComponent, NOT esc)
+const dataP = encodeURIComponent(JSON.stringify({
+  name: norm.name,
+  address: norm.address,
+  placeId: norm.placeId,
+  lat: norm.lat,
+  lng: norm.lng
+}));
 
-  return `
-    <article class="place-card"
-             data-map-open="${esc(map)}"
-             data-p="${dataP}"
-             title="Open on Google Maps">
-      <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-      <div class="pc-body">
-        <div class="pc-title">${name}</div>
-        <div class="pc-meta">
-          ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-          ${rating ? `<span>${esc(rating)}</span>` : ""}
-          ${price ? `<span>${esc(price)}</span>` : ""}
-        </div>
-        <div class="pc-actions">
-          ${map ? `<a class="map-link" href="${esc(map)}" target="_blank" rel="noopener">Map</a>` : ""}
-          ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
-        </div>
+return `
+  <article class="place-card"
+           data-p="${dataP}"
+           title="Open on Google Maps">
+    <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+    <div class="pc-body">
+      <div class="pc-title">${name}</div>
+      <div class="pc-meta">
+        ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+        ${rating ? `<span>${esc(rating)}</span>` : ""}
+        ${price ? `<span>${esc(price)}</span>` : ""}
       </div>
-    </article>
-  `;
+      <div class="pc-actions">
+        <a class="map-link" target="_blank" rel="noopener">Map</a>
+        ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
+      </div>
+    </div>
+  </article>
+`;
 }).join("");
 row.innerHTML = cards;
 
+// 2a) Compute clean hrefs for each Map link via DOM (avoids &amp; issues)
+qsa('.place-card', row).forEach(el => {
+  const mapA = el.querySelector('.map-link');
+  if (!mapA) return;
+
+  let payload = {};
+  try {
+    payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}'));
+  } catch {}
+
+  const href = mapUrlFor(payload);
+  if (href) {
+    mapA.href = href;             // set via DOM so it's a real URL
+  } else {
+    mapA.style.display = 'none';  // hide if we truly have no link
+  }
+});
+
+// 2b) Card click opens the same Map link; let Website clicks pass through
 qsa('.place-card', row).forEach(el => {
   el.onclick = (e) => {
-    // let "Website" clicks pass through
     const a = e.target.closest('a');
     if (a && a.dataset.link === 'site') return;
 
-    // prefer the Map anchor already in the card
-    const mapA = el.querySelector('.pc-actions a[href]:not([data-link="site"])');
+    const mapA = el.querySelector('.map-link[href]');
     if (mapA && mapA.href) {
-      // open exactly the href the browser has parsed (no &amp; issues)
       window.open(mapA.href, '_blank', 'noopener');
     }
   };
@@ -934,7 +949,7 @@ qsa('.place-card', row).forEach(el => {
       lat: choice.geometry.location.lat(),
       lng: choice.geometry.location.lng(),
       url: details?.website || "",
-      mapUrl: `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(choice.place_id)}`
+      mapUrl: `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(choice.place_id)}`
     };
   }
   function placeTypeFor(type, rawName){

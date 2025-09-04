@@ -732,6 +732,8 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
       const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
       const price = p.price || "";
       const map = mapUrlFor(p);
+      console.log("[rail] map for", p?.name, p);
+      console.log("[rail] url =>", map);
       const img = p.photoUrl || "";
       const site = p.url || "";
       return `
@@ -756,12 +758,19 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
 
 qsa('[data-map-open]', row).forEach(el=>{
   el.onclick = (e)=>{
-    // Let the dedicated "Website" link behave normally.
+    // let Website link clicks pass through
     if ((e.target.closest('a') && e.target.closest('a').dataset.link === 'site') || (e.target.dataset.link === 'site')) return;
 
-    // Read from data-attr and unescape HTML entities (&amp; -> &)
-    let url = el.dataset.mapOpen || '';
-    url = url.replace(/&amp;/g, '&');
+    // decode &amp; back to &
+    let url = (el.dataset.mapOpen || '').replace(/&amp;/g, '&');
+
+    // fallback: if somehow empty, rebuild from the card’s dataset if present
+    if (!url) {
+      try {
+        const p = JSON.parse(el.dataset.p || '{}'); // only if you choose to store it
+        url = mapUrlFor(p);
+      } catch {}
+    }
 
     if (url) window.open(url, '_blank', 'noopener');
   };

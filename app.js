@@ -793,22 +793,18 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
 }).join("");
 row.innerHTML = cards;
 
-qsa('[data-map-open]', row).forEach(el=>{
-  el.onclick = (e)=>{
-    // If the user clicked any link inside, let the link work.
-    if (e.target.closest('a')) return;
+qsa('.place-card', row).forEach(el => {
+  el.onclick = (e) => {
+    // let "Website" clicks pass through
+    const a = e.target.closest('a');
+    if (a && a.dataset.link === 'site') return;
 
-    // Otherwise open the precomputed Map URL from data-map-open (already escaped in the HTML)
-    let url = (el.dataset.mapOpen || '').replace(/&amp;/g, '&');
-    if (!url) {
-      try {
-        const raw = el.dataset.p || '{}';
-        const json = raw.includes('%7B') ? decodeURIComponent(raw) : raw;
-        const p = JSON.parse(json);
-        url = mapUrlFor(p);
-      } catch {}
+    // prefer the Map anchor already in the card
+    const mapA = el.querySelector('.pc-actions a[href]:not([data-link="site"])');
+    if (mapA && mapA.href) {
+      // open exactly the href the browser has parsed (no &amp; issues)
+      window.open(mapA.href, '_blank', 'noopener');
     }
-    if (url) window.open(url, '_blank', 'noopener');
   };
 });
   }

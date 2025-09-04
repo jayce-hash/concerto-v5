@@ -449,6 +449,22 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       });
     }).catch(()=>{});
   }
+  
+  function mapUrlFor(p) {
+    const base = 'https://www.google.com/maps/search/?api=1';
+    const obj = p && typeof p === 'object' ? p : {};
+
+    if (obj.mapUrl) return obj.mapUrl;
+    if (obj.placeId) return base + '&query_place_id=' + encodeURIComponent(obj.placeId);
+    if (typeof obj.lat === 'number' && typeof obj.lng === 'number') {
+      return base + '&query=' + encodeURIComponent(obj.lat + ',' + obj.lng);
+    }
+    const q = [obj.name, obj.address].filter(Boolean).join(' ');
+    return q ? base + '&query=' + encodeURIComponent(q) : '';
+  }
+
+  function bindArtistSuggest(){
+    const input = $('artist'), list = $('artist-list'); ...
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{

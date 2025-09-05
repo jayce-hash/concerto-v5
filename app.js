@@ -33,7 +33,16 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     eatWhen: "both",
     foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
     budget: "$$", tone: "balanced",
-    interests: { coffee:false, drinks:false, dessert:false, sights:false },
+    interests: {
+      coffee:false,
+      drinks:false,          // Drinks & Lounge
+      dessert:false,
+      lateNight:false,       // Late-Night Eats
+      nightlife:false,       // Nightlife & Entertainment
+      shopping:false,
+      sights:false,          // Sights & Landmarks
+      relax:false            // Relax & Recover
+    },
     arrivalBufferMin: 45, doorsBeforeMin: 90,
     customStops: []
   };
@@ -220,62 +229,28 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       $('btn-next').textContent = "Next";
 
     } else {
-      // ACTIVITIES + YOUR PICKS
+      // ACTIVITIES (Your Picks removed)
       w.innerHTML = `
         <h3 class="step-title">Activities & Interests</h3>
-        <p class="step-help">Optional extras to round out your night — and lock in any places you already know you want.</p>
+        <p class="step-help">Pick any extras to round out your night.</p>
+
         <div class="form-grid two">
           <div><label><input type="checkbox" id="int-coffee" ${state.interests.coffee?'checked':''}/> Coffee</label></div>
-          <div><label><input type="checkbox" id="int-drinks" ${state.interests.drinks?'checked':''}/> Drinks / Lounge</label></div>
+          <div><label><input type="checkbox" id="int-drinks" ${state.interests.drinks?'checked':''}/> Drinks &amp; Lounge</label></div>
           <div><label><input type="checkbox" id="int-dessert" ${state.interests.dessert?'checked':''}/> Dessert</label></div>
-          <div><label><input type="checkbox" id="int-sights" ${state.interests.sights?'checked':''}/> Sights / Landmarks</label></div>
+          <div><label><input type="checkbox" id="int-lateNight" ${state.interests.lateNight?'checked':''}/> Late-Night Eats</label></div>
+          <div><label><input type="checkbox" id="int-nightlife" ${state.interests.nightlife?'checked':''}/> Nightlife &amp; Entertainment</label></div>
+          <div><label><input type="checkbox" id="int-shopping" ${state.interests.shopping?'checked':''}/> Shopping</label></div>
+          <div><label><input type="checkbox" id="int-sights" ${state.interests.sights?'checked':''}/> Sights &amp; Landmarks</label></div>
+          <div><label><input type="checkbox" id="int-relax" ${state.interests.relax?'checked':''}/> Relax &amp; Recover</label></div>
         </div>
-
-        <article class="card" id="custom-card" style="margin-top:12px;">
-          <h3 class="step-title" style="margin-bottom:6px;">Your picks (optional)</h3>
-          <p class="step-help">We’ll lock these into your schedule.</p>
-          <div class="form-grid two">
-            <div class="full">
-              <label>Place</label>
-              <input id="custom-place" type="text" placeholder="e.g., Starbucks Reserve Roastery" autocomplete="off" />
-            </div>
-            <div>
-              <label>When</label>
-              <select id="custom-when">
-                <option value="before">Before the show</option>
-                <option value="after">After the show</option>
-              </select>
-            </div>
-            <div>
-              <label>Type</label>
-              <select id="custom-type">
-                <option value="coffee">Coffee</option>
-                <option value="drinks">Drinks</option>
-                <option value="dessert">Dessert</option>
-                <option value="sight">Sights</option>
-                <option value="dinner">Dinner</option>
-              </select>
-            </div>
-            <div>
-              <label>Duration (min)</label>
-              <input id="custom-duration" type="number" min="10" max="240" value="45" />
-            </div>
-            <div class="full">
-              <label>Note (optional)</label>
-              <input id="custom-note" type="text" placeholder="e.g., mobile order ahead" />
-            </div>
-          </div>
-          <div class="sticky-actions">
-            <button id="custom-add" class="btn">+ Add to my picks</button>
-          </div>
-          <div id="custom-pills" class="radio-group" style="margin-top:10px;"></div>
-        </article>
       `;
-      ["coffee","drinks","dessert","sights"].forEach(k=>{
+
+      ["coffee","drinks","dessert","lateNight","nightlife","shopping","sights","relax"].forEach(k=>{
         const el = $('int-'+k);
         if (el) el.onchange = ()=>{ state.interests[k] = el.checked; };
       });
-      bindCustomAutocomplete(); bindCustomAdd(); renderCustomPills();
+
       $('btn-prev').disabled = false;
       $('btn-next').textContent = "Generate Schedule";
     }
@@ -449,69 +424,72 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       });
     }).catch(()=>{});
   }
-function mapUrlFor(p) {
-  const obj = (p && typeof p === 'object') ? p : {};
 
-  // explicit url wins
-  if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
+  function mapUrlFor(p) {
+    const obj = (p && typeof p === 'object') ? p : {};
 
-  // harvest likely place id / name / address / coords
-  const placeId =
-    obj.placeId || obj.place_id || obj.googlePlaceId || obj.google_place_id ||
-    (obj.place && (obj.place.place_id || obj.place.id)) ||
-    (obj.google && (obj.google.place_id || obj.google.id)) ||
-    null;
+    // explicit url wins
+    if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
 
-  const name =
-    obj.name || obj.title ||
-    (obj.place && (obj.place.name || obj.place.title)) || '';
+    // harvest likely place id / name / address / coords
+    const placeId =
+      obj.placeId || obj.place_id || obj.googlePlaceId || obj.google_place_id ||
+      (obj.place && (obj.place.place_id || obj.place.id)) ||
+      (obj.google && (obj.google.place_id || obj.google.id)) ||
+      null;
 
-  const address =
-    obj.address || obj.formatted_address || obj.vicinity ||
-    (obj.location && (obj.location.address || obj.location.formatted_address)) || '';
+    const name =
+      obj.name || obj.title ||
+      (obj.place && (obj.place.name || obj.place.title)) || '';
 
-  // 1) BEST: open the *profile* directly via place_id
-  if (placeId) {
-    // This deep link opens the business profile reliably
-    return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
+    const address =
+      obj.address || obj.formatted_address || obj.vicinity ||
+      (obj.location && (obj.location.address || obj.location.formatted_address)) || '';
+
+    // 1) BEST: open the *profile* directly via place_id
+    if (placeId) {
+      // This deep link opens the business profile reliably
+      return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
+    }
+
+    // 2) NEXT: name/address search (often resolves to profile)
+    const q = [name, address].filter(Boolean).join(' ').trim();
+    if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+
+    // 3) LAST: coordinates (dropped pin)
+    const lat = obj.lat != null ? Number(obj.lat) : (obj.location && obj.location.lat != null ? Number(obj.location.lat) : NaN);
+    const lng = obj.lng != null ? Number(obj.lng) : (obj.location && obj.location.lng != null ? Number(obj.location.lng) : NaN);
+    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+    }
+
+    return '';
   }
 
-  // 2) NEXT: name/address search (often resolves to profile)
-  const q = [name, address].filter(Boolean).join(' ').trim();
-  if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-
-  // 3) LAST: coordinates (dropped pin)
-  const lat = obj.lat != null ? Number(obj.lat) : (obj.location && obj.location.lat != null ? Number(obj.location.lat) : NaN);
-  const lng = obj.lng != null ? Number(obj.lng) : (obj.location && obj.location.lng != null ? Number(obj.location.lng) : NaN);
-  if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+  function bindArtistSuggest(){
+    const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
+    input.addEventListener('input', async ()=>{
+      state.artist = input.value.trim();
+      const q = input.value.trim(); if (!q){ list.style.display="none"; list.innerHTML=""; return; }
+      try{
+        const res = await fetch(`https://itunes.apple.com/search?entity=musicArtist&limit=6&term=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        list.innerHTML = "";
+        (data.results||[]).forEach((r, idx)=>{
+          const d = document.createElement('div');
+          d.className = "suggest-item"; d.textContent = r.artistName;
+          if (idx===0) d.dataset.first = "1";
+          d.onclick = ()=>{ input.value = r.artistName; state.artist = r.artistName; list.style.display="none"; };
+          list.appendChild(d);
+        });
+        list.style.display = (data.results||[]).length ? "block" : "none";
+      }catch{ list.style.display="none"; }
+    });
+    input.addEventListener('keydown', (e)=>{
+      if (e.key === "Enter"){ const first = $('artist-list')?.querySelector('[data-first="1"]'); if (first){ e.preventDefault(); first.click(); } }
+    });
   }
 
-  return '';
-}
-function bindArtistSuggest(){
-  const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
-  input.addEventListener('input', async ()=>{
-    state.artist = input.value.trim();
-    const q = input.value.trim(); if (!q){ list.style.display="none"; list.innerHTML=""; return; }
-    try{
-      const res = await fetch(`https://itunes.apple.com/search?entity=musicArtist&limit=6&term=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      list.innerHTML = "";
-      (data.results||[]).forEach((r, idx)=>{
-        const d = document.createElement('div');
-        d.className = "suggest-item"; d.textContent = r.artistName;
-        if (idx===0) d.dataset.first = "1";
-        d.onclick = ()=>{ input.value = r.artistName; state.artist = r.artistName; list.style.display="none"; };
-        list.appendChild(d);
-      });
-      list.style.display = (data.results||[]).length ? "block" : "none";
-    }catch{ list.style.display="none"; }
-  });
-  input.addEventListener('keydown', (e)=>{
-    if (e.key === "Enter"){ const first = $('artist-list')?.querySelector('[data-first="1"]'); if (first){ e.preventDefault(); first.click(); } }
-  });
-}
   /* ==================== Resolvers ==================== */
   async function ensureVenueResolved(){
     if (state.venueLat && state.venueLng) return;
@@ -559,7 +537,7 @@ function bindArtistSuggest(){
   }
   function parseShowDateTimeISO(){
     const now = new Date();
-    const hm = parseHM(state.showTime) || {h:19,m:0};
+    the const hm = parseHM(state.showTime) || {h:19,m:0};
     if (state.showDate){
       const [Y,M,D] = state.showDate.split('-').map(n=>parseInt(n,10));
       return new Date(Y, M-1, D, hm.h, hm.m).toISOString();
@@ -567,91 +545,92 @@ function bindArtistSuggest(){
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
-/* ==================== Generate ==================== */
-async function generate(){
-  show('loading');
-  try{
-    await ensureVenueResolved();
-    if (state.staying) await ensureHotelResolved();
+  /* ==================== Generate ==================== */
+  async function generate(){
+    show('loading');
+    try{
+      await ensureVenueResolved();
+      if (state.staying) await ensureHotelResolved();
 
-    const targetISO = parseShowDateTimeISO();
+      const targetISO = parseShowDateTimeISO();
 
-    // Run picks in parallel (faster)
-    const beforeP = (state.eatWhen==="before" || state.eatWhen==="both")
-      ? pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO })
-      : Promise.resolve([]);
-    const afterP  = (state.eatWhen==="after"  || state.eatWhen==="both")
-      ? pickRestaurants({ wantOpenNow:true, state, slot:"after", targetISO })
-      : Promise.resolve([]);
-    const extrasP = pickExtras({ state });
+      // Run picks in parallel (faster)
+      const beforeP = (state.eatWhen==="before" || state.eatWhen==="both")
+        ? pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO })
+        : Promise.resolve([]);
+      const afterP  = (state.eatWhen==="after"  || state.eatWhen==="both")
+        ? pickRestaurants({ wantOpenNow:true, state, slot:"after", targetISO })
+        : Promise.resolve([]);
+      const extrasP = pickExtras({ state });
 
-    const [beforeAuto, afterAuto, extras] = await Promise.all([beforeP, afterP, extrasP]);
+      const [beforeAuto, afterAuto, extras] = await Promise.all([beforeP, afterP, extrasP]);
 
-    const locks = state.customStops || [];
-    const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
-    const dinnerPick = customDinner || (beforeAuto[0] || null);
+      const locks = state.customStops || [];
+      const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
+      const dinnerPick = customDinner || (beforeAuto[0] || null);
 
-   const itin = await buildItinerary({
-  show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
-  venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
-  hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
-  prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
-  picks: {
-    dinner: dinnerPick ? {
-      name: dinnerPick.name,
-      lat:  dinnerPick.lat,
-      lng:  dinnerPick.lng,
-      url:  dinnerPick.url,
-      mapUrl: mapUrlFor(dinnerPick)
-    } : null
+      const itin = await buildItinerary({
+        show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
+        venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
+        hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
+        prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
+        picks: {
+          dinner: dinnerPick ? {
+            name: dinnerPick.name,
+            lat:  dinnerPick.lat,
+            lng:  dinnerPick.lng,
+            url:  dinnerPick.url,
+            mapUrl: mapUrlFor(dinnerPick)
+          } : null
+        }
+      });
+
+      window.__lastItinerary = itin;
+
+      // --- Stacked header: Artist / Venue / Date • Time (centered)
+      const d = new Date(parseShowDateTimeISO());
+      const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+      const timeStr = (() => {
+        try { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+        catch { return ''; }
+      })();
+
+      // force the container itself to be a centered column and take full width
+      const ctx = $('results-context');
+      ctx.style.display = 'flex';
+      ctx.style.flexDirection = 'column';
+      ctx.style.alignItems = 'center';
+      ctx.style.textAlign = 'center';
+      ctx.style.width = '100%';
+
+      // ensure the parent block spans the row and centers content
+      const ctxParent = $('results-context')?.parentElement;
+      if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'center'; }
+
+      ctx.innerHTML = `
+        <div>${esc(state.artist || 'Your Concert')}</div>
+        <div>${esc(state.venue || '')}</div>
+        <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
+      `;
+
+      // small, separate note centered under the header
+      const note = $('intro-line');
+      note.style.textAlign = 'center';
+      note.style.fontSize = '0.9rem';
+      note.textContent = 'Distances are from the venue.';
+
+      const city = await venueCityName();
+      renderTourCard(city, itin, dinnerPick);
+
+      await renderRails({ before: beforeAuto, after: afterAuto, extras });
+      show('results');
+    }catch(e){
+      console.error(e);
+      alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
+      show('form');
+    }
   }
-});
 
-    window.__lastItinerary = itin;
-
-    // --- Stacked header: Artist / Venue / Date • Time (centered)
-    const d = new Date(parseShowDateTimeISO());
-    const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
-    const timeStr = (() => {
-      try { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
-      catch { return ''; }
-    })();
-
-    // force the container itself to be a centered column and take full width
-    const ctx = $('results-context');
-    ctx.style.display = 'flex';
-    ctx.style.flexDirection = 'column';
-    ctx.style.alignItems = 'center';
-    ctx.style.textAlign = 'center';
-    ctx.style.width = '100%';
-
-    // ensure the parent block spans the row and centers content
-const ctxParent = $('results-context')?.parentElement;
-if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'center'; }
-
-    ctx.innerHTML = `
-      <div>${esc(state.artist || 'Your Concert')}</div>
-      <div>${esc(state.venue || '')}</div>
-      <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
-    `;
-
-    // small, separate note centered under the header
-    const note = $('intro-line');
-    note.style.textAlign = 'center';
-    note.style.fontSize = '0.9rem';
-    note.textContent = 'Distances are from the venue.';
-
-    const city = await venueCityName();
-    renderTourCard(city, itin, dinnerPick);
-
-    await renderRails({ before: beforeAuto, after: afterAuto, extras });
-    show('results');
-  }catch(e){
-    console.error(e);
-    alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
-    show('form');
-  }
-}
   /* ==================== Tour Card ==================== */
   async function venueCityName(){
     try{
@@ -662,11 +641,11 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
         { location: { lat: state.venueLat, lng: state.venueLng } },
         (r, s)=> resolve(s===google.maps.GeocoderStatus.OK ? r : [])
       ));
-    const comp = (res?.[0]?.address_components || []);
-    const city = comp.find(c=>c.types.includes("locality"))?.long_name
-              || comp.find(c=>c.types.includes("postal_town"))?.long_name
-              || comp.find(c=>c.types.includes("administrative_area_level_2"))?.long_name
-              || "";
+      const comp = (res?.[0]?.address_components || []);
+      const city = comp.find(c=>c.types.includes("locality"))?.long_name
+                || comp.find(c=>c.types.includes("postal_town"))?.long_name
+                || comp.find(c=>c.types.includes("administrative_area_level_2"))?.long_name
+                || "";
       return city;
     }catch{ return ""; }
   }
@@ -720,7 +699,28 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
     `;
   }
 
-  /* ==================== Rails (incl. Sights) ==================== */
+  /* ===== Helper: ensure a rail container exists (creates on demand) ===== */
+  function ensureRail(id, title){
+    let target = document.getElementById(id);
+    if (target) {
+      const head = target.previousElementSibling?.querySelector?.('.rail-title');
+      if (head && title) head.textContent = title;
+      return target;
+    }
+    const wrap = document.getElementById('results-rails') || document.getElementById('results');
+    if (!wrap) return null;
+
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="rail-head"><h3 class="rail-title">${esc(title || '')}</h3></div>
+      <div id="${esc(id)}" class="rail-row"></div>
+    `;
+    wrap.appendChild(card);
+    return document.getElementById(id);
+  }
+
+  /* ==================== Rails (incl. new categories) ==================== */
   function uniqMerge(max, ...lists){
     const out=[]; const seen=new Set();
     for (const list of lists){
@@ -738,111 +738,140 @@ if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'cen
     if (out.length < min){ out = uniqMerge(max, out, fallback); }
     return out.slice(0, Math.max(min, Math.min(max, out.length)));
   }
-  function fillRail(id, list){
-    const row = $(id); if (!row) return;
-    if (!Array.isArray(list) || !list.length){ row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`; return; }
-   const cards = list.map(p => {
-  // normalize fields we’ll need for a reliable map URL
-  const norm = {
-    name: p.name || p.title || '',
-    address: p.address || p.formatted_address || p.vicinity || '',
-    placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-    lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : null),
-    lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : null),
-    url: p.url || '',
-    mapUrl: p.mapUrl || p.mapsUrl || ''
-  };
 
-  const name = esc(norm.name);
-  const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
-  const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-  const price = p.price || "";
-  const map = mapUrlFor(norm);            // <- build with the normalized object
-  const img = p.photoUrl || "";
-  const site = norm.url || "";
+  // updated: accepts a title, uses ensureRail, and computes clean Map hrefs
+  function fillRail(id, list, title){
+    const row = ensureRail(id, title || '');
+    if (!row) return;
 
-// store a compact payload safely (use encodeURIComponent, NOT esc)
-const dataP = encodeURIComponent(JSON.stringify({
-  name: norm.name,
-  address: norm.address,
-  placeId: norm.placeId,
-  lat: norm.lat,
-  lng: norm.lng
-}));
-
-return `
-  <article class="place-card"
-           data-p="${dataP}"
-           title="Open on Google Maps">
-    <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-    <div class="pc-body">
-      <div class="pc-title">${name}</div>
-      <div class="pc-meta">
-        ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-        ${rating ? `<span>${esc(rating)}</span>` : ""}
-        ${price ? `<span>${esc(price)}</span>` : ""}
-      </div>
-      <div class="pc-actions">
-        <a class="map-link" target="_blank" rel="noopener">Map</a>
-        ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
-      </div>
-    </div>
-  </article>
-`;
-}).join("");
-row.innerHTML = cards;
-
-// 2a) Compute clean hrefs for each Map link via DOM (avoids &amp; issues)
-qsa('.place-card', row).forEach(el => {
-  const mapA = el.querySelector('.map-link');
-  if (!mapA) return;
-
-  let payload = {};
-  try {
-    payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}'));
-  } catch {}
-
-  const href = mapUrlFor(payload);
-  if (href) {
-    mapA.href = href;             // set via DOM so it's a real URL
-  } else {
-    mapA.style.display = 'none';  // hide if we truly have no link
-  }
-});
-
-// 2b) Card click opens the same Map link; let Website clicks pass through
-qsa('.place-card', row).forEach(el => {
-  el.onclick = (e) => {
-    const a = e.target.closest('a');
-    if (a && a.dataset.link === 'site') return;
-
-    const mapA = el.querySelector('.map-link[href]');
-    if (mapA && mapA.href) {
-      window.open(mapA.href, '_blank', 'noopener');
+    if (!Array.isArray(list) || !list.length){
+      row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+      return;
     }
-  };
-});
+
+    const cards = list.map(p => {
+      const norm = {
+        name: p.name || p.title || '',
+        address: p.address || p.formatted_address || p.vicinity || '',
+        placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
+        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : null),
+        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : null),
+        url: p.url || '',
+        mapUrl: p.mapUrl || p.mapsUrl || ''
+      };
+
+      const name = esc(norm.name);
+      const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
+      const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
+      const price = p.price || "";
+      const img = p.photoUrl || "";
+      const site = norm.url || "";
+
+      const dataP = encodeURIComponent(JSON.stringify({
+        name: norm.name,
+        address: norm.address,
+        placeId: norm.placeId,
+        lat: norm.lat,
+        lng: norm.lng
+      }));
+
+      return `
+        <article class="place-card"
+                 data-p="${dataP}"
+                 title="Open on Google Maps">
+          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+          <div class="pc-body">
+            <div class="pc-title">${name}</div>
+            <div class="pc-meta">
+              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+              ${rating ? `<span>${esc(rating)}</span>` : ""}
+              ${price ? `<span>${esc(price)}</span>` : ""}
+            </div>
+            <div class="pc-actions">
+              <a class="map-link" target="_blank" rel="noopener">Map</a>
+              ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    row.innerHTML = cards;
+
+    // compute clean Map hrefs for each card
+    qsa('.place-card', row).forEach(el => {
+      const mapA = el.querySelector('.map-link');
+      if (!mapA) return;
+
+      let payload = {};
+      try {
+        payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}'));
+      } catch {}
+
+      const href = mapUrlFor(payload);
+      if (href) {
+        mapA.href = href;
+      } else {
+        mapA.style.display = 'none';
+      }
+    });
+
+    // card click opens Map; let Website clicks pass-through
+    qsa('.place-card', row).forEach(el => {
+      el.onclick = (e) => {
+        const a = e.target.closest('a');
+        if (a && a.dataset.link === 'site') return;
+
+        const mapA = el.querySelector('.map-link[href]');
+        if (mapA && mapA.href) {
+          window.open(mapA.href, '_blank', 'noopener');
+        }
+      };
+    });
   }
+
+  // NEW: builds rails per selected interest
   async function renderRails({ before, after, extras }){
-    const dessert = (extras||[]).filter(x=>/dessert/i.test(x.section||""));
-    const drinks  = (extras||[]).filter(x=>/drinks?/i.test(x.section||""));
-    const coffee  = (extras||[]).filter(x=>/coffee/i.test(x.section||""));
-    const sights  = (extras||[]).filter(x=>/sights?/i.test(x.section||"")); // NEW
+    // bucket extras
+    const bucket = {
+      dessert:   [],
+      drinks:    [],
+      coffee:    [],
+      lateNight: [],
+      nightlife: [],
+      shopping:  [],
+      sights:    [],
+      relax:     []
+    };
 
+    (extras || []).forEach(x=>{
+      const sec = (x.section || '').toLowerCase();
+      if (/dessert|sweet|ice.?cream|bak(e|ery)/i.test(sec)) bucket.dessert.push(x);
+      else if (/drink|bar|lounge|wine|cocktail/i.test(sec)) bucket.drinks.push(x);
+      else if (/coffee|cafe/i.test(sec)) bucket.coffee.push(x);
+      else if (/late.?night|after.?hours|24.?\/?7|diner|pizza|taco|noodles?/i.test(sec)) bucket.lateNight.push(x);
+      else if (/nightlife|club|karaoke|live music|entertainment/i.test(sec)) bucket.nightlife.push(x);
+      else if (/shop|boutique|record|vintage|market/i.test(sec)) bucket.shopping.push(x);
+      else if (/sight|landmark|view|park|museum|gallery/i.test(sec)) bucket.sights.push(x);
+      else if (/relax|spa|recover|wellness|tea house|soak/i.test(sec)) bucket.relax.push(x);
+    });
+
+    // core dinner rail
     const dinnerRow  = pickRange(before, 5, 10, after);
-    const dessertRow = pickRange(uniqMerge(10, dessert, after), 5, 10, before);
-    const drinksRow  = pickRange(uniqMerge(10, drinks, after), 5, 10, before);
-    const coffeeRow  = pickRange(coffee, 5, 10);
-    const sightsRow  = pickRange(sights, 5, 10); // NEW
+    fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
 
-    fillRail('row-dinner', dinnerRow);
-    fillRail('row-dessert', dessertRow);
-    fillRail('row-drinks', drinksRow);
-    fillRail('row-coffee', coffeeRow);
-    fillRail('row-sights', sightsRow); // NEW
+    // optional rails based on user interests
+    if (state.interests.coffee)    fillRail('row-coffee',    pickRange(bucket.coffee,    5, 10), 'Coffee near the venue');
+    if (state.interests.drinks)    fillRail('row-drinks',    pickRange(bucket.drinks,    5, 10), 'Drinks & Lounge near the venue');
+    if (state.interests.dessert)   fillRail('row-dessert',   pickRange(bucket.dessert,   5, 10), 'Dessert near the venue');
+    if (state.interests.lateNight) fillRail('row-latenight', pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats near the venue');
+    if (state.interests.nightlife) fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment near the venue');
+    if (state.interests.shopping)  fillRail('row-shopping',  pickRange(bucket.shopping,  5, 10), 'Shopping near the venue');
+    if (state.interests.sights)    fillRail('row-sights',    pickRange(bucket.sights,    5, 10), 'Sights & Landmarks near the venue');
+    if (state.interests.relax)     fillRail('row-relax',     pickRange(bucket.relax,     5, 10), 'Relax & Recover near the venue');
   }
 
-  /* ==================== Custom picks ==================== */
+  /* ==================== Custom picks (helpers kept; UI removed) ==================== */
   function renderCustomPills(){
     const wrap = $('custom-pills'); if (!wrap) return;
     wrap.innerHTML = state.customStops.map((p, idx)=> `

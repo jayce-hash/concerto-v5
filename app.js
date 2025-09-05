@@ -537,7 +537,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
   function parseShowDateTimeISO(){
     const now = new Date();
-    the const hm = parseHM(state.showTime) || {h:19,m:0};
+    const hm = parseHM(state.showTime) || {h:19,m:0};
     if (state.showDate){
       const [Y,M,D] = state.showDate.split('-').map(n=>parseInt(n,10));
       return new Date(Y, M-1, D, hm.h, hm.m).toISOString();

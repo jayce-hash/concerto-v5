@@ -371,3 +371,44 @@ body.page-transition::before{
   .results-header{ flex-direction: column; align-items: center; }
   .results-header > div:first-child{ width: 100%; text-align: center; }
 }
+
+/* Label spacing above inputs & “bubbles” */
+.form-grid label {
+  display:block;
+  margin: 0 0 8px;          /* space between label and control */
+  line-height: 1.2;
+}
+
+/* Consistent pill (“bubble”) sizing and spacing */
+.radio-group {
+  display:flex;
+  flex-wrap: wrap;
+  gap: 8px;                 /* equal space between bubbles */
+}
+
+.radio-group .pill {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 8px 12px;
+  min-height: 36px;         /* consistent height */
+  border-radius: 999px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* segmented variant still uses the same base sizing */
+.radio-group.segmented .pill { border-radius: 8px; }
+
+/* inputs (“answer bubbles”) look consistent too */
+.form-grid input[type="text"],
+.form-grid input[type="date"],
+.form-grid input[type="time"],
+.form-grid input[type="number"],
+.form-grid select {
+  height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+}

@@ -33,16 +33,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     eatWhen: "both",
     foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
     budget: "$$", tone: "balanced",
-    interests: {
-      coffee:false,
-      drinks:false,          // Drinks & Lounge
-      dessert:false,
-      lateNight:false,       // Late-Night Eats
-      nightlife:false,       // Nightlife & Entertainment
-      shopping:false,
-      sights:false,          // Sights & Landmarks
-      relax:false            // Relax & Recover
-    },
+    interests: { coffee:false, drinks:false, dessert:false, sights:false, lateNight:false, nightlife:false, shopping:false, relax:false }
     arrivalBufferMin: 45, doorsBeforeMin: 90,
     customStops: []
   };

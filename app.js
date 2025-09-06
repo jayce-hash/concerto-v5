@@ -831,46 +831,46 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
 
   // NEW: builds rails per selected interest
-  async function renderRails({ before, after, extras }){
-    // bucket extras
-    const bucket = {
-      dessert:   [],
-      drinks:    [],
-      coffee:    [],
-      lateNight: [],
-      nightlife: [],
-      shopping:  [],
-      sights:    [],
-      relax:     []
-    };
+async function renderRails({ before, after, extras }){
+  // bucket extras
+  const bucket = {
+    dessert:   [],
+    drinks:    [],
+    coffee:    [],
+    lateNight: [],
+    nightlife: [],
+    shopping:  [],
+    sights:    [],
+    relax:     []
+  };
 
-    (extras || []).forEach(x=>{
-      const sec = (x.section || '').toLowerCase();
-      if (/dessert|sweet|ice.?cream|bak(e|ery)/i.test(sec)) bucket.dessert.push(x);
-      else if (/drink|bar|lounge|wine|cocktail/i.test(sec)) bucket.drinks.push(x);
-      else if (/coffee|cafe/i.test(sec)) bucket.coffee.push(x);
-      else if (/late.?night|after.?hours|24.?\/?7|diner|pizza|taco|noodles?/i.test(sec)) bucket.lateNight.push(x);
-      else if (/nightlife|club|karaoke|live music|entertainment/i.test(sec)) bucket.nightlife.push(x);
-      else if (/shop|boutique|record|vintage|market/i.test(sec)) bucket.shopping.push(x);
-      else if (/sight|landmark|view|park|museum|gallery/i.test(sec)) bucket.sights.push(x);
-      else if (/relax|spa|recover|wellness|tea house|soak/i.test(sec)) bucket.relax.push(x);
-    });
+  (extras || []).forEach(x=>{
+    const sec = (x.section || '').toLowerCase();
+    if (/dessert|sweet|ice.?cream|bak(e|ery)/i.test(sec)) bucket.dessert.push(x);
+    else if (/drink|bar|lounge|wine|cocktail/i.test(sec)) bucket.drinks.push(x);
+    else if (/coffee|cafe/i.test(sec)) bucket.coffee.push(x);
+    else if (/late.?night|after.?hours|24.?\/?7|diner|pizza|taco|noodles?/i.test(sec)) bucket.lateNight.push(x);
+    else if (/nightlife|club|karaoke|live music|entertainment/i.test(sec)) bucket.nightlife.push(x);
+    else if (/shop|boutique|record|vintage|market/i.test(sec)) bucket.shopping.push(x);
+    else if (/sight|landmark|view|park|museum|gallery/i.test(sec)) bucket.sights.push(x);
+    else if (/relax|spa|recover|wellness|tea house|soak/i.test(sec)) bucket.relax.push(x);
+  });
 
-    // core dinner rail
-    const dinnerRow  = pickRange(before, 5, 10, after);
-    fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
+  // core dinner rail
+  const dinnerRow = pickRange(before, 5, 10, after);
+  fillRail('row-dinner', dinnerRow);
 
-    // optional rails based on user interests
-    if (state.interests.coffee)    fillRail('row-coffee',    pickRange(bucket.coffee,    5, 10), 'Coffee near the venue');
-    if (state.interests.drinks)    fillRail('row-drinks',    pickRange(bucket.drinks,    5, 10), 'Drinks & Lounge near the venue');
-    if (state.interests.dessert)   fillRail('row-dessert',   pickRange(bucket.dessert,   5, 10), 'Dessert near the venue');
-    if (state.interests.lateNight) fillRail('row-latenight', pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats near the venue');
-    if (state.interests.nightlife) fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment near the venue');
-    if (state.interests.shopping)  fillRail('row-shopping',  pickRange(bucket.shopping,  5, 10), 'Shopping near the venue');
-    if (state.interests.sights)    fillRail('row-sights',    pickRange(bucket.sights,    5, 10), 'Sights & Landmarks near the venue');
-    if (state.interests.relax)     fillRail('row-relax',     pickRange(bucket.relax,     5, 10), 'Relax & Recover near the venue');
-  }
-
+  // optional rails based on user interests (IDs must match your HTML)
+  if (state.interests.coffee)    fillRail('row-coffee',    pickRange(bucket.coffee,    5, 10));
+  if (state.interests.drinks)    fillRail('row-drinks',    pickRange(bucket.drinks,    5, 10));
+  if (state.interests.dessert)   fillRail('row-dessert',   pickRange(bucket.dessert,   5, 10));
+  if (state.interests.lateNight) fillRail('row-late',      pickRange(bucket.lateNight, 5, 10));  // <-- fixed ID
+  if (state.interests.nightlife) fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10));
+  if (state.interests.shopping)  fillRail('row-shopping',  pickRange(bucket.shopping,  5, 10));
+  if (state.interests.sights)    fillRail('row-sights',    pickRange(bucket.sights,    5, 10));
+  if (state.interests.relax)     fillRail('row-relax',     pickRange(bucket.relax,     5, 10));
+}
+  
   /* ==================== Custom picks (helpers kept; UI removed) ==================== */
   function renderCustomPills(){
     const wrap = $('custom-pills'); if (!wrap) return;

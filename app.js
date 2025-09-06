@@ -27,16 +27,19 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   const steps = ["concert","stay","dining","activities"];
 
   const state = window.__concertoState = {
-    artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
-    showDate: "", showTime: "",
-    hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
-    eatWhen: "both",
-    foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
-    budget: "$$", tone: "balanced",
-    interests: { coffee:false, drinks:false, dessert:false, sights:false, lateNight:false, nightlife:false, shopping:false, relax:false }
-    arrivalBufferMin: 45, doorsBeforeMin: 90,
-    customStops: []
-  };
+  artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
+  showDate: "", showTime: "",
+  hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
+  eatWhen: "both",
+  foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
+  budget: "$$", tone: "balanced",
+  interests: { 
+    coffee:false, drinks:false, dessert:false, sights:false, 
+    lateNight:false, nightlife:false, shopping:false, relax:false 
+  }, // <-- this comma is required
+  arrivalBufferMin: 45, doorsBeforeMin: 90,
+  customStops: []
+};
 
   /* ==================== Nav ==================== */
   $('btn-start')?.addEventListener('click', () => { show('form'); renderStep(); });

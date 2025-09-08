@@ -442,3 +442,29 @@ body.page-transition::before{
   font-weight: 600;
   min-width: 3.5rem;           /* ensures times don’t jump around */
 }
+
+/* --- Centered tour card: kill the old vertical rule & padding --- */
+.schedule {
+  padding-left: 0 !important;      /* stop pushing the card right */
+  display: flex;                    /* already present, keep centering */
+  justify-content: center;
+}
+.schedule::before {
+  content: none !important;         /* remove the faint grey line */
+}
+
+/* Keep the tour card neatly centered on all screens */
+.tour-card{
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto 18px;
+  display: block;
+  text-align: left;
+}
+@media (max-width: 720px){
+  .tour-card{
+    max-width: 94vw;               /* a bit more breathing room on phones */
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

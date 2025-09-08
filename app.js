@@ -460,6 +460,51 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return '';
   }
 
+  /* ========= NEW: Places fallback to keep selected rails populated ========= */
+  async function fetchPlacesExtras({ lat, lng, mapType, keyword, take=12 }) {
+    if (!(lat && lng)) return [];
+    await waitForPlaces();
+
+    const svc = new google.maps.places.PlacesService(document.createElement('div'));
+    const center = new google.maps.LatLng(lat, lng);
+
+    const nearbyParams = {
+      location: center,
+      rankBy: google.maps.places.RankBy.DISTANCE,
+      type: mapType || undefined,
+      keyword: keyword || undefined
+    };
+
+    const results = await new Promise(resolve => {
+      svc.nearbySearch(nearbyParams, (res, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && Array.isArray(res)) resolve(res);
+        else resolve([]);
+      });
+    });
+
+    return results.slice(0, take).map(r => ({
+      name: r.name,
+      address: r.vicinity || r.formatted_address || "",
+      placeId: r.place_id,
+      lat: r.geometry?.location?.lat?.() ?? null,
+      lng: r.geometry?.location?.lng?.() ?? null,
+      rating: typeof r.rating === 'number' ? r.rating : undefined,
+      price: r.price_level ? '$'.repeat(r.price_level) : '',
+      photoUrl: (r.photos && r.photos[0]) ? r.photos[0].getUrl({ maxWidth: 640, maxHeight: 480 }) : '',
+      section: keyword || mapType || 'extra'
+    }));
+  }
+  function placesParamsFor(category){
+    switch (category){
+      case 'nightlife': return { mapType: 'night_club',    keyword: 'nightlife club live music' };
+      case 'shopping':  return { mapType: 'shopping_mall', keyword: 'shopping boutique vintage record store' };
+      case 'relax':     return { mapType: 'spa',           keyword: 'spa wellness sauna massage' };
+      case 'lateNight': return { mapType: 'restaurant',    keyword: 'late night 24 hours diner' };
+      default:          return { mapType: undefined,       keyword: undefined };
+    }
+  }
+  /* ========================================================================= */
+
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{
@@ -824,7 +869,7 @@ function ensureRail(id, title){
     });
   }
 
-  // NEW: builds rails per selected interest (broad matching over multiple fields)
+  // NEW: builds rails per selected interest (broad matching over multiple fields + fallback)
 async function renderRails({ before, after, extras }) {
   // helper: build a searchable string from many possible fields
   const haystack = (x) => {
@@ -864,9 +909,9 @@ async function renderRails({ before, after, extras }) {
   // bucket the extras using the haystack
   (extras || []).forEach(x => {
     const h = haystack(x);
-    if (rx.dessert.test(h))      bucket.dessert.push(x);
-    else if (rx.drinks.test(h))  bucket.drinks.push(x);
-    else if (rx.coffee.test(h))  bucket.coffee.push(x);
+    if (rx.dessert.test(h))        bucket.dessert.push(x);
+    else if (rx.drinks.test(h))    bucket.drinks.push(x);
+    else if (rx.coffee.test(h))    bucket.coffee.push(x);
     else if (rx.lateNight.test(h)) bucket.lateNight.push(x);
     else if (rx.nightlife.test(h)) bucket.nightlife.push(x);
     else if (rx.shopping.test(h))  bucket.shopping.push(x);
@@ -874,36 +919,43 @@ async function renderRails({ before, after, extras }) {
     else if (rx.relax.test(h))     bucket.relax.push(x);
   });
 
+  // If a selected bucket is thin, fetch a small Places set to backfill
+  async function ensureMin(categoryKey, min=5){
+    if (!state.interests[categoryKey]) return; // only for selected rails
+    if ((bucket[categoryKey] || []).length >= min) return;
+
+    const { mapType, keyword } = placesParamsFor(categoryKey);
+    const fetched = await fetchPlacesExtras({
+      lat: state.venueLat, lng: state.venueLng,
+      mapType, keyword, take: 14
+    });
+    bucket[categoryKey] = uniqMerge(14, bucket[categoryKey], fetched);
+  }
+
+  await Promise.all([
+    ensureMin('coffee'),
+    ensureMin('drinks'),
+    ensureMin('dessert'),
+    ensureMin('lateNight'),
+    ensureMin('nightlife'),
+    ensureMin('shopping'),
+    ensureMin('sights'),
+    ensureMin('relax')
+  ]);
+
   // base dinner rail
   const dinnerRow = pickRange(before, 5, 10, after);
   fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
 
-  // optional rails based on user interests (IDs must exist or are created by ensureRail)
-  if (state.interests.coffee) {
-    fillRail('row-coffee', pickRange(bucket.coffee, 5, 10), 'Coffee & Cafés');
-  }
-  if (state.interests.drinks) {
-    fillRail('row-drinks', pickRange(bucket.drinks, 5, 10), 'Drinks & Lounges');
-  }
-  if (state.interests.dessert) {
-    fillRail('row-dessert', pickRange(bucket.dessert, 5, 10), 'Dessert');
-  }
-  if (state.interests.lateNight) {
-    // use the id that matches your HTML; if you don't have one, ensureRail will create it
-    fillRail('row-late', pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats');
-  }
-  if (state.interests.nightlife) {
-    fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment');
-  }
-  if (state.interests.shopping) {
-    fillRail('row-shopping', pickRange(bucket.shopping, 5, 10), 'Shopping');
-  }
-  if (state.interests.sights) {
-    fillRail('row-sights', pickRange(bucket.sights, 5, 10), 'Sights & Landmarks');
-  }
-  if (state.interests.relax) {
-    fillRail('row-relax', pickRange(bucket.relax, 5, 10), 'Relax & Recover');
-  }
+  // optional rails based on user interests (IDs must match your HTML)
+  if (state.interests.coffee)    fillRail('row-coffee',  pickRange(bucket.coffee,    5, 10), 'Coffee & Cafés');
+  if (state.interests.drinks)    fillRail('row-drinks',  pickRange(bucket.drinks,    5, 10), 'Drinks & Lounges');
+  if (state.interests.dessert)   fillRail('row-dessert', pickRange(bucket.dessert,   5, 10), 'Dessert');
+  if (state.interests.lateNight) fillRail('row-late',    pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats'); // <-- aligned to HTML
+  if (state.interests.nightlife) fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment');
+  if (state.interests.shopping)  fillRail('row-shopping',  pickRange(bucket.shopping,  5, 10), 'Shopping');
+  if (state.interests.sights)    fillRail('row-sights',    pickRange(bucket.sights,    5, 10), 'Sights & Landmarks');
+  if (state.interests.relax)     fillRail('row-relax',     pickRange(bucket.relax,     5, 10), 'Relax & Recover');
 
   // helpful once while tuning: see what’s coming through
   // console.log('extras sections:', (extras||[]).map(x => x.section || x.category || x.types));

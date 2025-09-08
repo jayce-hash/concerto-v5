@@ -1,4 +1,4 @@
-// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.2)
+// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.3)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { shareLinkOrCopy, toICS } from './export-tools.js';
@@ -6,7 +6,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v8.0.2 loaded");
+  console.log("Concerto+ app.js v8.0.3 loaded");
 
   const $  = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
@@ -33,25 +33,13 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     eatWhen: "both",
     foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
     budget: "$$", tone: "balanced",
-    interests: { 
-      coffee:false, drinks:false, dessert:false, sights:false, 
-      lateNight:false, nightlife:false, shopping:false, relax:false 
-    }, // <-- this comma is required
+    interests: {
+      coffee:false, drinks:false, dessert:false, sights:false,
+      lateNight:false, nightlife:false, shopping:false, relax:false
+    }, // <-- trailing comma required
     arrivalBufferMin: 45, doorsBeforeMin: 90,
     customStops: []
   };
-
-  // ---- rail spec (single source of truth for ids & titles) ----
-  const RAILS = [
-    { key: 'dessert',   id: 'row-dessert',   title: 'Dessert' },
-    { key: 'drinks',    id: 'row-drinks',    title: 'Drinks & Lounges' },
-    { key: 'coffee',    id: 'row-coffee',    title: 'Coffee & Cafés' },
-    { key: 'lateNight', id: 'row-late',      title: 'Late-Night Eats' }, // HTML uses row-late
-    { key: 'nightlife', id: 'row-nightlife', title: 'Nightlife & Entertainment' },
-    { key: 'shopping',  id: 'row-shopping',  title: 'Shopping' },
-    { key: 'sights',    id: 'row-sights',    title: 'Sights & Landmarks' },
-    { key: 'relax',     id: 'row-relax',     title: 'Relax & Recover' }
-  ];
 
   /* ==================== Nav ==================== */
   $('btn-start')?.addEventListener('click', () => { show('form'); renderStep(); });
@@ -431,9 +419,9 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }).catch(()=>{});
   }
 
+  /* ---------- mapUrl synthesis ---------- */
   function mapUrlFor(p) {
     const obj = (p && typeof p === 'object') ? p : {};
-
     if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
 
     const placeId =
@@ -453,7 +441,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     if (placeId) {
       return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
     }
-
     const q = [name, address].filter(Boolean).join(' ').trim();
     if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 
@@ -462,7 +449,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
     }
-
     return '';
   }
 
@@ -595,6 +581,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         catch { return ''; }
       })();
 
+      // force the container itself to be a centered column and take full width
       const ctx = $('results-context');
       ctx.style.display = 'flex';
       ctx.style.flexDirection = 'column';
@@ -602,6 +589,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       ctx.style.textAlign = 'center';
       ctx.style.width = '100%';
 
+      // ensure the parent block spans the row and centers content
       const ctxParent = $('results-context')?.parentElement;
       if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'center'; }
 
@@ -611,6 +599,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
       `;
 
+      // small, separate note centered under the header
       const note = $('intro-line');
       note.style.textAlign = 'center';
       note.style.fontSize = '0.9rem';
@@ -696,15 +685,15 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     `;
   }
 
-  /* ===== Helper: rail DOM helpers ===== */
+  /* ===== Helper: ensure a rail container exists, show/hide ===== */
   function ensureRail(id, title){
     let target = document.getElementById(id);
     if (target) {
       const head = target.closest('.rail')?.querySelector('.rail-title');
       if (head && title) head.textContent = title;
+      target.closest('.rail').style.display = ''; // ensure visible
       return target;
     }
-    // Append to the existing results container that holds the rails
     const wrap = document.querySelector('#screen-results .container.wide');
     if (!wrap) return null;
 
@@ -717,33 +706,21 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     wrap.appendChild(section);
     return document.getElementById(id);
   }
-  const getRailSection = (id) => {
-    const row = document.getElementById(id);
-    return row ? row.closest('.rail') : null;
-  };
-  const hideRail = (id) => {
-    const sec = getRailSection(id);
-    if (sec) sec.style.display = 'none';
-    const row = document.getElementById(id);
-    if (row) row.innerHTML = '';
-  };
-  const showRail = (id, title) => {
-    const row = ensureRail(id, title || '');
-    const sec = getRailSection(id);
-    if (sec) sec.style.display = '';
-    return row;
-  };
-  const clearRail = (id) => {
-    const row = document.getElementById(id);
-    if (row) row.innerHTML = '';
-  };
+  function hideRail(id){
+    const el = document.getElementById(id);
+    if (el) { const s = el.closest('.rail'); if (s) s.style.display = 'none'; }
+  }
+  function showRail(id){
+    const el = document.getElementById(id);
+    if (el) { const s = el.closest('.rail'); if (s) s.style.display = ''; }
+  }
 
   /* ==================== Rails (incl. new categories) ==================== */
   function uniqMerge(max, ...lists){
     const out=[]; const seen=new Set();
     for (const list of lists){
       for (const p of (list||[])){
-        const k = (p.name||"")+"|"+(p.mapUrl||"");
+        const k = (p.name||"")+"|"+(p.mapUrl||"")+ '|' + (p.placeId||p.place_id||'');
         if (seen.has(k)) continue;
         seen.add(k); out.push(p);
         if (out.length>=max) return out;
@@ -757,57 +734,47 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return out.slice(0, Math.max(min, Math.min(max, out.length)));
   }
 
-  // distance helper (miles)
-  function milesBetween(lat1, lng1, lat2, lng2){
-    if (lat1==null || lng1==null || lat2==null || lng2==null) return null;
-    const toRad = (x)=> x*Math.PI/180;
+  /* ---------- distance helper ---------- */
+  function milesBetween(aLat, aLng, bLat, bLng){
+    if ([aLat,aLng,bLat,bLng].some(v => typeof v !== 'number' || Number.isNaN(v))) return null;
+    const toRad = (x)=> x * Math.PI/180;
     const R = 3958.8; // miles
-    const dLat = toRad(lat2-lat1);
-    const dLng = toRad(lng2-lng1);
-    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
-    const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R*c;
+    const dLat = toRad(bLat - aLat);
+    const dLng = toRad(bLng - aLng);
+    const sa = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
   }
 
-  // updated: accepts a title, uses ensureRail, and computes clean Map hrefs
+  // updated: accepts a title, uses ensureRail, computes Map hrefs, distance, and lazy website enrich
   function fillRail(id, list, title){
-    // always start hidden; only show when we actually have items
-    clearRail(id);
+    const row = ensureRail(id, title || '');
+    if (!row) return;
 
     if (!Array.isArray(list) || !list.length){
-      hideRail(id);
+      row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
       return;
     }
-
-    // compute distances when possible
-    list.forEach(p=>{
-      if (p.distance == null && state.venueLat != null && state.venueLng != null){
-        const lat = (typeof p.lat === 'number') ? p.lat : (p.location?.lat ?? null);
-        const lng = (typeof p.lng === 'number') ? p.lng : (p.location?.lng ?? null);
-        const mi = milesBetween(state.venueLat, state.venueLng, lat, lng);
-        if (mi != null) p.distance = mi;
-      }
-    });
-
-    const row = showRail(id, title || '');
-    if (!row) return;
 
     const cards = list.map(p => {
       const norm = {
         name: p.name || p.title || '',
         address: p.address || p.formatted_address || p.vicinity || '',
         placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : null),
-        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : null),
-        url: p.url || '',
+        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
+        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
+        url: p.url || p.website || '',
         mapUrl: p.mapUrl || p.mapsUrl || ''
       };
 
+      // distance
+      let dist = '';
+      const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
+      if (miles != null) dist = miles.toFixed(1);
+
       const name = esc(norm.name);
-      const dist = (typeof p.distance === 'number') ? p.distance.toFixed(1) : "";
       const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-      const price = p.price || "";
-      const img = p.photoUrl || "";
+      const price = (p.price || (typeof p.price_level === 'number' ? '$'.repeat(Math.max(1, Math.min(4, p.price_level))) : ""));
+      const img = p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "");
       const site = norm.url || "";
 
       const dataP = encodeURIComponent(JSON.stringify({
@@ -819,9 +786,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       }));
 
       return `
-        <article class="place-card"
-                 data-p="${dataP}"
-                 title="Open on Google Maps">
+        <article class="place-card" data-p="${dataP}" ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''} title="Open on Google Maps">
           <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
           <div class="pc-body">
             <div class="pc-title">${name}</div>
@@ -832,7 +797,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
             </div>
             <div class="pc-actions">
               <a class="map-link" target="_blank" rel="noopener">Map</a>
-              ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
+              ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : `<span class="no-site"></span>`}
             </div>
           </div>
         </article>
@@ -845,18 +810,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     qsa('.place-card', row).forEach(el => {
       const mapA = el.querySelector('.map-link');
       if (!mapA) return;
-
       let payload = {};
-      try {
-        payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}'));
-      } catch {}
-
+      try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
       const href = mapUrlFor(payload);
-      if (href) {
-        mapA.href = href;
-      } else {
-        mapA.style.display = 'none';
-      }
+      if (href) mapA.href = href; else mapA.style.display = 'none';
     });
 
     // card click opens Map; let Website clicks pass-through
@@ -864,36 +821,97 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       el.onclick = (e) => {
         const a = e.target.closest('a');
         if (a && a.dataset.link === 'site') return;
-
         const mapA = el.querySelector('.map-link[href]');
-        if (mapA && mapA.href) {
-          window.open(mapA.href, '_blank', 'noopener');
-        }
+        if (mapA && mapA.href) window.open(mapA.href, '_blank', 'noopener');
       };
     });
+
+    // lazy-enrich missing website links (limit to ~6 calls per rail)
+    lazyAttachWebsites(row, 6);
   }
 
-  // helper to hide everything then only show/fill what’s selected
-  function resetRailsForSelection(selectedKeys){
-    // always clear dinner rail container; it is always shown
-    clearRail('row-dinner');
+  async function lazyAttachWebsites(rowEl, maxLookups=6){
+    try{
+      await waitForPlaces();
+      const svc = new google.maps.places.PlacesService(document.createElement('div'));
+      const tasks = [];
+      qsa('.place-card', rowEl).some((el, idx)=>{
+        if (idx >= maxLookups) return true;
+        const hasSite = !!el.querySelector('[data-link="site"]');
+        const pid = el.getAttribute('data-pid');
+        if (!hasSite && pid){
+          tasks.push(new Promise((resolve)=> {
+            svc.getDetails({ placeId: pid, fields: ['website'] }, (d, s)=>{
+              if (s === google.maps.places.PlacesServiceStatus.OK && d && d.website){
+                const actions = el.querySelector('.pc-actions');
+                const span = actions?.querySelector('.no-site');
+                if (actions){
+                  if (span) span.remove();
+                  const a = document.createElement('a');
+                  a.textContent = "Website";
+                  a.href = d.website; a.target = "_blank"; a.rel="noopener"; a.dataset.link="site";
+                  actions.appendChild(a);
+                }
+              }
+              resolve();
+            });
+          }));
+        }
+        return false;
+      });
+      await Promise.allSettled(tasks);
+    }catch{}
+  }
 
-    // clear + hide all interest rails
-    RAILS.forEach(({id}) => hideRail(id));
+  /* ---------- Fallback search for empty categories (ensures big cities populate) ---------- */
+  function fallbackQueryFor(cat){
+    switch(cat){
+      case 'coffee':    return { type:'cafe', keyword:'coffee' };
+      case 'drinks':    return { type:'bar', keyword:'cocktail bar' };
+      case 'dessert':   return { type:'bakery', keyword:'dessert' };
+      case 'lateNight': return { type:'restaurant', keyword:'late night food' };
+      case 'nightlife': return { type:'night_club', keyword:'nightlife' };
+      case 'shopping':  return { type:'shopping_mall', keyword:'shopping' };
+      case 'sights':    return { type:'tourist_attraction', keyword:'landmark' };
+      case 'relax':     return { type:'spa', keyword:'spa' };
+      default:          return { type:'restaurant', keyword:'' };
+    }
+  }
+  async function placesFallback(cat, max=10){
+    if (!(state.venueLat && state.venueLng)) return [];
+    await waitForPlaces();
+    const svc = new google.maps.places.PlacesService(document.createElement('div'));
+    const center = new google.maps.LatLng(state.venueLat, state.venueLng);
+    const q = fallbackQueryFor(cat);
 
-    // pre-show containers for selected keys (title will be set by fillRail)
-    RAILS.forEach(({key, id, title})=>{
-      if (selectedKeys.has(key)) showRail(id, title);
+    const nearbyParams = {
+      location: center,
+      rankBy: google.maps.places.RankBy.DISTANCE,
+      type: q.type || undefined,
+      keyword: q.keyword || undefined
+    };
+
+    const res = await new Promise((resolve)=> {
+      svc.nearbySearch(nearbyParams, (r, s)=>{
+        if (s === google.maps.places.PlacesServiceStatus.OK && Array.isArray(r)) resolve(r.slice(0, max));
+        else resolve([]);
+      });
     });
+
+    return (res||[]).map(p => ({
+      name: p.name,
+      address: p.vicinity || p.formatted_address || "",
+      placeId: p.place_id,
+      lat: p.geometry?.location?.lat?.(),
+      lng: p.geometry?.location?.lng?.(),
+      rating: p.rating,
+      price_level: p.price_level,
+      photos: p.photos
+    }));
   }
 
-  // NEW: builds rails per selected interest (broad matching over multiple fields)
+  // NEW: builds rails per selected interest (broad matching + fallback)
   async function renderRails({ before, after, extras }) {
-    const selectedKeys = new Set(Object.entries(state.interests).filter(([,v])=>v).map(([k])=>k));
-
-    // Reset/hide everything first so no leftovers from previous runs
-    resetRailsForSelection(selectedKeys);
-
     // helper: build a searchable string from many possible fields
     const haystack = (x) => {
       const bits = [];
@@ -917,7 +935,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       relax:     []
     };
 
-    // broadened patterns (Google/Places common types + synonyms)
+    // broadened patterns
     const rx = {
       dessert:   /(dessert|sweet|ice.?cream|gelato|bak(?:e|ery)|pastry|donut|cake|choco|cookie|creamery)/i,
       drinks:    /(drink|bar|pub|lounge|wine|cocktail|taproom|speakeasy|gastropub|brewery)/i,
@@ -929,34 +947,58 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       relax:     /(relax|spa|recover|wellness|tea\s?house|onsen|soak|bathhouse|massage|sauna|yoga|float)/i
     };
 
-    // bucket the extras using the haystack
+    // bucket the extras
     (extras || []).forEach(x => {
       const h = haystack(x);
-      if      (rx.dessert.test(h))    bucket.dessert.push(x);
-      else if (rx.drinks.test(h))     bucket.drinks.push(x);
-      else if (rx.coffee.test(h))     bucket.coffee.push(x);
-      else if (rx.lateNight.test(h))  bucket.lateNight.push(x);
-      else if (rx.nightlife.test(h))  bucket.nightlife.push(x);
-      else if (rx.shopping.test(h))   bucket.shopping.push(x);
-      else if (rx.sights.test(h))     bucket.sights.push(x);
-      else if (rx.relax.test(h))      bucket.relax.push(x);
+      if (rx.dessert.test(h))        bucket.dessert.push(x);
+      else if (rx.drinks.test(h))    bucket.drinks.push(x);
+      else if (rx.coffee.test(h))    bucket.coffee.push(x);
+      else if (rx.lateNight.test(h)) bucket.lateNight.push(x);
+      else if (rx.nightlife.test(h)) bucket.nightlife.push(x);
+      else if (rx.shopping.test(h))  bucket.shopping.push(x);
+      else if (rx.sights.test(h))    bucket.sights.push(x);
+      else if (rx.relax.test(h))     bucket.relax.push(x);
     });
 
-    // base dinner rail is always shown
+    // Always render dinner
     const dinnerRow = pickRange(before, 5, 10, after);
     fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
 
-    // selected rails only — populate and (auto)show/hide per results
-    if (selectedKeys.has('coffee'))    fillRail('row-coffee',    pickRange(bucket.coffee,    5, 10), 'Coffee & Cafés');
-    if (selectedKeys.has('drinks'))    fillRail('row-drinks',    pickRange(bucket.drinks,    5, 10), 'Drinks & Lounges');
-    if (selectedKeys.has('dessert'))   fillRail('row-dessert',   pickRange(bucket.dessert,   5, 10), 'Dessert');
-    if (selectedKeys.has('lateNight')) fillRail('row-late',      pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats'); // id matches HTML
-    if (selectedKeys.has('nightlife')) fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment');
-    if (selectedKeys.has('shopping'))  fillRail('row-shopping',  pickRange(bucket.shopping,  5, 10), 'Shopping');
-    if (selectedKeys.has('sights'))    fillRail('row-sights',    pickRange(bucket.sights,    5, 10), 'Sights & Landmarks');
-    if (selectedKeys.has('relax'))     fillRail('row-relax',     pickRange(bucket.relax,     5, 10), 'Relax & Recover');
+    // Hide all optional rails initially; show only selected
+    const allRails = ['row-dessert','row-drinks','row-sights','row-coffee','row-nightlife','row-shopping','row-late','row-relax'];
+    allRails.forEach(hideRail);
+
+    // For each selected category: try bucket → fallback → render
+    const plan = [
+      ['coffee',    'row-coffee',    'Coffee & Cafés'],
+      ['drinks',    'row-drinks',    'Drinks & Lounges'],
+      ['dessert',   'row-dessert',   'Dessert'],
+      ['lateNight', 'row-late',      'Late-Night Eats'],
+      ['nightlife', 'row-nightlife', 'Nightlife & Entertainment'],
+      ['shopping',  'row-shopping',  'Shopping'],
+      ['sights',    'row-sights',    'Sights & Landmarks'],
+      ['relax',     'row-relax',     'Relax & Recover']
+    ];
+
+    for (const [key, id, title] of plan){
+      if (!state.interests[key]) { hideRail(id); continue; }
+
+      // preferred picks
+      let picks = pickRange(bucket[key], 5, 10);
+
+      // fallback if empty
+      if (!picks.length) {
+        try {
+          const fb = await placesFallback(key, 10);
+          picks = pickRange(fb, 5, 10);
+        } catch {}
+      }
+
+      showRail(id);
+      fillRail(id, picks, title);
+    }
   }
-  
+
   /* ==================== Custom picks (helpers kept; UI removed) ==================== */
   function renderCustomPills(){
     const wrap = $('custom-pills'); if (!wrap) return;

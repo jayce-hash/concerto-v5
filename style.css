@@ -412,3 +412,33 @@ body.page-transition::before{
   border: 1px solid var(--border-color, #e0e0e0);
   border-radius: 8px;
 }
+
+/* Fix spacing/alignment for the "Your Night" tour card */
+.tour-card {
+  margin: 0 auto;              /* center the card */
+  max-width: 95%;              /* prevent overflow on small screens */
+  box-sizing: border-box;      /* include padding in width calc */
+}
+
+.tour-head, 
+.tour-steps {
+  padding: 0 1rem;             /* consistent left/right padding */
+  text-align: left;            /* keep step text aligned left */
+}
+
+.tour-title {
+  text-align: center;          /* center the "Your Night in X" title */
+  margin-bottom: 0.75rem;
+}
+
+.tstep {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;     /* align times/labels cleanly */
+  margin-bottom: 0.5rem;
+}
+
+.t-time {
+  font-weight: 600;
+  min-width: 3.5rem;           /* ensures times don’t jump around */
+}

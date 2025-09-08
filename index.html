@@ -48,6 +48,15 @@
       .hero{ min-height: 84vh; }
       #btn-start.btn.btn-primary{ font-size: 1.08rem; }
     }
+
+    /* -------------------------------------------
+       NEW: Hide any rail that ends up empty.
+       Works in current Safari/Chrome/Edge/Firefox.
+       ------------------------------------------- */
+    /* If the cards container is empty, hide the rail */
+    .rail:has(.cards-rail:empty) { display: none; }
+    /* If JS wrote the "No options found." placeholder, hide the rail */
+    .rail:has(.cards-rail .muted) { display: none; }
   </style>
 </head>
 <body>
@@ -150,36 +159,36 @@
       </section>
 
       <!-- Nightlife & Entertainment -->
-<section class="rail">
-  <header class="rail-head">
-    <h3 class="rail-title">Nightlife &amp; entertainment</h3>
-  </header>
-  <div id="row-nightlife" class="h-scroll cards-rail"></div>
-</section>
+      <section class="rail">
+        <header class="rail-head">
+          <h3 class="rail-title">Nightlife &amp; entertainment</h3>
+        </header>
+        <div id="row-nightlife" class="h-scroll cards-rail"></div>
+      </section>
 
-<!-- Shopping -->
-<section class="rail">
-  <header class="rail-head">
-    <h3 class="rail-title">Shopping</h3>
-  </header>
-  <div id="row-shopping" class="h-scroll cards-rail"></div>
-</section>
+      <!-- Shopping -->
+      <section class="rail">
+        <header class="rail-head">
+          <h3 class="rail-title">Shopping</h3>
+        </header>
+        <div id="row-shopping" class="h-scroll cards-rail"></div>
+      </section>
 
-<!-- Late-Night Eats -->
-<section class="rail">
-  <header class="rail-head">
-    <h3 class="rail-title">Late-night eats</h3>
-  </header>
-  <div id="row-late" class="h-scroll cards-rail"></div>
-</section>
+      <!-- Late-Night Eats -->
+      <section class="rail">
+        <header class="rail-head">
+          <h3 class="rail-title">Late-night eats</h3>
+        </header>
+        <div id="row-late" class="h-scroll cards-rail"></div>
+      </section>
 
-<!-- Relax & Recover -->
-<section class="rail">
-  <header class="rail-head">
-    <h3 class="rail-title">Relax &amp; recover</h3>
-  </header>
-  <div id="row-relax" class="h-scroll cards-rail"></div>
-</section>
+      <!-- Relax & Recover -->
+      <section class="rail">
+        <header class="rail-head">
+          <h3 class="rail-title">Relax &amp; recover</h3>
+        </header>
+        <div id="row-relax" class="h-scroll cards-rail"></div>
+      </section>
 
     </div>
   </section>

@@ -693,26 +693,26 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     `;
   }
 
-  /* ===== Helper: ensure a rail container exists (creates on demand) ===== */
-  function ensureRail(id, title){
-    let target = document.getElementById(id);
-    if (target) {
-      const head = target.previousElementSibling?.querySelector?.('.rail-title');
-      if (head && title) head.textContent = title;
-      return target;
-    }
-    const wrap = document.getElementById('results-rails') || document.getElementById('results');
-    if (!wrap) return null;
-
-    const card = document.createElement('article');
-    card.className = 'card';
-    card.innerHTML = `
-      <div class="rail-head"><h3 class="rail-title">${esc(title || '')}</h3></div>
-      <div id="${esc(id)}" class="rail-row"></div>
-    `;
-    wrap.appendChild(card);
-    return document.getElementById(id);
+function ensureRail(id, title){
+  let target = document.getElementById(id);
+  if (target) {
+    const head = target.closest('.rail')?.querySelector('.rail-title');
+    if (head && title) head.textContent = title;
+    return target;
   }
+  // Append to the existing results container that holds the rails
+  const wrap = document.querySelector('#screen-results .container.wide');
+  if (!wrap) return null;
+
+  const section = document.createElement('section');
+  section.className = 'rail';
+  section.innerHTML = `
+    <header class="rail-head"><h3 class="rail-title">${esc(title || '')}</h3></header>
+    <div id="${esc(id)}" class="h-scroll cards-rail"></div>
+  `;
+  wrap.appendChild(section);
+  return document.getElementById(id);
+}
 
   /* ==================== Rails (incl. new categories) ==================== */
   function uniqMerge(max, ...lists){
@@ -890,7 +890,7 @@ async function renderRails({ before, after, extras }) {
   }
   if (state.interests.lateNight) {
     // use the id that matches your HTML; if you don't have one, ensureRail will create it
-    fillRail('row-latenight', pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats');
+    fillRail('row-late', pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats');
   }
   if (state.interests.nightlife) {
     fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment');

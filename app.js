@@ -41,6 +41,18 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     customStops: []
   };
 
+  // ---- rail spec (single source of truth for ids & titles) ----
+  const RAILS = [
+    { key: 'dessert',   id: 'row-dessert',   title: 'Dessert' },
+    { key: 'drinks',    id: 'row-drinks',    title: 'Drinks & Lounges' },
+    { key: 'coffee',    id: 'row-coffee',    title: 'Coffee & Cafés' },
+    { key: 'lateNight', id: 'row-late',      title: 'Late-Night Eats' }, // HTML uses row-late
+    { key: 'nightlife', id: 'row-nightlife', title: 'Nightlife & Entertainment' },
+    { key: 'shopping',  id: 'row-shopping',  title: 'Shopping' },
+    { key: 'sights',    id: 'row-sights',    title: 'Sights & Landmarks' },
+    { key: 'relax',     id: 'row-relax',     title: 'Relax & Recover' }
+  ];
+
   /* ==================== Nav ==================== */
   $('btn-start')?.addEventListener('click', () => { show('form'); renderStep(); });
   $('btn-prev')?.addEventListener('click', () => { if (step>0){ step--; renderStep(); } });
@@ -422,7 +434,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   function mapUrlFor(p) {
     const obj = (p && typeof p === 'object') ? p : {};
 
-    // explicit url wins
     if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
 
     const placeId =
@@ -439,16 +450,13 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       obj.address || obj.formatted_address || obj.vicinity ||
       (obj.location && (obj.location.address || obj.location.formatted_address)) || '';
 
-    // 1) BEST: open the *profile* directly via place_id
     if (placeId) {
       return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
     }
 
-    // 2) NEXT: name/address search
     const q = [name, address].filter(Boolean).join(' ').trim();
     if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 
-    // 3) LAST: coordinates (dropped pin)
     const lat = obj.lat != null ? Number(obj.lat) : (obj.location && obj.location.lat != null ? Number(obj.location.lat) : NaN);
     const lng = obj.lng != null ? Number(obj.lng) : (obj.location && obj.location.lng != null ? Number(obj.location.lng) : NaN);
     if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
@@ -537,46 +545,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
-  /* ==================== RAIL helpers (IDs, resetting, show/hide) ==================== */
-  const RAILS = [
-    { key:'coffee',    id:'row-coffee',   title:'Coffee & Cafés' },
-    { key:'drinks',    id:'row-drinks',   title:'Drinks & Lounges' },
-    { key:'dessert',   id:'row-dessert',  title:'Dessert' },
-    { key:'lateNight', id:'row-late',     title:'Late-Night Eats' }, // matches your HTML
-    { key:'nightlife', id:'row-nightlife',title:'Nightlife & Entertainment' },
-    { key:'shopping',  id:'row-shopping', title:'Shopping' },
-    { key:'sights',    id:'row-sights',   title:'Sights & Landmarks' },
-    { key:'relax',     id:'row-relax',    title:'Relax & Recover' }
-  ];
-
-  function getRailSectionByRow(rowEl){
-    return rowEl?.closest('.rail') || null;
-  }
-  function clearRail(id){
-    const row = $(id);
-    if (!row) return;
-    row.innerHTML = '';                 // makes it :empty so CSS can hide if you’re using :has rules
-    const sec = getRailSectionByRow(row);
-    if (sec) sec.style.display = 'none';
-  }
-  function showRail(id, title){
-    const row = ensureRail(id, title || '');
-    const sec = getRailSectionByRow(row);
-    if (sec) sec.style.display = '';    // unhide
-  }
-  function resetRailsForSelection(selectedKeys){
-    // Always reset dinner row container; it will be repopulated later
-    clearRail('row-dinner');
-
-    // Clear & hide ALL interest rails first so nothing leaks from a previous run
-    RAILS.forEach(({id}) => clearRail(id));
-
-    // Only unhide the rails that are part of this selection; the rest stay hidden
-    RAILS.forEach(({key, id, title})=>{
-      if (selectedKeys.has(key)) showRail(id, title);
-    });
-  }
-
   /* ==================== Generate ==================== */
   async function generate(){
     show('loading');
@@ -627,7 +595,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         catch { return ''; }
       })();
 
-      // force the container itself to be a centered column and take full width
       const ctx = $('results-context');
       ctx.style.display = 'flex';
       ctx.style.flexDirection = 'column';
@@ -635,7 +602,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       ctx.style.textAlign = 'center';
       ctx.style.width = '100%';
 
-      // ensure the parent block spans the row and centers content
       const ctxParent = $('results-context')?.parentElement;
       if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'center'; }
 
@@ -645,7 +611,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
       `;
 
-      // small, separate note centered under the header
       const note = $('intro-line');
       note.style.textAlign = 'center';
       note.style.fontSize = '0.9rem';
@@ -653,13 +618,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       const city = await venueCityName();
       renderTourCard(city, itin, dinnerPick);
-
-      // NEW: reset/hide rails first based on the *current* selection,
-      // so nothing from a prior run leaks into this one.
-      const selectedKeys = new Set(Object.entries(state.interests)
-        .filter(([,v]) => !!v)
-        .map(([k]) => k));
-      resetRailsForSelection(selectedKeys);
 
       await renderRails({ before: beforeAuto, after: afterAuto, extras });
       show('results');
@@ -738,7 +696,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     `;
   }
 
-  /* ===== Helper: ensure a rail container exists (creates on demand) ===== */
+  /* ===== Helper: rail DOM helpers ===== */
   function ensureRail(id, title){
     let target = document.getElementById(id);
     if (target) {
@@ -752,7 +710,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
     const section = document.createElement('section');
     section.className = 'rail';
-    section.style.display = 'none'; // hidden until we populate
     section.innerHTML = `
       <header class="rail-head"><h3 class="rail-title">${esc(title || '')}</h3></header>
       <div id="${esc(id)}" class="h-scroll cards-rail"></div>
@@ -760,36 +717,26 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     wrap.appendChild(section);
     return document.getElementById(id);
   }
-
-  /* ==================== Distance + website backfill helpers ==================== */
-  function milesBetween(lat1, lng1, lat2, lng2){
-    if ([lat1,lng1,lat2,lng2].some(v => v==null || Number.isNaN(+v))) return null;
-    const toRad = d => d * Math.PI / 180;
-    const R = 3958.761; // miles
-    const dLat = toRad(lat2 - lat1);
-    const dLng = toRad(lng2 - lng1);
-    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  }
-
-  async function backfillWebsites(list, limit=8){
-    try{
-      await waitForPlaces();
-      const svc = new google.maps.places.PlacesService(document.createElement('div'));
-      const tasks = (list||[])
-        .filter(p => !p.url && (p.placeId || p.place_id))
-        .slice(0, limit)
-        .map(p => new Promise(resolve=>{
-          const pid = p.placeId || p.place_id;
-          svc.getDetails({ placeId: pid, fields:['website'] }, (d, s)=>{
-            if (s === google.maps.places.PlacesServiceStatus.OK && d && d.website){ p.url = d.website; }
-            resolve();
-          });
-        }));
-      await Promise.all(tasks);
-    }catch{/* ignore */}
-  }
+  const getRailSection = (id) => {
+    const row = document.getElementById(id);
+    return row ? row.closest('.rail') : null;
+  };
+  const hideRail = (id) => {
+    const sec = getRailSection(id);
+    if (sec) sec.style.display = 'none';
+    const row = document.getElementById(id);
+    if (row) row.innerHTML = '';
+  };
+  const showRail = (id, title) => {
+    const row = ensureRail(id, title || '');
+    const sec = getRailSection(id);
+    if (sec) sec.style.display = '';
+    return row;
+  };
+  const clearRail = (id) => {
+    const row = document.getElementById(id);
+    if (row) row.innerHTML = '';
+  };
 
   /* ==================== Rails (incl. new categories) ==================== */
   function uniqMerge(max, ...lists){
@@ -810,18 +757,29 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return out.slice(0, Math.max(min, Math.min(max, out.length)));
   }
 
-  // updated: accepts a title, uses ensureRail, computes distance + websites, shows the section only when populated
-  async function fillRail(id, list, title){
-    const row = ensureRail(id, title || '');
-    if (!row) return;
+  // distance helper (miles)
+  function milesBetween(lat1, lng1, lat2, lng2){
+    if (lat1==null || lng1==null || lat2==null || lng2==null) return null;
+    const toRad = (x)=> x*Math.PI/180;
+    const R = 3958.8; // miles
+    const dLat = toRad(lat2-lat1);
+    const dLng = toRad(lng2-lng1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+    const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R*c;
+  }
+
+  // updated: accepts a title, uses ensureRail, and computes clean Map hrefs
+  function fillRail(id, list, title){
+    // always start hidden; only show when we actually have items
+    clearRail(id);
 
     if (!Array.isArray(list) || !list.length){
-      row.innerHTML = ''; // keep it empty so the section stays hidden
-      const sec = row.closest('.rail'); if (sec) sec.style.display = 'none';
+      hideRail(id);
       return;
     }
 
-    // compute distances (if missing)
+    // compute distances when possible
     list.forEach(p=>{
       if (p.distance == null && state.venueLat != null && state.venueLng != null){
         const lat = (typeof p.lat === 'number') ? p.lat : (p.location?.lat ?? null);
@@ -831,8 +789,8 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       }
     });
 
-    // best-effort website backfill
-    await backfillWebsites(list, 8);
+    const row = showRail(id, title || '');
+    if (!row) return;
 
     const cards = list.map(p => {
       const norm = {
@@ -913,13 +871,29 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
         }
       };
     });
+  }
 
-    // finally: make sure the section is visible for this populated rail
-    const sec = row.closest('.rail'); if (sec) sec.style.display = '';
+  // helper to hide everything then only show/fill what’s selected
+  function resetRailsForSelection(selectedKeys){
+    // always clear dinner rail container; it is always shown
+    clearRail('row-dinner');
+
+    // clear + hide all interest rails
+    RAILS.forEach(({id}) => hideRail(id));
+
+    // pre-show containers for selected keys (title will be set by fillRail)
+    RAILS.forEach(({key, id, title})=>{
+      if (selectedKeys.has(key)) showRail(id, title);
+    });
   }
 
   // NEW: builds rails per selected interest (broad matching over multiple fields)
   async function renderRails({ before, after, extras }) {
+    const selectedKeys = new Set(Object.entries(state.interests).filter(([,v])=>v).map(([k])=>k));
+
+    // Reset/hide everything first so no leftovers from previous runs
+    resetRailsForSelection(selectedKeys);
+
     // helper: build a searchable string from many possible fields
     const haystack = (x) => {
       const bits = [];
@@ -943,7 +917,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       relax:     []
     };
 
-    // broadened patterns
+    // broadened patterns (Google/Places common types + synonyms)
     const rx = {
       dessert:   /(dessert|sweet|ice.?cream|gelato|bak(?:e|ery)|pastry|donut|cake|choco|cookie|creamery)/i,
       drinks:    /(drink|bar|pub|lounge|wine|cocktail|taproom|speakeasy|gastropub|brewery)/i,
@@ -955,32 +929,32 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       relax:     /(relax|spa|recover|wellness|tea\s?house|onsen|soak|bathhouse|massage|sauna|yoga|float)/i
     };
 
-    // bucket the extras
+    // bucket the extras using the haystack
     (extras || []).forEach(x => {
       const h = haystack(x);
-      if (rx.dessert.test(h))        bucket.dessert.push(x);
-      else if (rx.drinks.test(h))    bucket.drinks.push(x);
-      else if (rx.coffee.test(h))    bucket.coffee.push(x);
-      else if (rx.lateNight.test(h)) bucket.lateNight.push(x);
-      else if (rx.nightlife.test(h)) bucket.nightlife.push(x);
-      else if (rx.shopping.test(h))  bucket.shopping.push(x);
-      else if (rx.sights.test(h))    bucket.sights.push(x);
-      else if (rx.relax.test(h))     bucket.relax.push(x);
+      if      (rx.dessert.test(h))    bucket.dessert.push(x);
+      else if (rx.drinks.test(h))     bucket.drinks.push(x);
+      else if (rx.coffee.test(h))     bucket.coffee.push(x);
+      else if (rx.lateNight.test(h))  bucket.lateNight.push(x);
+      else if (rx.nightlife.test(h))  bucket.nightlife.push(x);
+      else if (rx.shopping.test(h))   bucket.shopping.push(x);
+      else if (rx.sights.test(h))     bucket.sights.push(x);
+      else if (rx.relax.test(h))      bucket.relax.push(x);
     });
 
-    // base dinner rail
+    // base dinner rail is always shown
     const dinnerRow = pickRange(before, 5, 10, after);
-    await fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
+    fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
 
-    // optional rails based on user interests (IDs must match your HTML)
-    if (state.interests.coffee)    await fillRail('row-coffee',    pickRange(bucket.coffee,    5, 10), 'Coffee & Cafés');
-    if (state.interests.drinks)    await fillRail('row-drinks',    pickRange(bucket.drinks,    5, 10), 'Drinks & Lounges');
-    if (state.interests.dessert)   await fillRail('row-dessert',   pickRange(bucket.dessert,   5, 10), 'Dessert');
-    if (state.interests.lateNight) await fillRail('row-late',      pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats');
-    if (state.interests.nightlife) await fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment');
-    if (state.interests.shopping)  await fillRail('row-shopping',  pickRange(bucket.shopping,  5, 10), 'Shopping');
-    if (state.interests.sights)    await fillRail('row-sights',    pickRange(bucket.sights,    5, 10), 'Sights & Landmarks');
-    if (state.interests.relax)     await fillRail('row-relax',     pickRange(bucket.relax,     5, 10), 'Relax & Recover');
+    // selected rails only — populate and (auto)show/hide per results
+    if (selectedKeys.has('coffee'))    fillRail('row-coffee',    pickRange(bucket.coffee,    5, 10), 'Coffee & Cafés');
+    if (selectedKeys.has('drinks'))    fillRail('row-drinks',    pickRange(bucket.drinks,    5, 10), 'Drinks & Lounges');
+    if (selectedKeys.has('dessert'))   fillRail('row-dessert',   pickRange(bucket.dessert,   5, 10), 'Dessert');
+    if (selectedKeys.has('lateNight')) fillRail('row-late',      pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats'); // id matches HTML
+    if (selectedKeys.has('nightlife')) fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment');
+    if (selectedKeys.has('shopping'))  fillRail('row-shopping',  pickRange(bucket.shopping,  5, 10), 'Shopping');
+    if (selectedKeys.has('sights'))    fillRail('row-sights',    pickRange(bucket.sights,    5, 10), 'Sights & Landmarks');
+    if (selectedKeys.has('relax'))     fillRail('row-relax',     pickRange(bucket.relax,     5, 10), 'Relax & Recover');
   }
   
   /* ==================== Custom picks (helpers kept; UI removed) ==================== */

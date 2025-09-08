@@ -27,19 +27,19 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   const steps = ["concert","stay","dining","activities"];
 
   const state = window.__concertoState = {
-  artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
-  showDate: "", showTime: "",
-  hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
-  eatWhen: "both",
-  foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
-  budget: "$$", tone: "balanced",
-  interests: { 
-    coffee:false, drinks:false, dessert:false, sights:false, 
-    lateNight:false, nightlife:false, shopping:false, relax:false 
-  }, // <-- this comma is required
-  arrivalBufferMin: 45, doorsBeforeMin: 90,
-  customStops: []
-};
+    artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
+    showDate: "", showTime: "",
+    hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
+    eatWhen: "both",
+    foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
+    budget: "$$", tone: "balanced",
+    interests: { 
+      coffee:false, drinks:false, dessert:false, sights:false, 
+      lateNight:false, nightlife:false, shopping:false, relax:false 
+    }, // <-- this comma is required
+    arrivalBufferMin: 45, doorsBeforeMin: 90,
+    customStops: []
+  };
 
   /* ==================== Nav ==================== */
   $('btn-start')?.addEventListener('click', () => { show('form'); renderStep(); });
@@ -425,7 +425,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     // explicit url wins
     if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
 
-    // harvest likely place id / name / address / coords
     const placeId =
       obj.placeId || obj.place_id || obj.googlePlaceId || obj.google_place_id ||
       (obj.place && (obj.place.place_id || obj.place.id)) ||
@@ -442,11 +441,10 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
     // 1) BEST: open the *profile* directly via place_id
     if (placeId) {
-      // This deep link opens the business profile reliably
       return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
     }
 
-    // 2) NEXT: name/address search (often resolves to profile)
+    // 2) NEXT: name/address search
     const q = [name, address].filter(Boolean).join(' ').trim();
     if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 
@@ -459,52 +457,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
     return '';
   }
-
-  /* ========= NEW: Places fallback to keep selected rails populated ========= */
-  async function fetchPlacesExtras({ lat, lng, mapType, keyword, take=12 }) {
-    if (!(lat && lng)) return [];
-    await waitForPlaces();
-
-    const svc = new google.maps.places.PlacesService(document.createElement('div'));
-    const center = new google.maps.LatLng(lat, lng);
-
-    const nearbyParams = {
-      location: center,
-      rankBy: google.maps.places.RankBy.DISTANCE,
-      type: mapType || undefined,
-      keyword: keyword || undefined
-    };
-
-    const results = await new Promise(resolve => {
-      svc.nearbySearch(nearbyParams, (res, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && Array.isArray(res)) resolve(res);
-        else resolve([]);
-      });
-    });
-
-    return results.slice(0, take).map(r => ({
-      name: r.name,
-      address: r.vicinity || r.formatted_address || "",
-      placeId: r.place_id,
-      lat: r.geometry?.location?.lat?.() ?? null,
-      lng: r.geometry?.location?.lng?.() ?? null,
-      rating: typeof r.rating === 'number' ? r.rating : undefined,
-      price: r.price_level ? '$'.repeat(r.price_level) : '',
-      photoUrl: (r.photos && r.photos[0]) ? r.photos[0].getUrl({ maxWidth: 640, maxHeight: 480 }) : '',
-      section: keyword || mapType || 'extra'
-    }));
-  }
- function placesParamsFor(category){
-  switch (category){
-    case 'nightlife': return { mapType: 'night_club', keyword: 'nightlife club live music' };
-    case 'shopping':  // broaden: don’t force "shopping_mall" only
-      return { mapType: undefined, keyword: 'shopping boutique vintage thrift record store market mall department store gift shop' };
-    case 'relax':     return { mapType: 'spa',        keyword: 'spa wellness sauna massage' };
-    case 'lateNight': return { mapType: 'restaurant', keyword: 'late night 24 hours diner' };
-    default:          return { mapType: undefined,    keyword: undefined };
-  }
-}
-  /* ========================================================================= */
 
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
@@ -585,6 +537,46 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
+  /* ==================== RAIL helpers (IDs, resetting, show/hide) ==================== */
+  const RAILS = [
+    { key:'coffee',    id:'row-coffee',   title:'Coffee & Cafés' },
+    { key:'drinks',    id:'row-drinks',   title:'Drinks & Lounges' },
+    { key:'dessert',   id:'row-dessert',  title:'Dessert' },
+    { key:'lateNight', id:'row-late',     title:'Late-Night Eats' }, // matches your HTML
+    { key:'nightlife', id:'row-nightlife',title:'Nightlife & Entertainment' },
+    { key:'shopping',  id:'row-shopping', title:'Shopping' },
+    { key:'sights',    id:'row-sights',   title:'Sights & Landmarks' },
+    { key:'relax',     id:'row-relax',    title:'Relax & Recover' }
+  ];
+
+  function getRailSectionByRow(rowEl){
+    return rowEl?.closest('.rail') || null;
+  }
+  function clearRail(id){
+    const row = $(id);
+    if (!row) return;
+    row.innerHTML = '';                 // makes it :empty so CSS can hide if you’re using :has rules
+    const sec = getRailSectionByRow(row);
+    if (sec) sec.style.display = 'none';
+  }
+  function showRail(id, title){
+    const row = ensureRail(id, title || '');
+    const sec = getRailSectionByRow(row);
+    if (sec) sec.style.display = '';    // unhide
+  }
+  function resetRailsForSelection(selectedKeys){
+    // Always reset dinner row container; it will be repopulated later
+    clearRail('row-dinner');
+
+    // Clear & hide ALL interest rails first so nothing leaks from a previous run
+    RAILS.forEach(({id}) => clearRail(id));
+
+    // Only unhide the rails that are part of this selection; the rest stay hidden
+    RAILS.forEach(({key, id, title})=>{
+      if (selectedKeys.has(key)) showRail(id, title);
+    });
+  }
+
   /* ==================== Generate ==================== */
   async function generate(){
     show('loading');
@@ -661,6 +653,13 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       const city = await venueCityName();
       renderTourCard(city, itin, dinnerPick);
+
+      // NEW: reset/hide rails first based on the *current* selection,
+      // so nothing from a prior run leaks into this one.
+      const selectedKeys = new Set(Object.entries(state.interests)
+        .filter(([,v]) => !!v)
+        .map(([k]) => k));
+      resetRailsForSelection(selectedKeys);
 
       await renderRails({ before: beforeAuto, after: afterAuto, extras });
       show('results');
@@ -739,26 +738,58 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     `;
   }
 
-function ensureRail(id, title){
-  let target = document.getElementById(id);
-  if (target) {
-    const head = target.closest('.rail')?.querySelector('.rail-title');
-    if (head && title) head.textContent = title;
-    return target;
-  }
-  // Append to the existing results container that holds the rails
-  const wrap = document.querySelector('#screen-results .container.wide');
-  if (!wrap) return null;
+  /* ===== Helper: ensure a rail container exists (creates on demand) ===== */
+  function ensureRail(id, title){
+    let target = document.getElementById(id);
+    if (target) {
+      const head = target.closest('.rail')?.querySelector('.rail-title');
+      if (head && title) head.textContent = title;
+      return target;
+    }
+    // Append to the existing results container that holds the rails
+    const wrap = document.querySelector('#screen-results .container.wide');
+    if (!wrap) return null;
 
-  const section = document.createElement('section');
-  section.className = 'rail';
-  section.innerHTML = `
-    <header class="rail-head"><h3 class="rail-title">${esc(title || '')}</h3></header>
-    <div id="${esc(id)}" class="h-scroll cards-rail"></div>
-  `;
-  wrap.appendChild(section);
-  return document.getElementById(id);
-}
+    const section = document.createElement('section');
+    section.className = 'rail';
+    section.style.display = 'none'; // hidden until we populate
+    section.innerHTML = `
+      <header class="rail-head"><h3 class="rail-title">${esc(title || '')}</h3></header>
+      <div id="${esc(id)}" class="h-scroll cards-rail"></div>
+    `;
+    wrap.appendChild(section);
+    return document.getElementById(id);
+  }
+
+  /* ==================== Distance + website backfill helpers ==================== */
+  function milesBetween(lat1, lng1, lat2, lng2){
+    if ([lat1,lng1,lat2,lng2].some(v => v==null || Number.isNaN(+v))) return null;
+    const toRad = d => d * Math.PI / 180;
+    const R = 3958.761; // miles
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
+  async function backfillWebsites(list, limit=8){
+    try{
+      await waitForPlaces();
+      const svc = new google.maps.places.PlacesService(document.createElement('div'));
+      const tasks = (list||[])
+        .filter(p => !p.url && (p.placeId || p.place_id))
+        .slice(0, limit)
+        .map(p => new Promise(resolve=>{
+          const pid = p.placeId || p.place_id;
+          svc.getDetails({ placeId: pid, fields:['website'] }, (d, s)=>{
+            if (s === google.maps.places.PlacesServiceStatus.OK && d && d.website){ p.url = d.website; }
+            resolve();
+          });
+        }));
+      await Promise.all(tasks);
+    }catch{/* ignore */}
+  }
 
   /* ==================== Rails (incl. new categories) ==================== */
   function uniqMerge(max, ...lists){
@@ -778,217 +809,179 @@ function ensureRail(id, title){
     if (out.length < min){ out = uniqMerge(max, out, fallback); }
     return out.slice(0, Math.max(min, Math.min(max, out.length)));
   }
-  function milesBetween(lat1, lng1, lat2, lng2){
-  if ([lat1,lng1,lat2,lng2].some(v => v==null || Number.isNaN(+v))) return null;
-  const toRad = d => d * Math.PI / 180;
-  const R = 3958.761; // miles
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
 
-// Best-effort website fetch for a handful of items missing url
-async function backfillWebsites(list, limit=8){
-  try{
-    await waitForPlaces();
-    const svc = new google.maps.places.PlacesService(document.createElement('div'));
-    const tasks = (list||[])
-      .filter(p => !p.url && (p.placeId || p.place_id))
-      .slice(0, limit)
-      .map(p => new Promise(resolve=>{
-        const pid = p.placeId || p.place_id;
-        svc.getDetails({ placeId: pid, fields:['website'] }, (d, s)=>{
-          if (s === google.maps.places.PlacesServiceStatus.OK && d && d.website){ p.url = d.website; }
-          resolve();
-        });
-      }));
-    await Promise.all(tasks);
-  }catch{/* ignore */}
-}
-async function fillRail(id, list, title){
-  const row = ensureRail(id, title || '');
-  if (!row) return;
+  // updated: accepts a title, uses ensureRail, computes distance + websites, shows the section only when populated
+  async function fillRail(id, list, title){
+    const row = ensureRail(id, title || '');
+    if (!row) return;
 
-  if (!Array.isArray(list) || !list.length){
-    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
-    return;
-  }
-
-  // 1) Compute distance if missing
-  list.forEach(p=>{
-    if (p.distance == null && state.venueLat != null && state.venueLng != null){
-      const lat = (typeof p.lat === 'number') ? p.lat : (p.location?.lat ?? null);
-      const lng = (typeof p.lng === 'number') ? p.lng : (p.location?.lng ?? null);
-      const mi = milesBetween(state.venueLat, state.venueLng, lat, lng);
-      if (mi != null) p.distance = mi;
+    if (!Array.isArray(list) || !list.length){
+      row.innerHTML = ''; // keep it empty so the section stays hidden
+      const sec = row.closest('.rail'); if (sec) sec.style.display = 'none';
+      return;
     }
-  });
 
-  // 2) Try to fetch websites for a few items
-  await backfillWebsites(list, 8);
-
-  // 3) Render
-  const cards = list.map(p => {
-    const norm = {
-      name: p.name || p.title || '',
-      address: p.address || p.formatted_address || p.vicinity || '',
-      placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-      lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : null),
-      lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : null),
-      url: p.url || '',
-      mapUrl: p.mapUrl || p.mapsUrl || ''
-    };
-
-    const name = esc(norm.name);
-    const dist = (typeof p.distance === 'number') ? p.distance.toFixed(1) : "";
-    const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-    const price = p.price || "";
-    const img = p.photoUrl || "";
-    const site = norm.url || "";
-
-    const dataP = encodeURIComponent(JSON.stringify({
-      name: norm.name,
-      address: norm.address,
-      placeId: norm.placeId,
-      lat: norm.lat,
-      lng: norm.lng
-    }));
-
-    return `
-      <article class="place-card" data-p="${dataP}" title="Open on Google Maps">
-        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-        <div class="pc-body">
-          <div class="pc-title">${name}</div>
-          <div class="pc-meta">
-            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-            ${rating ? `<span>${esc(rating)}</span>` : ""}
-            ${price ? `<span>${esc(price)}</span>` : ""}
-          </div>
-          <div class="pc-actions">
-            <a class="map-link" target="_blank" rel="noopener">Map</a>
-            ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
-          </div>
-        </div>
-      </article>
-    `;
-  }).join("");
-
-  row.innerHTML = cards;
-
-  // compute clean Map hrefs for each card
-  qsa('.place-card', row).forEach(el => {
-    const mapA = el.querySelector('.map-link');
-    if (!mapA) return;
-    let payload = {};
-    try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-    const href = mapUrlFor(payload);
-    if (href) { mapA.href = href; } else { mapA.style.display = 'none'; }
-  });
-
-  // card click opens Map; let Website clicks pass-through
-  qsa('.place-card', row).forEach(el => {
-    el.onclick = (e) => {
-      const a = e.target.closest('a');
-      if (a && a.dataset.link === 'site') return;
-      const mapA = el.querySelector('.map-link[href]');
-      if (mapA && mapA.href) window.open(mapA.href, '_blank', 'noopener');
-    };
-  });
-}
-
-  // NEW: builds rails per selected interest (broad matching over multiple fields + fallback)
-async function renderRails({ before, after, extras }) {
-  // helper: build a searchable string from many possible fields
-  const haystack = (x) => {
-    const bits = [];
-    if (x.section)   bits.push(String(x.section));
-    if (x.category)  bits.push(String(x.category));
-    if (x.name)      bits.push(String(x.name));
-    if (Array.isArray(x.types)) bits.push(x.types.join(' '));
-    if (Array.isArray(x.tags))  bits.push(x.tags.join(' '));
-    return bits.join(' ').toLowerCase();
-  };
-
-  // buckets
-  const bucket = {
-    dessert:   [],
-    drinks:    [],
-    coffee:    [],
-    lateNight: [],
-    nightlife: [],
-    shopping:  [],
-    sights:    [],
-    relax:     []
-  };
-
-  // broadened patterns (Google/Places common types + synonyms)
-  const rx = {
-    dessert:   /(dessert|sweet|ice.?cream|gelato|bak(?:e|ery)|pastry|donut|cake|choco|cookie|creamery)/i,
-    drinks:    /(drink|bar|pub|lounge|wine|cocktail|taproom|speakeasy|gastropub|brewery)/i,
-    coffee:    /(coffee|café|cafe|espresso|roastery|tea\s?house)/i,
-    lateNight: /(late.?night|after.?hours|24.?\/?7|diner|fast.?food|pizza|taco|noodle|ramen|burger|shawarma|kebab|wings?)/i,
-    nightlife: /(nightlife|night.?club|club|karaoke|live\s?music|music\s?venue|entertainment|dj|dance|comedy\s?club)/i,
-    shopping:  /(shop|shopping|boutique|record\s?store|vintage|market|mall|store|department|thrift|book\s?store|gift\s?shop)/i,
-    sights:    /(sight|landmark|viewpoint|overlook|park|museum|gallery|statue|monument|bridge|plaza|observatory|tourist)/i,
-    relax:     /(relax|spa|recover|wellness|tea\s?house|onsen|soak|bathhouse|massage|sauna|yoga|float)/i
-  };
-
-  // bucket the extras using the haystack
-  (extras || []).forEach(x => {
-    const h = haystack(x);
-    if (rx.dessert.test(h))        bucket.dessert.push(x);
-    else if (rx.drinks.test(h))    bucket.drinks.push(x);
-    else if (rx.coffee.test(h))    bucket.coffee.push(x);
-    else if (rx.lateNight.test(h)) bucket.lateNight.push(x);
-    else if (rx.nightlife.test(h)) bucket.nightlife.push(x);
-    else if (rx.shopping.test(h))  bucket.shopping.push(x);
-    else if (rx.sights.test(h))    bucket.sights.push(x);
-    else if (rx.relax.test(h))     bucket.relax.push(x);
-  });
-
-  // If a selected bucket is thin, fetch a small Places set to backfill
-  async function ensureMin(categoryKey, min=5){
-    if (!state.interests[categoryKey]) return; // only for selected rails
-    if ((bucket[categoryKey] || []).length >= min) return;
-
-    const { mapType, keyword } = placesParamsFor(categoryKey);
-    const fetched = await fetchPlacesExtras({
-      lat: state.venueLat, lng: state.venueLng,
-      mapType, keyword, take: 14
+    // compute distances (if missing)
+    list.forEach(p=>{
+      if (p.distance == null && state.venueLat != null && state.venueLng != null){
+        const lat = (typeof p.lat === 'number') ? p.lat : (p.location?.lat ?? null);
+        const lng = (typeof p.lng === 'number') ? p.lng : (p.location?.lng ?? null);
+        const mi = milesBetween(state.venueLat, state.venueLng, lat, lng);
+        if (mi != null) p.distance = mi;
+      }
     });
-    bucket[categoryKey] = uniqMerge(14, bucket[categoryKey], fetched);
+
+    // best-effort website backfill
+    await backfillWebsites(list, 8);
+
+    const cards = list.map(p => {
+      const norm = {
+        name: p.name || p.title || '',
+        address: p.address || p.formatted_address || p.vicinity || '',
+        placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
+        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : null),
+        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : null),
+        url: p.url || '',
+        mapUrl: p.mapUrl || p.mapsUrl || ''
+      };
+
+      const name = esc(norm.name);
+      const dist = (typeof p.distance === 'number') ? p.distance.toFixed(1) : "";
+      const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
+      const price = p.price || "";
+      const img = p.photoUrl || "";
+      const site = norm.url || "";
+
+      const dataP = encodeURIComponent(JSON.stringify({
+        name: norm.name,
+        address: norm.address,
+        placeId: norm.placeId,
+        lat: norm.lat,
+        lng: norm.lng
+      }));
+
+      return `
+        <article class="place-card"
+                 data-p="${dataP}"
+                 title="Open on Google Maps">
+          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+          <div class="pc-body">
+            <div class="pc-title">${name}</div>
+            <div class="pc-meta">
+              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+              ${rating ? `<span>${esc(rating)}</span>` : ""}
+              ${price ? `<span>${esc(price)}</span>` : ""}
+            </div>
+            <div class="pc-actions">
+              <a class="map-link" target="_blank" rel="noopener">Map</a>
+              ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    row.innerHTML = cards;
+
+    // compute clean Map hrefs for each card
+    qsa('.place-card', row).forEach(el => {
+      const mapA = el.querySelector('.map-link');
+      if (!mapA) return;
+
+      let payload = {};
+      try {
+        payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}'));
+      } catch {}
+
+      const href = mapUrlFor(payload);
+      if (href) {
+        mapA.href = href;
+      } else {
+        mapA.style.display = 'none';
+      }
+    });
+
+    // card click opens Map; let Website clicks pass-through
+    qsa('.place-card', row).forEach(el => {
+      el.onclick = (e) => {
+        const a = e.target.closest('a');
+        if (a && a.dataset.link === 'site') return;
+
+        const mapA = el.querySelector('.map-link[href]');
+        if (mapA && mapA.href) {
+          window.open(mapA.href, '_blank', 'noopener');
+        }
+      };
+    });
+
+    // finally: make sure the section is visible for this populated rail
+    const sec = row.closest('.rail'); if (sec) sec.style.display = '';
   }
 
-  await Promise.all([
-    ensureMin('coffee'),
-    ensureMin('drinks'),
-    ensureMin('dessert'),
-    ensureMin('lateNight'),
-    ensureMin('nightlife'),
-    ensureMin('shopping'),
-    ensureMin('sights'),
-    ensureMin('relax')
-  ]);
+  // NEW: builds rails per selected interest (broad matching over multiple fields)
+  async function renderRails({ before, after, extras }) {
+    // helper: build a searchable string from many possible fields
+    const haystack = (x) => {
+      const bits = [];
+      if (x.section)   bits.push(String(x.section));
+      if (x.category)  bits.push(String(x.category));
+      if (x.name)      bits.push(String(x.name));
+      if (Array.isArray(x.types)) bits.push(x.types.join(' '));
+      if (Array.isArray(x.tags))  bits.push(x.tags.join(' '));
+      return bits.join(' ').toLowerCase();
+    };
 
-  // base dinner rail
-  const dinnerRow = pickRange(before, 5, 10, after);
-  fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
+    // buckets
+    const bucket = {
+      dessert:   [],
+      drinks:    [],
+      coffee:    [],
+      lateNight: [],
+      nightlife: [],
+      shopping:  [],
+      sights:    [],
+      relax:     []
+    };
 
-  // optional rails based on user interests (IDs must match your HTML)
-  if (state.interests.coffee)    fillRail('row-coffee',  pickRange(bucket.coffee,    5, 10), 'Coffee & Cafés');
-  if (state.interests.drinks)    fillRail('row-drinks',  pickRange(bucket.drinks,    5, 10), 'Drinks & Lounges');
-  if (state.interests.dessert)   fillRail('row-dessert', pickRange(bucket.dessert,   5, 10), 'Dessert');
-  if (state.interests.lateNight) fillRail('row-late',    pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats'); // <-- aligned to HTML
-  if (state.interests.nightlife) fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment');
-  if (state.interests.shopping)  fillRail('row-shopping',  pickRange(bucket.shopping,  5, 10), 'Shopping');
-  if (state.interests.sights)    fillRail('row-sights',    pickRange(bucket.sights,    5, 10), 'Sights & Landmarks');
-  if (state.interests.relax)     fillRail('row-relax',     pickRange(bucket.relax,     5, 10), 'Relax & Recover');
+    // broadened patterns
+    const rx = {
+      dessert:   /(dessert|sweet|ice.?cream|gelato|bak(?:e|ery)|pastry|donut|cake|choco|cookie|creamery)/i,
+      drinks:    /(drink|bar|pub|lounge|wine|cocktail|taproom|speakeasy|gastropub|brewery)/i,
+      coffee:    /(coffee|café|cafe|espresso|roastery|tea\s?house)/i,
+      lateNight: /(late.?night|after.?hours|24.?\/?7|diner|fast.?food|pizza|taco|noodle|ramen|burger|shawarma|kebab|wings?)/i,
+      nightlife: /(nightlife|night.?club|club|karaoke|live\s?music|music\s?venue|entertainment|dj|dance|comedy\s?club)/i,
+      shopping:  /(shop|shopping|boutique|record\s?store|vintage|market|mall|store|department|thrift|book\s?store|gift\s?shop)/i,
+      sights:    /(sight|landmark|viewpoint|overlook|park|museum|gallery|statue|monument|bridge|plaza|observatory|tourist)/i,
+      relax:     /(relax|spa|recover|wellness|tea\s?house|onsen|soak|bathhouse|massage|sauna|yoga|float)/i
+    };
 
-  // helpful once while tuning: see what’s coming through
-  // console.log('extras sections:', (extras||[]).map(x => x.section || x.category || x.types));
-}
+    // bucket the extras
+    (extras || []).forEach(x => {
+      const h = haystack(x);
+      if (rx.dessert.test(h))        bucket.dessert.push(x);
+      else if (rx.drinks.test(h))    bucket.drinks.push(x);
+      else if (rx.coffee.test(h))    bucket.coffee.push(x);
+      else if (rx.lateNight.test(h)) bucket.lateNight.push(x);
+      else if (rx.nightlife.test(h)) bucket.nightlife.push(x);
+      else if (rx.shopping.test(h))  bucket.shopping.push(x);
+      else if (rx.sights.test(h))    bucket.sights.push(x);
+      else if (rx.relax.test(h))     bucket.relax.push(x);
+    });
+
+    // base dinner rail
+    const dinnerRow = pickRange(before, 5, 10, after);
+    await fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
+
+    // optional rails based on user interests (IDs must match your HTML)
+    if (state.interests.coffee)    await fillRail('row-coffee',    pickRange(bucket.coffee,    5, 10), 'Coffee & Cafés');
+    if (state.interests.drinks)    await fillRail('row-drinks',    pickRange(bucket.drinks,    5, 10), 'Drinks & Lounges');
+    if (state.interests.dessert)   await fillRail('row-dessert',   pickRange(bucket.dessert,   5, 10), 'Dessert');
+    if (state.interests.lateNight) await fillRail('row-late',      pickRange(bucket.lateNight, 5, 10), 'Late-Night Eats');
+    if (state.interests.nightlife) await fillRail('row-nightlife', pickRange(bucket.nightlife, 5, 10), 'Nightlife & Entertainment');
+    if (state.interests.shopping)  await fillRail('row-shopping',  pickRange(bucket.shopping,  5, 10), 'Shopping');
+    if (state.interests.sights)    await fillRail('row-sights',    pickRange(bucket.sights,    5, 10), 'Sights & Landmarks');
+    if (state.interests.relax)     await fillRail('row-relax',     pickRange(bucket.relax,     5, 10), 'Relax & Recover');
+  }
   
   /* ==================== Custom picks (helpers kept; UI removed) ==================== */
   function renderCustomPills(){

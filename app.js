@@ -494,15 +494,16 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       section: keyword || mapType || 'extra'
     }));
   }
-  function placesParamsFor(category){
-    switch (category){
-      case 'nightlife': return { mapType: 'night_club',    keyword: 'nightlife club live music' };
-      case 'shopping':  return { mapType: 'shopping_mall', keyword: 'shopping boutique vintage record store' };
-      case 'relax':     return { mapType: 'spa',           keyword: 'spa wellness sauna massage' };
-      case 'lateNight': return { mapType: 'restaurant',    keyword: 'late night 24 hours diner' };
-      default:          return { mapType: undefined,       keyword: undefined };
-    }
+ function placesParamsFor(category){
+  switch (category){
+    case 'nightlife': return { mapType: 'night_club', keyword: 'nightlife club live music' };
+    case 'shopping':  // broaden: don’t force "shopping_mall" only
+      return { mapType: undefined, keyword: 'shopping boutique vintage thrift record store market mall department store gift shop' };
+    case 'relax':     return { mapType: 'spa',        keyword: 'spa wellness sauna massage' };
+    case 'lateNight': return { mapType: 'restaurant', keyword: 'late night 24 hours diner' };
+    default:          return { mapType: undefined,    keyword: undefined };
   }
+}
   /* ========================================================================= */
 
   function bindArtistSuggest(){
@@ -777,97 +778,125 @@ function ensureRail(id, title){
     if (out.length < min){ out = uniqMerge(max, out, fallback); }
     return out.slice(0, Math.max(min, Math.min(max, out.length)));
   }
+  function milesBetween(lat1, lng1, lat2, lng2){
+  if ([lat1,lng1,lat2,lng2].some(v => v==null || Number.isNaN(+v))) return null;
+  const toRad = d => d * Math.PI / 180;
+  const R = 3958.761; // miles
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
-  // updated: accepts a title, uses ensureRail, and computes clean Map hrefs
-  function fillRail(id, list, title){
-    const row = ensureRail(id, title || '');
-    if (!row) return;
-
-    if (!Array.isArray(list) || !list.length){
-      row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
-      return;
-    }
-
-    const cards = list.map(p => {
-      const norm = {
-        name: p.name || p.title || '',
-        address: p.address || p.formatted_address || p.vicinity || '',
-        placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : null),
-        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : null),
-        url: p.url || '',
-        mapUrl: p.mapUrl || p.mapsUrl || ''
-      };
-
-      const name = esc(norm.name);
-      const dist = (p.distance && p.distance.toFixed) ? p.distance.toFixed(1) : (p.distance || "");
-      const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-      const price = p.price || "";
-      const img = p.photoUrl || "";
-      const site = norm.url || "";
-
-      const dataP = encodeURIComponent(JSON.stringify({
-        name: norm.name,
-        address: norm.address,
-        placeId: norm.placeId,
-        lat: norm.lat,
-        lng: norm.lng
+// Best-effort website fetch for a handful of items missing url
+async function backfillWebsites(list, limit=8){
+  try{
+    await waitForPlaces();
+    const svc = new google.maps.places.PlacesService(document.createElement('div'));
+    const tasks = (list||[])
+      .filter(p => !p.url && (p.placeId || p.place_id))
+      .slice(0, limit)
+      .map(p => new Promise(resolve=>{
+        const pid = p.placeId || p.place_id;
+        svc.getDetails({ placeId: pid, fields:['website'] }, (d, s)=>{
+          if (s === google.maps.places.PlacesServiceStatus.OK && d && d.website){ p.url = d.website; }
+          resolve();
+        });
       }));
+    await Promise.all(tasks);
+  }catch{/* ignore */}
+}
+async function fillRail(id, list, title){
+  const row = ensureRail(id, title || '');
+  if (!row) return;
 
-      return `
-        <article class="place-card"
-                 data-p="${dataP}"
-                 title="Open on Google Maps">
-          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-          <div class="pc-body">
-            <div class="pc-title">${name}</div>
-            <div class="pc-meta">
-              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-              ${rating ? `<span>${esc(rating)}</span>` : ""}
-              ${price ? `<span>${esc(price)}</span>` : ""}
-            </div>
-            <div class="pc-actions">
-              <a class="map-link" target="_blank" rel="noopener">Map</a>
-              ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
-            </div>
-          </div>
-        </article>
-      `;
-    }).join("");
-
-    row.innerHTML = cards;
-
-    // compute clean Map hrefs for each card
-    qsa('.place-card', row).forEach(el => {
-      const mapA = el.querySelector('.map-link');
-      if (!mapA) return;
-
-      let payload = {};
-      try {
-        payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}'));
-      } catch {}
-
-      const href = mapUrlFor(payload);
-      if (href) {
-        mapA.href = href;
-      } else {
-        mapA.style.display = 'none';
-      }
-    });
-
-    // card click opens Map; let Website clicks pass-through
-    qsa('.place-card', row).forEach(el => {
-      el.onclick = (e) => {
-        const a = e.target.closest('a');
-        if (a && a.dataset.link === 'site') return;
-
-        const mapA = el.querySelector('.map-link[href]');
-        if (mapA && mapA.href) {
-          window.open(mapA.href, '_blank', 'noopener');
-        }
-      };
-    });
+  if (!Array.isArray(list) || !list.length){
+    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+    return;
   }
+
+  // 1) Compute distance if missing
+  list.forEach(p=>{
+    if (p.distance == null && state.venueLat != null && state.venueLng != null){
+      const lat = (typeof p.lat === 'number') ? p.lat : (p.location?.lat ?? null);
+      const lng = (typeof p.lng === 'number') ? p.lng : (p.location?.lng ?? null);
+      const mi = milesBetween(state.venueLat, state.venueLng, lat, lng);
+      if (mi != null) p.distance = mi;
+    }
+  });
+
+  // 2) Try to fetch websites for a few items
+  await backfillWebsites(list, 8);
+
+  // 3) Render
+  const cards = list.map(p => {
+    const norm = {
+      name: p.name || p.title || '',
+      address: p.address || p.formatted_address || p.vicinity || '',
+      placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
+      lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : null),
+      lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : null),
+      url: p.url || '',
+      mapUrl: p.mapUrl || p.mapsUrl || ''
+    };
+
+    const name = esc(norm.name);
+    const dist = (typeof p.distance === 'number') ? p.distance.toFixed(1) : "";
+    const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
+    const price = p.price || "";
+    const img = p.photoUrl || "";
+    const site = norm.url || "";
+
+    const dataP = encodeURIComponent(JSON.stringify({
+      name: norm.name,
+      address: norm.address,
+      placeId: norm.placeId,
+      lat: norm.lat,
+      lng: norm.lng
+    }));
+
+    return `
+      <article class="place-card" data-p="${dataP}" title="Open on Google Maps">
+        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+        <div class="pc-body">
+          <div class="pc-title">${name}</div>
+          <div class="pc-meta">
+            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+            ${rating ? `<span>${esc(rating)}</span>` : ""}
+            ${price ? `<span>${esc(price)}</span>` : ""}
+          </div>
+          <div class="pc-actions">
+            <a class="map-link" target="_blank" rel="noopener">Map</a>
+            ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : ""}
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  row.innerHTML = cards;
+
+  // compute clean Map hrefs for each card
+  qsa('.place-card', row).forEach(el => {
+    const mapA = el.querySelector('.map-link');
+    if (!mapA) return;
+    let payload = {};
+    try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+    const href = mapUrlFor(payload);
+    if (href) { mapA.href = href; } else { mapA.style.display = 'none'; }
+  });
+
+  // card click opens Map; let Website clicks pass-through
+  qsa('.place-card', row).forEach(el => {
+    el.onclick = (e) => {
+      const a = e.target.closest('a');
+      if (a && a.dataset.link === 'site') return;
+      const mapA = el.querySelector('.map-link[href]');
+      if (mapA && mapA.href) window.open(mapA.href, '_blank', 'noopener');
+    };
+  });
+}
 
   // NEW: builds rails per selected interest (broad matching over multiple fields + fallback)
 async function renderRails({ before, after, extras }) {

@@ -401,14 +401,14 @@ body.page-transition::before{
 /* segmented variant still uses the same base sizing */
 .radio-group.segmented .pill { border-radius: 8px; }
 
-/* inputs (“answer bubbles”) look consistent too */
+/* inputs (“answer bubbles”) — keep base sizing so spacing feels airy */
 .form-grid input[type="text"],
 .form-grid input[type="date"],
 .form-grid input[type="time"],
 .form-grid input[type="number"],
-.form-grid select {
-  height: 36px;
-  padding: 6px 10px;
+.form-grid select{
+  min-height: 44px;            /* match your base controls */
+  padding: .78rem .9rem;       /* match base padding */
   border: 1px solid var(--border-color, #e0e0e0);
   border-radius: 8px;
 }

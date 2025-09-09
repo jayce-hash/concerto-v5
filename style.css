@@ -375,8 +375,8 @@ body.page-transition::before{
 /* Label spacing above inputs & “bubbles” */
 .form-grid label {
   display:block;
-  margin: 0 0 8px;          /* space between label and control */
-  line-height: 1.2;
+  margin: 0 0 12px;          /* space between label and control */
+  line-height: 1.3;
 }
 
 /* Consistent pill (“bubble”) sizing and spacing */

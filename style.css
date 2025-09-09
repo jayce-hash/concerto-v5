@@ -468,3 +468,27 @@ body.page-transition::before{
     margin-right: auto;
   }
 }
+
+/* --- FORCE label → input spacing inside the form cards --- */
+.form-grid > div{ 
+  display: flex; 
+  flex-direction: column;          /* put label over control */
+}
+
+.form-grid > div > label{
+  margin: 0 0 12px !important;     /* space between label and bubble */
+  line-height: 1.3;
+}
+
+.form-grid > div > input[type="text"],
+.form-grid > div > input[type="date"],
+.form-grid > div > input[type="time"],
+.form-grid > div > input[type="number"],
+.form-grid > div > select{
+  min-height: 44px !important;     /* keep the airy bubble size */
+  padding: .78rem .9rem !important;
+  border-radius: 8px;
+}
+
+/* (optional) a touch more room between stacked rows inside a card */
+.form-grid > div + div{ margin-top: 6px; }

@@ -1,4 +1,4 @@
-// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.3)
+// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.4)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { shareLinkOrCopy, toICS } from './export-tools.js';
@@ -6,7 +6,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v8.0.3 loaded");
+  console.log("Concerto+ app.js v8.0.4 loaded");
 
   const $  = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
@@ -29,6 +29,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   const state = window.__concertoState = {
     artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
     showDate: "", showTime: "",
+    showTz: "", // FIX: store venue/event timezone when available
     hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
     eatWhen: "both",
     foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
@@ -336,6 +337,9 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       state.showDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       state.showTime = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
+    // FIX: capture venue/event timezone from Ticketmaster when available
+    if (ev.timezone) state.showTz = ev.timezone;
+
     if (typeof ev.venueLat === 'number' && typeof ev.venueLng === 'number'){
       state.venueLat = ev.venueLat; state.venueLng = ev.venueLng; state.venuePlaceId = "";
       try{ await ensureVenueResolvedByName(`${ev.venue}, ${ev.city}`); }catch{}
@@ -531,6 +535,25 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
+  // FIX: Formatting in the venue timezone, with optional rounding (non-show times)
+  function roundToNearest5(date){
+    const d = new Date(date);
+    const mins = d.getMinutes();
+    const rounded = Math.round(mins / 5) * 5;
+    d.setMinutes(rounded, 0, 0);
+    return d;
+  }
+  function fmtInTz(dLike, tz, { round=false } = {}){
+    if (!dLike) return '';
+    let d = (dLike instanceof Date) ? new Date(dLike) : new Date(dLike);
+    if (round) d = roundToNearest5(d);
+    try {
+      return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit', ...(tz ? { timeZone: tz } : {}) });
+    } catch {
+      return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+    }
+  }
+
   /* ==================== Generate ==================== */
   async function generate(){
     show('loading');
@@ -573,15 +596,12 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       window.__lastItinerary = itin;
 
-      // --- Stacked header: Artist / Venue / Date • Time (centered)
-      const d = new Date(parseShowDateTimeISO());
-      const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
-      const timeStr = (() => {
-        try { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
-        catch { return ''; }
-      })();
+      // Header in venue timezone
+      const evtTz = state.showTz || '';
+      const dHeader = new Date(targetISO);
+      const dateStr = `${String(dHeader.getMonth()+1).padStart(2,'0')}/${String(dHeader.getDate()).padStart(2,'0')}/${dHeader.getFullYear()}`;
+      const timeStr = fmtInTz(dHeader, evtTz, { round:false });
 
-      // force the container itself to be a centered column and take full width
       const ctx = $('results-context');
       ctx.style.display = 'flex';
       ctx.style.flexDirection = 'column';
@@ -589,17 +609,15 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       ctx.style.textAlign = 'center';
       ctx.style.width = '100%';
 
-      // ensure the parent block spans the row and centers content
       const ctxParent = $('results-context')?.parentElement;
       if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'center'; }
 
       ctx.innerHTML = `
         <div>${esc(state.artist || 'Your Concert')}</div>
         <div>${esc(state.venue || '')}</div>
-        <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}</div>
+        <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''} ${evtTz ? `<span class="muted" style="font-variant:all-small-caps;letter-spacing:.06em;">(${esc(evtTz)})</span>` : ''}</div>
       `;
 
-      // small, separate note centered under the header
       const note = $('intro-line');
       note.style.textAlign = 'center';
       note.style.fontSize = '0.9rem';
@@ -635,37 +653,53 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       return city;
     }catch{ return ""; }
   }
-  const fmtLocal = (d)=> {
-    const date = (d instanceof Date) ? d : new Date(d);
-    try{ return date.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }catch{ return ''; }
-  };
 
   function renderTourCard(city, items, dinnerPick){
     const el = $('schedule'); if (!el) return;
 
+    // itinerary items produced by buildItinerary()
     const arrive = items.find(i=>i.type==='arrive');
     const dine   = items.find(i=>i.type==='dine');
     const show   = items.find(i=>i.type==='show');
     const post   = items.find(i=>i.type==='post');
 
+    const tz = state.showTz || ''; // FIX: format all times in venue timezone
     const parts = [];
 
-    if (state.staying && arrive?.start){
-      parts.push({ time: fmtLocal(arrive.start), label: `Leave ${state.hotel ? esc(state.hotel) : 'hotel'}` });
+    if (state.staying && dine?.start){
+      // generic pre-dinner departure (rounded)
+      parts.push({ time: fmtInTz(dine.start, tz, { round:true }), label: `Leave ${state.hotel ? esc(state.hotel) : 'hotel'}` });
+      parts.push({ time: fmtInTz(dine.start, tz, { round:true }), label: `Uber/Taxi to dinner` });
+      parts.push({ time: fmtInTz(dine.start, tz, { round:false }), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
+      if (dine.end){
+        parts.push({ time: fmtInTz(dine.end, tz, { round:true }), label: `Head to ${esc(state.venue)} for the show` });
+      }
     }
-    if (dine){
-      parts.push({ time: fmtLocal(dine.start), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
-      parts.push({ time: fmtLocal(dine.end),   label: `Leave ${esc(dinnerPick?.name || 'restaurant')} for ${esc(state.venue)}` });
+
+    if (!state.staying && dine?.start){
+      parts.push({ time: fmtInTz(dine.start, tz, { round:true }), label: `Uber/Taxi to dinner` });
+      parts.push({ time: fmtInTz(dine.start, tz, { round:false }), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
+      if (dine.end){
+        parts.push({ time: fmtInTz(dine.end, tz, { round:true }), label: `Head to ${esc(state.venue)} for the show` });
+      }
     }
+
     if (arrive){
       parts.push({
-        time: fmtLocal(arrive.start),
+        time: fmtInTz(arrive.start, tz, { round:true }),
         label: `Arrive at ${esc(state.venue)}`,
         note: `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`
       });
     }
-    if (show){ parts.push({ time: fmtLocal(show.start), label: `Show starts` }); }
-    if (post){ parts.push({ time: fmtLocal(post.start), label: `Leave the venue for dessert/drinks` }); }
+
+    if (show){
+      // Show time: NEVER rounded; must be exact.
+      parts.push({ time: fmtInTz(show.start, tz, { round:false }), label: `Concert starts` });
+    }
+
+    if (post){
+      parts.push({ time: fmtInTz(post.start, tz, { round:true }), label: `Leave the venue for dessert/drinks` });
+    }
 
     el.innerHTML = `
       <article class="card tour-card">
@@ -816,11 +850,11 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       if (href) mapA.href = href; else mapA.style.display = 'none';
     });
 
-    // card click opens Map; let Website clicks pass-through
+    // FIX: card click opens Map; let Website clicks pass-through (don’t swallow <a>)
     qsa('.place-card', row).forEach(el => {
       el.onclick = (e) => {
         const a = e.target.closest('a');
-        if (a && a.dataset.link === 'site') return;
+        if (a && a.dataset.link === 'site') return; // let website click behave normally
         const mapA = el.querySelector('.map-link[href]');
         if (mapA && mapA.href) window.open(mapA.href, '_blank', 'noopener');
       };

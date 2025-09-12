@@ -475,3 +475,54 @@ body.page-transition::before{
 @media (max-width: 720px){
   .hero-classic{ padding: 12vh 16px 8vh; }
 }
+
+/* ===== Brand-first Hero ===== */
+.hero-classic{
+  min-height: 86vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 16px;
+}
+
+/* CONCERTO+ — primary, largest element */
+.hc-mark{
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  text-transform: uppercase;
+  letter-spacing: .18em;
+  font-weight: 600;
+  font-size: clamp(42px, 7.2vw, 64px);
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+/* Description — smaller, Lora */
+.hc-sub{
+  font-family: 'Lora', Georgia, serif;
+  color: var(--muted);
+  font-size: clamp(16px, 2.6vw, 20px);
+  line-height: 1.6;
+  max-width: 640px;
+  margin: 0 auto 20px;
+}
+
+/* CTA — all caps Cormorant in a pill */
+.btn-cta{
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: none;
+  border-radius: 999px;
+  padding: .95rem 1.6rem;
+  min-height: 48px;
+  box-shadow: 0 10px 22px rgba(18,30,54,.12);
+}
+.btn-cta:hover{ transform: translateY(-1px); box-shadow: 0 14px 26px rgba(18,30,54,.16); }
+.btn-cta:active{ transform: translateY(0);   box-shadow: 0 8px 18px rgba(18,30,54,.12); }
+
+/* Hide any old hero headline if it exists */
+.hc-title{ display: none !important; }

@@ -812,78 +812,65 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
   }
 
-  // --------- NEW: Cards open Maps (no Website link) ----------
-  function fillRail(id, list, title){
-    const row = ensureRail(id, title || '');
-    if (!row) return;
+// --------- NEW: Cards are native links to Google Maps ----------
+function fillRail(id, list, title){
+  const row = ensureRail(id, title || '');
+  if (!row) return;
 
-    if (!Array.isArray(list) || !list.length){
-      row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
-      return;
-    }
-
-    const cards = list.map(p => {
-      const norm = {
-        name: p.name || p.title || '',
-        address: p.address || p.formatted_address || p.vicinity || '',
-        placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
-        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null))
-      };
-
-      // distance
-      let dist = '';
-      const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
-      if (miles != null) dist = miles.toFixed(1);
-
-      const name = esc(norm.name);
-      const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-      const price = (p.price || (typeof p.price_level === 'number' ? '$'.repeat(Math.max(1, Math.min(4, p.price_level))) : ""));
-      const img = p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "");
-
-      const dataP = encodeURIComponent(JSON.stringify({
-        name: norm.name,
-        address: norm.address,
-        placeId: norm.placeId,
-        lat: norm.lat,
-        lng: norm.lng
-      }));
-
-      return `
-        <article class="place-card"
-                 data-p="${dataP}"
-                 ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}
-                 title="Open in Google Maps"
-                 tabindex="0" role="button" aria-label="Open ${name} in Google Maps">
-          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-          <div class="pc-body">
-            <div class="pc-title">${name}</div>
-            <div class="pc-meta">
-              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-              ${rating ? `<span>${esc(rating)}</span>` : ""}
-              ${price ? `<span>${esc(price)}</span>` : ""}
-            </div>
-          </div>
-        </article>
-      `;
-    }).join("");
-
-    row.innerHTML = cards;
-
-    // Entire card opens Maps on click (and Enter/Space)
-    qsa('.place-card', row).forEach(el => {
-      const openMap = () => {
-        let payload = {};
-        try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-        const href = mapUrlFor(payload);
-        if (href) window.open(href, '_blank', 'noopener');
-      };
-      el.addEventListener('click', openMap);
-      el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
-      });
-    });
+  if (!Array.isArray(list) || !list.length){
+    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+    return;
   }
+
+  const cards = list.map(p => {
+    const norm = {
+      name: p.name || p.title || '',
+      address: p.address || p.formatted_address || p.vicinity || '',
+      placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
+      lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
+      lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
+      rating: (typeof p.rating === 'number') ? p.rating : null,
+      price_level: (typeof p.price_level === 'number') ? p.price_level : null,
+      photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "")
+    };
+
+    const mapHref = mapUrlFor({
+      placeId: norm.placeId,
+      name: norm.name,
+      address: norm.address,
+      lat: norm.lat,
+      lng: norm.lng
+    });
+
+    let dist = '';
+    const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
+    if (miles != null) dist = miles.toFixed(1);
+
+    const name = esc(norm.name);
+    const rating = norm.rating != null ? `★ ${norm.rating.toFixed(1)}` : "";
+    const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
+    const img = norm.photoUrl;
+
+    return `
+      <a class="place-card"
+         href="${esc(mapHref)}"
+         target="_blank" rel="noopener"
+         title="Open ${name} in Google Maps">
+        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+        <div class="pc-body">
+          <div class="pc-title">${name}</div>
+          <div class="pc-meta">
+            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+            ${rating ? `<span>${esc(rating)}</span>` : ""}
+            ${price ? `<span>${esc(price)}</span>` : ""}
+          </div>
+        </div>
+      </a>
+    `;
+  }).join("");
+
+  row.innerHTML = cards;
+}
 
   /* ---------- Fallback search for empty categories (ensures big cities populate) ---------- */
   function fallbackQueryFor(cat){

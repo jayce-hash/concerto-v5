@@ -423,38 +423,44 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }).catch(()=>{});
   }
 
-  /* ---------- mapUrl synthesis ---------- */
-  function mapUrlFor(p) {
-    const obj = (p && typeof p === 'object') ? p : {};
-    if (obj.mapUrl || obj.mapsUrl) return (obj.mapUrl || obj.mapsUrl);
+  /* ---------- mapUrl synthesis (use query_place_id for reliability) ---------- */
+function mapUrlFor(p) {
+  const obj = (p && typeof p === 'object') ? p : {};
 
-    const placeId =
-      obj.placeId || obj.place_id || obj.googlePlaceId || obj.google_place_id ||
-      (obj.place && (obj.place.place_id || obj.place.id)) ||
-      (obj.google && (obj.google.place_id || obj.google.id)) ||
-      null;
+  const placeId =
+    obj.placeId || obj.place_id || obj.googlePlaceId || obj.google_place_id ||
+    (obj.place && (obj.place.place_id || obj.place.id)) ||
+    (obj.google && (obj.google.place_id || obj.google.id)) ||
+    "";
 
-    const name =
-      obj.name || obj.title ||
-      (obj.place && (obj.place.name || obj.place.title)) || '';
+  const name =
+    obj.name || obj.title ||
+    (obj.place && (obj.place.name || obj.place.title)) || "";
 
-    const address =
-      obj.address || obj.formatted_address || obj.vicinity ||
-      (obj.location && (obj.location.address || obj.location.formatted_address)) || '';
+  const address =
+    obj.address || obj.formatted_address || obj.vicinity ||
+    (obj.location && (obj.location.address || obj.location.formatted_address)) || "";
 
-    if (placeId) {
-      return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
-    }
-    const q = [name, address].filter(Boolean).join(' ').trim();
-    if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-
-    const lat = obj.lat != null ? Number(obj.lat) : (obj.location && obj.location.lat != null ? Number(obj.location.lat) : NaN);
-    const lng = obj.lng != null ? Number(obj.lng) : (obj.location && obj.location.lng != null ? Number(obj.location.lng) : NaN);
-    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
-    }
-    return '';
+  // Best: query + query_place_id (works well on iOS & Android apps + web)
+  if (placeId) {
+    const q = [name, address].filter(Boolean).join(" ").trim() || "Place";
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}&query_place_id=${encodeURIComponent(placeId)}`;
   }
+
+  // Fallbacks if we don't have a placeId
+  const q = [name, address].filter(Boolean).join(" ").trim();
+  if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+
+  const lat = obj.lat != null ? Number(obj.lat) :
+              (obj.location && obj.location.lat != null ? Number(obj.location.lat) : NaN);
+  const lng = obj.lng != null ? Number(obj.lng) :
+              (obj.location && obj.location.lng != null ? Number(obj.location.lng) : NaN);
+
+  if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+  }
+  return '';
+}
 
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;

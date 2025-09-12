@@ -811,113 +811,99 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
   }
 
-  // updated: accepts a title, uses ensureRail, computes Map hrefs, distance, and lazy website enrich
-  function fillRail(id, list, title){
-    const row = ensureRail(id, title || '');
-    if (!row) return;
+// updated: accepts a title, uses ensureRail, computes Map hrefs, distance, and leaves only
+// the "Map" and "Website" links clickable (no card-level click handlers)
+function fillRail(id, list, title){
+  const row = ensureRail(id, title || '');
+  if (!row) return;
 
-    if (!Array.isArray(list) || !list.length){
-      row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
-      return;
-    }
-
-    const cards = list.map(p => {
-      const norm = {
-        name: p.name || p.title || '',
-        address: p.address || p.formatted_address || p.vicinity || '',
-        placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
-        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
-        url: p.url || p.website || '',
-        mapUrl: p.mapUrl || p.mapsUrl || ''
-      };
-
-      // distance
-      let dist = '';
-      const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
-      if (miles != null) dist = miles.toFixed(1);
-
-      const name = esc(norm.name);
-      const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-      const price = (p.price || (typeof p.price_level === 'number' ? '$'.repeat(Math.max(1, Math.min(4, p.price_level))) : ""));
-      const img = p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "");
-      const site = norm.url || "";
-
-      const dataP = encodeURIComponent(JSON.stringify({
-        name: norm.name,
-        address: norm.address,
-        placeId: norm.placeId,
-        lat: norm.lat,
-        lng: norm.lng
-      }));
-
-      return `
-        <article class="place-card" data-p="${dataP}" ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''} title="Open on Google Maps">
-          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-          <div class="pc-body">
-            <div class="pc-title">${name}</div>
-            <div class="pc-meta">
-              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-              ${rating ? `<span>${esc(rating)}</span>` : ""}
-              ${price ? `<span>${esc(price)}</span>` : ""}
-            </div>
-            <div class="pc-actions">
-              <a class="map-link" target="_blank" rel="noopener">Map</a>
-              ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : `<span class="no-site"></span>`}
-            </div>
-          </div>
-        </article>
-      `;
-    }).join("");
-
-    row.innerHTML = cards;
-
-// --- Restore Map hrefs from each card's payload ---
-qsa('.place-card', row).forEach(el => {
-  const mapA = el.querySelector('.map-link');
-  if (!mapA) return;
-
-  let payload = {};
-  try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-  const href = mapUrlFor(payload);
-
-  if (href) {
-    mapA.setAttribute('href', href);
-  } else {
-    mapA.removeAttribute('href');
-    mapA.style.display = 'none';
+  if (!Array.isArray(list) || !list.length){
+    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+    return;
   }
-});
 
-// --- Helper: force immediate open (fixes iOS long-press quirk) ---
-function wireDirectOpen(selector) {
-  qsa(selector, row).forEach(a => {
-    const open = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const href = a.getAttribute('href');
-      if (href) window.open(href, '_blank', 'noopener');
+  const cards = list.map(p => {
+    const norm = {
+      name: p.name || p.title || '',
+      address: p.address || p.formatted_address || p.vicinity || '',
+      placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
+      lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
+      lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
+      url: p.url || p.website || '',
+      mapUrl: p.mapUrl || p.mapsUrl || ''
     };
-    a.addEventListener('click', open, { passive: false });
-    a.addEventListener('touchend', open, { passive: false }); // iOS Safari
+
+    // distance from venue
+    let dist = '';
+    const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
+    if (miles != null) dist = miles.toFixed(1);
+
+    const name = esc(norm.name);
+    const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
+    const price = (p.price || (typeof p.price_level === 'number' ? '$'.repeat(Math.max(1, Math.min(4, p.price_level))) : ""));
+    const img = p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "");
+    const site = norm.url || "";
+
+    const dataP = encodeURIComponent(JSON.stringify({
+      name: norm.name,
+      address: norm.address,
+      placeId: norm.placeId,
+      lat: norm.lat,
+      lng: norm.lng
+    }));
+
+    return `
+      <article class="place-card" data-p="${dataP}" ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}>
+        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+        <div class="pc-body">
+          <div class="pc-title">${name}</div>
+          <div class="pc-meta">
+            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+            ${rating ? `<span>${esc(rating)}</span>` : ""}
+            ${price ? `<span>${esc(price)}</span>` : ""}
+          </div>
+          <div class="pc-actions">
+            <a class="map-link" target="_blank" rel="noopener">Map</a>
+            ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : `<span class="no-site"></span>`}
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  row.innerHTML = cards;
+
+  // Build proper Map hrefs for each card (so clicking "Map" opens immediately)
+  qsa('.place-card', row).forEach(el => {
+    const mapA = el.querySelector('.map-link');
+    if (!mapA) return;
+
+    let payload = {};
+    try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+    const href = mapUrlFor(payload);
+
+    if (href) {
+      mapA.setAttribute('href', href);
+      mapA.setAttribute('target', '_blank');
+      mapA.setAttribute('rel', 'noopener');
+    } else {
+      mapA.removeAttribute('href');
+      mapA.style.display = 'none';
+    }
   });
+
+  // Ensure website links behave natively (no bubbling needed since the card isn’t clickable)
+  qsa('.place-card [data-link="site"]', row).forEach(a => {
+    a.setAttribute('target', '_blank');
+    a.setAttribute('rel', 'noopener');
+  });
+
+  // DO NOT attach any click handler to the entire card.
+  // Only the <a> tags ("Map" and "Website") should be interactive.
+
+  // Lazy-enrich missing website links (adds target/rel automatically in helper)
+  lazyAttachWebsites(row, 6);
 }
-
-// Website & Map buttons open directly
-wireDirectOpen('.place-card .map-link');
-wireDirectOpen('.place-card [data-link="site"]');
-
-// Card click opens Map only if you didn't tap a link
-qsa('.place-card', row).forEach(el => {
-  el.addEventListener('click', (e) => {
-    if (e.target.closest('a')) return; // user tapped a link; already handled
-    const mapA = el.querySelector('.map-link[href]');
-    if (mapA) window.open(mapA.href, '_blank', 'noopener');
-  }, { passive: true });
-});
-    // lazy-enrich missing website links (limit to ~6 calls per rail)
-    lazyAttachWebsites(row, 6);
-  }
 
   async function lazyAttachWebsites(rowEl, maxLookups=6){
     try{

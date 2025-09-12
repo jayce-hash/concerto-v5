@@ -872,18 +872,23 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
     row.innerHTML = cards;
 
-// NEW: make "Website" taps not bubble to the card
+// NEW: make "Website" taps open directly and not bubble
 qsa('.place-card [data-link="site"]', row).forEach(a => {
-  const stop = (e) => e.stopPropagation();
-  a.addEventListener('click', stop, { passive: true });
-  a.addEventListener('touchstart', stop, { passive: true }); // iOS Safari
+  const openSite = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const href = a.getAttribute('href');
+    if (href) window.open(href, '_blank', 'noopener');
+  };
+  a.addEventListener('click', openSite, { passive: false });
+  a.addEventListener('touchend', openSite, { passive: false }); // iOS Safari
 });
 
-// card click opens Map; let Website clicks pass-through (existing block)
+// card click opens Map if anywhere else is tapped
 qsa('.place-card', row).forEach(el => {
   el.onclick = (e) => {
     const a = e.target.closest('a');
-    if (a && a.dataset.link === 'site') return; // do nothing; browser handles it
+    if (a && a.dataset.link === 'site') return; // Website handled above
     const mapA = el.querySelector('.map-link[href]');
     if (mapA && mapA.href) window.open(mapA.href, '_blank', 'noopener');
   };

@@ -655,102 +655,103 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
 
   function estimateTravelMin(aLat, aLng, bLat, bLng){
-  // If we know the distance, use a simple model; else default 15min
-  if ([aLat,aLng,bLat,bLng].every(v => typeof v === 'number' && !Number.isNaN(v))) {
-    const toRad = x => x * Math.PI/180;
-    const R = 3958.8; // miles
-    const dLat = toRad(bLat - aLat);
-    const dLng = toRad(bLng - aLng);
-    const sa = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
-    const miles = R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
-    // 5 min base + ~4 min per mile, clamped
-    return Math.max(8, Math.min(45, 5 + miles * 4));
+    // If we know the distance, use a simple model; else default 15min
+    if ([aLat,aLng,bLat,bLng].every(v => typeof v === 'number' && !Number.isNaN(v))) {
+      const toRad = x => x * Math.PI/180;
+      const R = 3958.8; // miles
+      const dLat = toRad(bLat - aLat);
+      const dLng = toRad(bLng - aLng);
+      const sa = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+      const miles = R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
+      // 5 min base + ~4 min per mile, clamped
+      return Math.max(8, Math.min(45, 5 + miles * 4));
+    }
+    return 15;
   }
-  return 15;
-}
-  
+
   function renderTourCard(city, items, dinnerPick){
-  const el = $('schedule'); if (!el) return;
+    const el = $('schedule'); if (!el) return;
 
-  const arrive = items.find(i=>i.type==='arrive'); // venue arrival block
-  const dine   = items.find(i=>i.type==='dine');   // dinner block (start/end)
-  const show   = items.find(i=>i.type==='show');
-  const post   = items.find(i=>i.type==='post');
+    const arrive = items.find(i=>i.type==='arrive'); // venue arrival block
+    const dine   = items.find(i=>i.type==='dine');   // dinner block (start/end)
+    const show   = items.find(i=>i.type==='show');
+    const post   = items.find(i=>i.type==='post');
 
-  const tz = state.showTz || '';
-  const parts = [];
+    const tz = state.showTz || '';
+    const parts = [];
 
-  // --- Dinner flow (with hotel) ---
-  if (dine?.start) {
-    // estimate hotel -> dinner travel
-    let leaveForDinner = new Date(dine.start);
-    if (state.staying && state.hotelLat != null && state.hotelLng != null && dinnerPick?.lat != null && dinnerPick?.lng != null){
-      const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
-      leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
-    } else if (state.staying) {
-      leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
+    // --- Dinner flow (with hotel) ---
+    if (dine?.start) {
+      // estimate hotel -> dinner travel
+      let leaveForDinner = new Date(dine.start);
+      if (state.staying && state.hotelLat != null && state.hotelLng != null && dinnerPick?.lat != null && dinnerPick?.lng != null){
+        const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
+        leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
+      } else if (state.staying) {
+        leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
+      }
+
+      // 1) Leave hotel
+      if (state.staying){
+        parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Leave ${esc(state.hotel || 'hotel')}` });
+        // 2) Ride callout a couple minutes later so times don’t duplicate
+        const rideTs = new Date(leaveForDinner.getTime() + 2*60000);
+        parts.push({ ts: +rideTs, time: fmtInTz(rideTs, tz, { round:true }), label: `Uber/Taxi to dinner` });
+      } else {
+        // no hotel — just show the ride to dinner at the leave time
+        parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Uber/Taxi to dinner` });
+      }
+
+      // 3) Arrive at dinner (exact shown time)
+      parts.push({ ts: +new Date(dine.start), time: fmtInTz(dine.start, tz, { round:false }), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
+
+      // 4) Leave dinner for venue
+      if (dine.end){
+        parts.push({ ts: +new Date(dine.end), time: fmtInTz(dine.end, tz, { round:true }), label: `Head to ${esc(state.venue)} for the show` });
+      }
     }
 
-    // 1) Leave hotel
-    if (state.staying){
-      parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Leave ${esc(state.hotel || 'hotel')}` });
-      // 2) Ride callout a couple minutes later so times don’t duplicate
-      const rideTs = new Date(leaveForDinner.getTime() + 2*60000);
-      parts.push({ ts: +rideTs, time: fmtInTz(rideTs, tz, { round:true }), label: `Uber/Taxi to dinner` });
-    } else {
-      // no hotel — just show the ride to dinner at the leave time
-      parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Uber/Taxi to dinner` });
+    // 5) Arrive at venue (from itinerary)
+    if (arrive){
+      parts.push({
+        ts: +new Date(arrive.start),
+        time: fmtInTz(arrive.start, tz, { round:true }),
+        label: `Arrive at ${esc(state.venue)}`,
+        note: `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`
+      });
     }
 
-    // 3) Arrive at dinner (exact shown time)
-    parts.push({ ts: +new Date(dine.start), time: fmtInTz(dine.start, tz, { round:false }), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
-
-    // 4) Leave dinner for venue
-    if (dine.end){
-      parts.push({ ts: +new Date(dine.end), time: fmtInTz(dine.end, tz, { round:true }), label: `Head to ${esc(state.venue)} for the show` });
+    // 6) Concert starts (never rounded)
+    if (show){
+      parts.push({ ts: +new Date(show.start), time: fmtInTz(show.start, tz, { round:false }), label: `Concert starts` });
     }
+
+    // 7) Post option
+    if (post){
+      parts.push({ ts: +new Date(post.start), time: fmtInTz(post.start, tz, { round:true }), label: `Leave the venue for dessert/drinks` });
+    }
+
+    // Guarantee chronological order
+    parts.sort((a,b)=> a.ts - b.ts);
+
+    el.innerHTML = `
+      <article class="card tour-card">
+        <div class="tour-head">
+          <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+        </div>
+        <div class="tour-steps">
+          ${parts.map(p => `
+            <div class="tstep">
+              <div class="t-time">${esc(p.time || '')}</div>
+              <div class="t-label">${p.label}</div>
+              ${p.note ? `<div class="t-note">· ${esc(p.note)}</div>` : ""}
+            </div>
+          `).join("")}
+        </div>
+      </article>
+    `;
   }
 
-  // 5) Arrive at venue (from itinerary)
-  if (arrive){
-    parts.push({
-      ts: +new Date(arrive.start),
-      time: fmtInTz(arrive.start, tz, { round:true }),
-      label: `Arrive at ${esc(state.venue)}`,
-      note: `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`
-    });
-  }
-
-  // 6) Concert starts (never rounded)
-  if (show){
-    parts.push({ ts: +new Date(show.start), time: fmtInTz(show.start, tz, { round:false }), label: `Concert starts` });
-  }
-
-  // 7) Post option
-  if (post){
-    parts.push({ ts: +new Date(post.start), time: fmtInTz(post.start, tz, { round:true }), label: `Leave the venue for dessert/drinks` });
-  }
-
-  // Guarantee chronological order
-  parts.sort((a,b)=> a.ts - b.ts);
-
-  el.innerHTML = `
-    <article class="card tour-card">
-      <div class="tour-head">
-        <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-      </div>
-      <div class="tour-steps">
-        ${parts.map(p => `
-          <div class="tstep">
-            <div class="t-time">${esc(p.time || '')}</div>
-            <div class="t-label">${p.label}</div>
-            ${p.note ? `<div class="t-note">· ${esc(p.note)}</div>` : ""}
-          </div>
-        `).join("")}
-      </div>
-    </article>
-  `;
-}
   /* ===== Helper: ensure a rail container exists, show/hide ===== */
   function ensureRail(id, title){
     let target = document.getElementById(id);
@@ -811,145 +812,77 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
   }
 
-  // --- URL normalizer (ensures Website links always open on tap) ---
-function normalizeUrl(u){
-  if (!u || typeof u !== 'string') return '';
-  const trimmed = u.trim();
-  if (!trimmed) return '';
-  // Already good
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  // Protocol-relative (//example.com)
-  if (/^\/\//.test(trimmed)) return 'https:' + trimmed;
-  // Assume https otherwise
-  return 'https://' + trimmed.replace(/^:+/, '');
-}
-  
-function fillRail(id, list, title){
-  const row = ensureRail(id, title || '');
-  if (!row) return;
+  // --------- NEW: Cards open Maps (no Website link) ----------
+  function fillRail(id, list, title){
+    const row = ensureRail(id, title || '');
+    if (!row) return;
 
-  if (!Array.isArray(list) || !list.length){
-    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
-    return;
-  }
-
-  const cards = list.map((p, idx) => {
-    const norm = {
-      name: p.name || p.title || '',
-      address: p.address || p.formatted_address || p.vicinity || '',
-      placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-      lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
-      lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
-      url: normalizeUrl(p.url || p.website || ''),
-      mapUrl: p.mapUrl || p.mapsUrl || ''
-    };
-
-    // distance
-    let dist = '';
-    const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
-    if (miles != null) dist = miles.toFixed(1);
-
-    const name = esc(norm.name);
-    const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
-    const price = (p.price || (typeof p.price_level === 'number' ? '$'.repeat(Math.max(1, Math.min(4, p.price_level))) : ""));
-    const img = p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "");
-
-    const dataP = encodeURIComponent(JSON.stringify({
-      name: norm.name,
-      address: norm.address,
-      placeId: norm.placeId,
-      lat: norm.lat,
-      lng: norm.lng,
-      url: norm.url
-    }));
-
-    return `
-      <article class="place-card" data-p="${dataP}" ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}>
-        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-        <div class="pc-body">
-          <div class="pc-title">${name}</div>
-          <div class="pc-meta">
-            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-            ${rating ? `<span>${esc(rating)}</span>` : ""}
-            ${price ? `<span>${esc(price)}</span>` : ""}
-          </div>
-          <div class="pc-actions">
-            <a class="map-link" target="_blank" rel="noopener">Map</a>
-            ${norm.url ? `<a class="site-link" target="_blank" rel="noopener">Website</a>` : `<span class="no-site"></span>`}
-          </div>
-        </div>
-      </article>
-    `;
-  }).join("");
-
-  row.innerHTML = cards;
-
-  // Set Map hrefs
-  qsa('.place-card', row).forEach((el, idx) => {
-    const mapA = el.querySelector('.map-link');
-    if (!mapA) return;
-    let payload = {};
-    try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-    const href = mapUrlFor(payload);
-    if (href) {
-      mapA.href = href;
-    } else {
-      mapA.remove();
+    if (!Array.isArray(list) || !list.length){
+      row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+      return;
     }
-  });
 
-  // Set Website hrefs
-  qsa('.place-card', row).forEach((el, idx) => {
-    const siteA = el.querySelector('.site-link');
-    if (!siteA) return;
-    let payload = {};
-    try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-    const raw = (payload && payload.url) || (list[idx] && (list[idx].url || list[idx].website)) || '';
-    const href = normalizeUrl(raw);
-    if (href) {
-      siteA.href = href;
-    } else {
-      siteA.remove();
-    }
-  });
+    const cards = list.map(p => {
+      const norm = {
+        name: p.name || p.title || '',
+        address: p.address || p.formatted_address || p.vicinity || '',
+        placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
+        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
+        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null))
+      };
 
-  // No card click handler — only explicit links work now
+      // distance
+      let dist = '';
+      const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
+      if (miles != null) dist = miles.toFixed(1);
 
-  // Lazy-enrich missing websites
-  lazyAttachWebsites(row, 6);
-}
+      const name = esc(norm.name);
+      const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
+      const price = (p.price || (typeof p.price_level === 'number' ? '$'.repeat(Math.max(1, Math.min(4, p.price_level))) : ""));
+      const img = p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "");
 
-  async function lazyAttachWebsites(rowEl, maxLookups=6){
-    try{
-      await waitForPlaces();
-      const svc = new google.maps.places.PlacesService(document.createElement('div'));
-      const tasks = [];
-      qsa('.place-card', rowEl).some((el, idx)=>{
-        if (idx >= maxLookups) return true;
-        const hasSite = !!el.querySelector('[data-link="site"]');
-        const pid = el.getAttribute('data-pid');
-        if (!hasSite && pid){
-          tasks.push(new Promise((resolve)=> {
-            svc.getDetails({ placeId: pid, fields: ['website'] }, (d, s)=>{
-              if (s === google.maps.places.PlacesServiceStatus.OK && d && d.website){
-                const actions = el.querySelector('.pc-actions');
-                const span = actions?.querySelector('.no-site');
-                if (actions){
-                  if (span) span.remove();
-                  const a = document.createElement('a');
-                  a.textContent = "Website";
-                  a.href = d.website; a.target = "_blank"; a.rel="noopener"; a.dataset.link="site";
-                  actions.appendChild(a);
-                }
-              }
-              resolve();
-            });
-          }));
-        }
-        return false;
+      const dataP = encodeURIComponent(JSON.stringify({
+        name: norm.name,
+        address: norm.address,
+        placeId: norm.placeId,
+        lat: norm.lat,
+        lng: norm.lng
+      }));
+
+      return `
+        <article class="place-card"
+                 data-p="${dataP}"
+                 ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}
+                 title="Open in Google Maps"
+                 tabindex="0" role="button" aria-label="Open ${name} in Google Maps">
+          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+          <div class="pc-body">
+            <div class="pc-title">${name}</div>
+            <div class="pc-meta">
+              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+              ${rating ? `<span>${esc(rating)}</span>` : ""}
+              ${price ? `<span>${esc(price)}</span>` : ""}
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    row.innerHTML = cards;
+
+    // Entire card opens Maps on click (and Enter/Space)
+    qsa('.place-card', row).forEach(el => {
+      const openMap = () => {
+        let payload = {};
+        try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+        const href = mapUrlFor(payload);
+        if (href) window.open(href, '_blank', 'noopener');
+      };
+      el.addEventListener('click', openMap);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
       });
-      await Promise.allSettled(tasks);
-    }catch{}
+    });
   }
 
   /* ---------- Fallback search for empty categories (ensures big cities populate) ---------- */

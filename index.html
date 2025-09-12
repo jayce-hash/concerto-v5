@@ -3,38 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Concerto+ · Concert Day Planner (v7.9.1)</title>
+  <title>Concerto+ · Concert Day Planner</title>
 
-  <!-- Fonts: Lora for body, Cormorant Garamond for headings -->
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Base styles -->
-  <link rel="stylesheet" href="./style.css?v=782" />
+  <!-- Styles -->
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <noscript>This app requires JavaScript to run.</noscript>
 
-<!-- ========== WELCOME (Classic) ========== -->
-<section id="screen-welcome" class="screen active">
-  <div class="container narrow">
-    <div class="hero-classic">
-      <div class="hc-mark">CONCERTO<span>+</span></div>
-      <h1 class="hc-title">Plan your concert night</h1>
-      <p class="hc-sub">Curated dinner, drinks, and a timeline that fits your show.</p>
-      <button id="btn-start" class="btn btn-primary hc-cta">Plan my night</button>
+  <!-- ========== WELCOME (premium hero) ========== -->
+  <section id="screen-welcome" class="screen active">
+    <div class="container narrow hero hero-premium">
+      <h1 class="brand">CONCERTO+</h1>
+      <p class="tagline">
+        Curated dinner, drinks, and a timeline that fits your show.
+      </p>
+      <button id="btn-start" class="btn btn-cta">PLAN MY NIGHT</button>
     </div>
-  </div>
-</section>
+  </section>
 
   <!-- ========== FORM STEPS ========== -->
   <section id="screen-form" class="screen">
     <div class="container narrow">
-      <!-- Progress -->
-      <div class="progress"><div id="progress-bar" class="progress-bar" style="width:0%"></div></div>
-
-      <!-- Dynamic step content -->
+      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
       <article class="card step-card">
         <div id="step-wrapper"></div>
         <div class="sticky-actions">
@@ -56,8 +52,6 @@
   <!-- ========== RESULTS ========== -->
   <section id="screen-results" class="screen">
     <div class="container wide">
-
-      <!-- Header + intro -->
       <div class="results-header">
         <div>
           <h2 id="results-context">Your Concert Day</h2>
@@ -71,77 +65,17 @@
         </div>
       </div>
 
-      <!-- Tour Card gets injected here -->
       <div id="schedule" class="schedule"></div>
 
-      <!-- Horizontal rails -->
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Dinner near the venue</h3>
-        </header>
-        <div id="row-dinner" class="h-scroll cards-rail"></div>
-      </section>
-
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Dessert &amp; late-night</h3>
-        </header>
-        <div id="row-dessert" class="h-scroll cards-rail"></div>
-      </section>
-
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Drinks &amp; lounges</h3>
-        </header>
-        <div id="row-drinks" class="h-scroll cards-rail"></div>
-      </section>
-
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Sights &amp; landmarks</h3>
-        </header>
-        <div id="row-sights" class="h-scroll cards-rail"></div>
-      </section>
-
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Coffee &amp; cafés</h3>
-        </header>
-        <div id="row-coffee" class="h-scroll cards-rail"></div>
-      </section>
-
-      <!-- Nightlife & Entertainment -->
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Nightlife &amp; entertainment</h3>
-        </header>
-        <div id="row-nightlife" class="h-scroll cards-rail"></div>
-      </section>
-
-      <!-- Shopping -->
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Shopping</h3>
-        </header>
-        <div id="row-shopping" class="h-scroll cards-rail"></div>
-      </section>
-
-      <!-- Late-Night Eats -->
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Late-night eats</h3>
-        </header>
-        <div id="row-late" class="h-scroll cards-rail"></div>
-      </section>
-
-      <!-- Relax & Recover -->
-      <section class="rail">
-        <header class="rail-head">
-          <h3 class="rail-title">Relax &amp; recover</h3>
-        </header>
-        <div id="row-relax" class="h-scroll cards-rail"></div>
-      </section>
-
+      <section class="rail"><header class="rail-head"><h3 class="rail-title">Dinner near the venue</h3></header><div id="row-dinner" class="h-scroll cards-rail"></div></section>
+      <section class="rail"><header class="rail-head"><h3 class="rail-title">Dessert &amp; late-night</h3></header><div id="row-dessert" class="h-scroll cards-rail"></div></section>
+      <section class="rail"><header class="rail-head"><h3 class="rail-title">Drinks &amp; lounges</h3></header><div id="row-drinks" class="h-scroll cards-rail"></div></section>
+      <section class="rail"><header class="rail-head"><h3 class="rail-title">Sights &amp; landmarks</h3></header><div id="row-sights" class="h-scroll cards-rail"></div></section>
+      <section class="rail"><header class="rail-head"><h3 class="rail-title">Coffee &amp; cafés</h3></header><div id="row-coffee" class="h-scroll cards-rail"></div></section>
+      <section class="rail"><header class="rail-head"><h3 class="rail-title">Nightlife &amp; entertainment</h3></header><div id="row-nightlife" class="h-scroll cards-rail"></div></section>
+      <section class="rail"><header class="rail-head"><h3 class="rail-title">Shopping</h3></header><div id="row-shopping" class="h-scroll cards-rail"></div></section>
+      <section class="rail"><header class="rail-head"><h3 class="rail-title">Late-night eats</h3></header><div id="row-late" class="h-scroll cards-rail"></div></section>
+      <section class="rail"><header class="rail-head"><h3 class="rail-title">Relax &amp; recover</h3></header><div id="row-relax" class="h-scroll cards-rail"></div></section>
     </div>
   </section>
 
@@ -149,6 +83,6 @@
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
 
   <!-- App -->
-  <script type="module" src="./app.js?v=804"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

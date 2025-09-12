@@ -872,28 +872,49 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
     row.innerHTML = cards;
 
-// NEW: make "Website" taps open directly and not bubble
-qsa('.place-card [data-link="site"]', row).forEach(a => {
-  const openSite = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const href = a.getAttribute('href');
-    if (href) window.open(href, '_blank', 'noopener');
-  };
-  a.addEventListener('click', openSite, { passive: false });
-  a.addEventListener('touchend', openSite, { passive: false }); // iOS Safari
-});
-
-// card click opens Map if anywhere else is tapped
+// --- Restore Map hrefs from each card's payload ---
 qsa('.place-card', row).forEach(el => {
-  el.onclick = (e) => {
-    const a = e.target.closest('a');
-    if (a && a.dataset.link === 'site') return; // Website handled above
-    const mapA = el.querySelector('.map-link[href]');
-    if (mapA && mapA.href) window.open(mapA.href, '_blank', 'noopener');
-  };
+  const mapA = el.querySelector('.map-link');
+  if (!mapA) return;
+
+  let payload = {};
+  try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+  const href = mapUrlFor(payload);
+
+  if (href) {
+    mapA.setAttribute('href', href);
+  } else {
+    mapA.removeAttribute('href');
+    mapA.style.display = 'none';
+  }
 });
 
+// --- Helper: force immediate open (fixes iOS long-press quirk) ---
+function wireDirectOpen(selector) {
+  qsa(selector, row).forEach(a => {
+    const open = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const href = a.getAttribute('href');
+      if (href) window.open(href, '_blank', 'noopener');
+    };
+    a.addEventListener('click', open, { passive: false });
+    a.addEventListener('touchend', open, { passive: false }); // iOS Safari
+  });
+}
+
+// Website & Map buttons open directly
+wireDirectOpen('.place-card .map-link');
+wireDirectOpen('.place-card [data-link="site"]');
+
+// Card click opens Map only if you didn't tap a link
+qsa('.place-card', row).forEach(el => {
+  el.addEventListener('click', (e) => {
+    if (e.target.closest('a')) return; // user tapped a link; already handled
+    const mapA = el.querySelector('.map-link[href]');
+    if (mapA) window.open(mapA.href, '_blank', 'noopener');
+  }, { passive: true });
+});
     // lazy-enrich missing website links (limit to ~6 calls per rail)
     lazyAttachWebsites(row, 6);
   }

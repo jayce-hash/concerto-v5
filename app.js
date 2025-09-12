@@ -811,8 +811,19 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
   }
 
-// updated: accepts a title, uses ensureRail, computes Map hrefs, distance, and leaves only
-// the "Map" and "Website" links clickable (no card-level click handlers)
+  // --- URL normalizer (ensures Website links always open on tap) ---
+function normalizeUrl(u){
+  if (!u || typeof u !== 'string') return '';
+  const trimmed = u.trim();
+  if (!trimmed) return '';
+  // Already good
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // Protocol-relative (//example.com)
+  if (/^\/\//.test(trimmed)) return 'https:' + trimmed;
+  // Assume https otherwise
+  return 'https://' + trimmed.replace(/^:+/, '');
+}
+  
 function fillRail(id, list, title){
   const row = ensureRail(id, title || '');
   if (!row) return;
@@ -822,18 +833,18 @@ function fillRail(id, list, title){
     return;
   }
 
-  const cards = list.map(p => {
+  const cards = list.map((p, idx) => {
     const norm = {
       name: p.name || p.title || '',
       address: p.address || p.formatted_address || p.vicinity || '',
       placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
       lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
       lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
-      url: p.url || p.website || '',
+      url: normalizeUrl(p.url || p.website || ''),
       mapUrl: p.mapUrl || p.mapsUrl || ''
     };
 
-    // distance from venue
+    // distance
     let dist = '';
     const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
     if (miles != null) dist = miles.toFixed(1);
@@ -842,14 +853,14 @@ function fillRail(id, list, title){
     const rating = typeof p.rating === "number" ? `★ ${p.rating.toFixed(1)}` : "";
     const price = (p.price || (typeof p.price_level === 'number' ? '$'.repeat(Math.max(1, Math.min(4, p.price_level))) : ""));
     const img = p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "");
-    const site = norm.url || "";
 
     const dataP = encodeURIComponent(JSON.stringify({
       name: norm.name,
       address: norm.address,
       placeId: norm.placeId,
       lat: norm.lat,
-      lng: norm.lng
+      lng: norm.lng,
+      url: norm.url
     }));
 
     return `
@@ -864,7 +875,7 @@ function fillRail(id, list, title){
           </div>
           <div class="pc-actions">
             <a class="map-link" target="_blank" rel="noopener">Map</a>
-            ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" data-link="site">Website</a>` : `<span class="no-site"></span>`}
+            ${norm.url ? `<a class="site-link" target="_blank" rel="noopener">Website</a>` : `<span class="no-site"></span>`}
           </div>
         </div>
       </article>
@@ -873,35 +884,38 @@ function fillRail(id, list, title){
 
   row.innerHTML = cards;
 
-  // Build proper Map hrefs for each card (so clicking "Map" opens immediately)
-  qsa('.place-card', row).forEach(el => {
+  // Set Map hrefs
+  qsa('.place-card', row).forEach((el, idx) => {
     const mapA = el.querySelector('.map-link');
     if (!mapA) return;
-
     let payload = {};
     try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
     const href = mapUrlFor(payload);
-
     if (href) {
-      mapA.setAttribute('href', href);
-      mapA.setAttribute('target', '_blank');
-      mapA.setAttribute('rel', 'noopener');
+      mapA.href = href;
     } else {
-      mapA.removeAttribute('href');
-      mapA.style.display = 'none';
+      mapA.remove();
     }
   });
 
-  // Ensure website links behave natively (no bubbling needed since the card isn’t clickable)
-  qsa('.place-card [data-link="site"]', row).forEach(a => {
-    a.setAttribute('target', '_blank');
-    a.setAttribute('rel', 'noopener');
+  // Set Website hrefs
+  qsa('.place-card', row).forEach((el, idx) => {
+    const siteA = el.querySelector('.site-link');
+    if (!siteA) return;
+    let payload = {};
+    try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+    const raw = (payload && payload.url) || (list[idx] && (list[idx].url || list[idx].website)) || '';
+    const href = normalizeUrl(raw);
+    if (href) {
+      siteA.href = href;
+    } else {
+      siteA.remove();
+    }
   });
 
-  // DO NOT attach any click handler to the entire card.
-  // Only the <a> tags ("Map" and "Website") should be interactive.
+  // No card click handler — only explicit links work now
 
-  // Lazy-enrich missing website links (adds target/rel automatically in helper)
+  // Lazy-enrich missing websites
   lazyAttachWebsites(row, 6);
 }
 

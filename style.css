@@ -1,4 +1,4 @@
-/* style.css — Concerto+ Light Luxe (v7.8.1)
+/* style.css — Concerto+ Light Luxe (v7.8.2)
    - Body: Lora
    - Headings (h1–h3, rail/sticky titles, labels): Cormorant Garamond, ALL CAPS
    - Non-sticky top card + horizontal rails with compact, uniform photo cards
@@ -70,20 +70,6 @@ label{
 .container{ width:min(1120px, 92vw); margin:0 auto; padding: var(--s-6) 0; }
 .container.narrow{ width:min(780px, 92vw); }
 .container.wide{ width:min(1120px, 94vw); }
-
-/* Hero */
-.hero{ text-align:center; padding: var(--s-10) var(--s-4) var(--s-6); }
-.hero .headline{ margin:0 0 var(--s-2); }
-.hero .subhead{ color: var(--muted); font-size: 1.05rem; }
-
-/* Decorative divider */
-.music-notes{
-  height: 8px;
-  background: repeating-linear-gradient(90deg, rgba(31,43,74,.12) 0 2px, transparent 2px 10px);
-  mask-image: radial-gradient(800px 300px at 70% -20%, black, transparent 60%);
-  opacity:.28;
-  margin: var(--s-2) 0 0;
-}
 
 /* ===== Buttons ===== */
 .btn{
@@ -233,11 +219,11 @@ input:focus, select:focus{ border-color: var(--accent-2); box-shadow: var(--ring
 .schedule .row:last-child{ border-bottom: none; }
 .schedule .hdr{ display:flex; align-items:center; gap:.6rem; }
 .schedule .pin{ width:10px; height:10px; border-radius:50%; background:var(--accent-2); box-shadow:0 0 0 6px rgba(42,58,99,.15); }
-.schedule .time{ min-width:60px; color:var(--muted); font-variant-numeric: tabular-nums; }
+.schedule .time{ min-width:60px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .schedule .title{
   flex:1;
   font-family: 'Cormorant Garamond', Georgia, serif;
-  letter-spacing:.08em; text-transform:uppercase; font-weight:400; color:var(--ink);
+  letter-spacing:.08em; text-transform:uppercase; font-weight:400; color: var(--ink);
   font-size:1rem;
 }
 .schedule .meta{ display:flex; gap:.66rem; flex-wrap:wrap; color:var(--muted); margin-top:.25rem; }
@@ -273,6 +259,10 @@ input:focus, select:focus{ border-color: var(--accent-2); box-shadow: var(--ring
 }
 .h-scroll::-webkit-scrollbar{ height: 8px; }
 .h-scroll::-webkit-scrollbar-thumb{ background: #D9E0EB; border-radius: 999px; }
+
+/* Hide rails that end up empty or show the "No options found." placeholder */
+.rail:has(.cards-rail:empty){ display:none; }
+.rail:has(.cards-rail .muted){ display:none; }
 
 /* ===== Place Cards (compact, uniform) ===== */
 .place-card{
@@ -321,7 +311,6 @@ body.page-transition::before{
 
 /* ===== Responsive ===== */
 @media (max-width: 900px){
-  .hero{ padding: var(--s-8) var(--s-4) var(--s-5); }
   .results-header{ flex-direction: column; align-items: flex-start; gap: 10px; }
 }
 @media (max-width: 720px){
@@ -339,156 +328,103 @@ body.page-transition::before{
 @media (prefers-reduced-motion: reduce){
   *{ animation: none !important; transition: none !important; }
 }
-/* Center the tour card */
+
+/* ===== Center the tour card & results title ===== */
 .tour-card{
   max-width: 760px;
-  margin: 0 auto 18px;   /* center + a little breathing room */
-}
-.tour-card {
+  margin: 0 auto 18px;
   display: block;
-  text-align: left; /* keep text aligned left inside */
+  text-align: left;
 }
+.schedule{ display:flex; justify-content:center; padding-left:0 !important; }
+.schedule::before{ content:none !important; }
 
-.schedule {
-  display: flex;
-  justify-content: center; /* ensures the card sits centered */
-}
-
-/* --- Center the results title block across the full header row --- */
-.results-header { align-items: center; }                   /* vertically center row items */
-.results-header > div:first-child{
-  flex: 1 1 0;                                             /* let the title block span the row */
-  text-align: center;                                      /* center Artist / Venue / Date • Time */
-}
-.results-header h2,
-.results-header #intro-line{
-  margin-left: auto;                                       /* make sure these center even if */
-  margin-right: auto;                                      /* other styles tweak margins     */
-}
-
-/* keep it centered on small screens, too */
+.results-header{ align-items: center; }
+.results-header > div:first-child{ flex:1 1 0; text-align: center; }
 @media (max-width: 900px){
   .results-header{ flex-direction: column; align-items: center; }
   .results-header > div:first-child{ width: 100%; text-align: center; }
 }
 
-/* Label spacing above inputs & “bubbles” */
-.form-grid label {
-  display:block;
-  margin: 0 0 12px;          /* space between label and control */
-  line-height: 1.3;
-}
-
-/* Consistent pill (“bubble”) sizing and spacing */
-.radio-group {
-  display:flex;
-  flex-wrap: wrap;
-  gap: 8px;                 /* equal space between bubbles */
-}
-
-.radio-group .pill {
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding: 8px 12px;
-  min-height: 36px;         /* consistent height */
-  border-radius: 999px;
-  border: 1px solid var(--border-color, #e0e0e0);
-  cursor: pointer;
-  user-select: none;
-}
-
-/* segmented variant still uses the same base sizing */
-.radio-group.segmented .pill { border-radius: 8px; }
-
-/* inputs (“answer bubbles”) — keep base sizing so spacing feels airy */
-.form-grid input[type="text"],
-.form-grid input[type="date"],
-.form-grid input[type="time"],
-.form-grid input[type="number"],
-.form-grid select{
-  min-height: 44px;            /* match your base controls */
-  padding: .78rem .9rem;       /* match base padding */
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 8px;
-}
-
-/* Fix spacing/alignment for the "Your Night" tour card */
-.tour-card {
-  margin: 0 auto;              /* center the card */
-  max-width: 95%;              /* prevent overflow on small screens */
-  box-sizing: border-box;      /* include padding in width calc */
-}
-
-.tour-head, 
-.tour-steps {
-  padding: 0 1rem;             /* consistent left/right padding */
-  text-align: left;            /* keep step text aligned left */
-}
-
-.tour-title {
-  text-align: center;          /* center the "Your Night in X" title */
-  margin-bottom: 0.75rem;
-}
-
-.tstep {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;     /* align times/labels cleanly */
-  margin-bottom: 0.5rem;
-}
-
-.t-time {
-  font-weight: 600;
-  min-width: 3.5rem;           /* ensures times don’t jump around */
-}
-
-/* --- Centered tour card: kill the old vertical rule & padding --- */
-.schedule {
-  padding-left: 0 !important;      /* stop pushing the card right */
-  display: flex;                    /* already present, keep centering */
-  justify-content: center;
-}
-.schedule::before {
-  content: none !important;         /* remove the faint grey line */
-}
-
-/* Keep the tour card neatly centered on all screens */
-.tour-card{
-  max-width: 760px;
-  width: 100%;
-  margin: 0 auto 18px;
-  display: block;
-  text-align: left;
-}
-@media (max-width: 720px){
-  .tour-card{
-    max-width: 94vw;               /* a bit more breathing room on phones */
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-/* --- FORCE label → input spacing inside the form cards --- */
-.form-grid > div{ 
-  display: flex; 
-  flex-direction: column;          /* put label over control */
-}
-
-.form-grid > div > label{
-  margin: 0 0 12px !important;     /* space between label and bubble */
-  line-height: 1.3;
-}
-
+/* ===== Form spacing consistency ===== */
+.form-grid > div{ display:flex; flex-direction: column; }
+.form-grid > div > label{ margin: 0 0 12px !important; line-height: 1.3; }
 .form-grid > div > input[type="text"],
 .form-grid > div > input[type="date"],
 .form-grid > div > input[type="time"],
 .form-grid > div > input[type="number"],
 .form-grid > div > select{
-  min-height: 44px !important;     /* keep the airy bubble size */
+  min-height: 44px !important;
   padding: .78rem .9rem !important;
   border-radius: 8px;
 }
-
-/* (optional) a touch more room between stacked rows inside a card */
 .form-grid > div + div{ margin-top: 6px; }
+
+/* ===== Welcome Hero (Concerto+ Light Luxe) ===== */
+.hero-wrap{
+  position: relative;
+  max-width: 720px;
+  margin: 8vh auto 6vh;
+  padding: 32px 20px 40px;
+  text-align: center;
+  isolation: isolate;
+}
+.hero-wrap::before{
+  content:"";
+  position:absolute; inset:-10% -5% auto -5%;
+  height: 60%;
+  background: radial-gradient(1200px 420px at 50% -10%,
+              rgba(31,43,74,.10), rgba(31,43,74,0));
+  z-index:-1;
+}
+.hero-brand{
+  letter-spacing: .22em;
+  font-variant: small-caps;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 600;
+  color: var(--accent);
+  opacity: .95;
+  margin-bottom: 10px;
+  font-size: 1.05rem;
+}
+.hero-brand .plus{ margin-left: 1px; }
+
+.hero-title{
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  text-transform: none;
+  letter-spacing: .01em;
+  font-weight: 600;
+  color: var(--ink);
+  font-size: clamp(26px, 4.8vw, 38px);
+  line-height: 1.12;
+  margin: 8px 0 10px;
+}
+.hero-sub{
+  max-width: 540px;
+  margin: 0 auto 18px;
+  font-size: clamp(15px, 2.8vw, 18px);
+  line-height: 1.5;
+  color: var(--muted);
+}
+.hero-benefits{
+  display:flex; flex-wrap:wrap; gap:8px;
+  justify-content:center;
+  margin: 10px auto 26px;
+}
+.hero-benefits span{
+  font-size: .9rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f2f4f8;
+  color: #2a3550;
+  border: 1px solid #e7ebf3;
+}
+.hero-cta{
+  margin-top: 6px;
+  padding: 14px 22px;
+  font-size: 1.05rem;
+  border-radius: 16px;
+}
+@media (max-width: 720px){
+  .hero-wrap{ margin: 6vh auto 5vh; }
+}

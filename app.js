@@ -654,71 +654,103 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }catch{ return ""; }
   }
 
+  function estimateTravelMin(aLat, aLng, bLat, bLng){
+  // If we know the distance, use a simple model; else default 15min
+  if ([aLat,aLng,bLat,bLng].every(v => typeof v === 'number' && !Number.isNaN(v))) {
+    const toRad = x => x * Math.PI/180;
+    const R = 3958.8; // miles
+    const dLat = toRad(bLat - aLat);
+    const dLng = toRad(bLng - aLng);
+    const sa = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+    const miles = R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
+    // 5 min base + ~4 min per mile, clamped
+    return Math.max(8, Math.min(45, 5 + miles * 4));
+  }
+  return 15;
+}
+  
   function renderTourCard(city, items, dinnerPick){
-    const el = $('schedule'); if (!el) return;
+  const el = $('schedule'); if (!el) return;
 
-    // itinerary items produced by buildItinerary()
-    const arrive = items.find(i=>i.type==='arrive');
-    const dine   = items.find(i=>i.type==='dine');
-    const show   = items.find(i=>i.type==='show');
-    const post   = items.find(i=>i.type==='post');
+  const arrive = items.find(i=>i.type==='arrive'); // venue arrival block
+  const dine   = items.find(i=>i.type==='dine');   // dinner block (start/end)
+  const show   = items.find(i=>i.type==='show');
+  const post   = items.find(i=>i.type==='post');
 
-    const tz = state.showTz || ''; // FIX: format all times in venue timezone
-    const parts = [];
+  const tz = state.showTz || '';
+  const parts = [];
 
-    if (state.staying && dine?.start){
-      // generic pre-dinner departure (rounded)
-      parts.push({ time: fmtInTz(dine.start, tz, { round:true }), label: `Leave ${state.hotel ? esc(state.hotel) : 'hotel'}` });
-      parts.push({ time: fmtInTz(dine.start, tz, { round:true }), label: `Uber/Taxi to dinner` });
-      parts.push({ time: fmtInTz(dine.start, tz, { round:false }), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
-      if (dine.end){
-        parts.push({ time: fmtInTz(dine.end, tz, { round:true }), label: `Head to ${esc(state.venue)} for the show` });
-      }
+  // --- Dinner flow (with hotel) ---
+  if (dine?.start) {
+    // estimate hotel -> dinner travel
+    let leaveForDinner = new Date(dine.start);
+    if (state.staying && state.hotelLat != null && state.hotelLng != null && dinnerPick?.lat != null && dinnerPick?.lng != null){
+      const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
+      leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
+    } else if (state.staying) {
+      leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
     }
 
-    if (!state.staying && dine?.start){
-      parts.push({ time: fmtInTz(dine.start, tz, { round:true }), label: `Uber/Taxi to dinner` });
-      parts.push({ time: fmtInTz(dine.start, tz, { round:false }), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
-      if (dine.end){
-        parts.push({ time: fmtInTz(dine.end, tz, { round:true }), label: `Head to ${esc(state.venue)} for the show` });
-      }
+    // 1) Leave hotel
+    if (state.staying){
+      parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Leave ${esc(state.hotel || 'hotel')}` });
+      // 2) Ride callout a couple minutes later so times don’t duplicate
+      const rideTs = new Date(leaveForDinner.getTime() + 2*60000);
+      parts.push({ ts: +rideTs, time: fmtInTz(rideTs, tz, { round:true }), label: `Uber/Taxi to dinner` });
+    } else {
+      // no hotel — just show the ride to dinner at the leave time
+      parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Uber/Taxi to dinner` });
     }
 
-    if (arrive){
-      parts.push({
-        time: fmtInTz(arrive.start, tz, { round:true }),
-        label: `Arrive at ${esc(state.venue)}`,
-        note: `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`
-      });
-    }
+    // 3) Arrive at dinner (exact shown time)
+    parts.push({ ts: +new Date(dine.start), time: fmtInTz(dine.start, tz, { round:false }), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
 
-    if (show){
-      // Show time: NEVER rounded; must be exact.
-      parts.push({ time: fmtInTz(show.start, tz, { round:false }), label: `Concert starts` });
+    // 4) Leave dinner for venue
+    if (dine.end){
+      parts.push({ ts: +new Date(dine.end), time: fmtInTz(dine.end, tz, { round:true }), label: `Head to ${esc(state.venue)} for the show` });
     }
-
-    if (post){
-      parts.push({ time: fmtInTz(post.start, tz, { round:true }), label: `Leave the venue for dessert/drinks` });
-    }
-
-    el.innerHTML = `
-      <article class="card tour-card">
-        <div class="tour-head">
-          <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-        </div>
-        <div class="tour-steps">
-          ${parts.map(p => `
-            <div class="tstep">
-              <div class="t-time">${esc(p.time || '')}</div>
-              <div class="t-label">${p.label}</div>
-              ${p.note ? `<div class="t-note">· ${esc(p.note)}</div>` : ""}
-            </div>
-          `).join("")}
-        </div>
-      </article>
-    `;
   }
 
+  // 5) Arrive at venue (from itinerary)
+  if (arrive){
+    parts.push({
+      ts: +new Date(arrive.start),
+      time: fmtInTz(arrive.start, tz, { round:true }),
+      label: `Arrive at ${esc(state.venue)}`,
+      note: `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`
+    });
+  }
+
+  // 6) Concert starts (never rounded)
+  if (show){
+    parts.push({ ts: +new Date(show.start), time: fmtInTz(show.start, tz, { round:false }), label: `Concert starts` });
+  }
+
+  // 7) Post option
+  if (post){
+    parts.push({ ts: +new Date(post.start), time: fmtInTz(post.start, tz, { round:true }), label: `Leave the venue for dessert/drinks` });
+  }
+
+  // Guarantee chronological order
+  parts.sort((a,b)=> a.ts - b.ts);
+
+  el.innerHTML = `
+    <article class="card tour-card">
+      <div class="tour-head">
+        <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+      </div>
+      <div class="tour-steps">
+        ${parts.map(p => `
+          <div class="tstep">
+            <div class="t-time">${esc(p.time || '')}</div>
+            <div class="t-label">${p.label}</div>
+            ${p.note ? `<div class="t-note">· ${esc(p.note)}</div>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    </article>
+  `;
+}
   /* ===== Helper: ensure a rail container exists, show/hide ===== */
   function ensureRail(id, title){
     let target = document.getElementById(id);
@@ -840,25 +872,22 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
     row.innerHTML = cards;
 
-    // compute clean Map hrefs for each card
-    qsa('.place-card', row).forEach(el => {
-      const mapA = el.querySelector('.map-link');
-      if (!mapA) return;
-      let payload = {};
-      try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-      const href = mapUrlFor(payload);
-      if (href) mapA.href = href; else mapA.style.display = 'none';
-    });
+// NEW: make "Website" taps not bubble to the card
+qsa('.place-card [data-link="site"]', row).forEach(a => {
+  const stop = (e) => e.stopPropagation();
+  a.addEventListener('click', stop, { passive: true });
+  a.addEventListener('touchstart', stop, { passive: true }); // iOS Safari
+});
 
-    // FIX: card click opens Map; let Website clicks pass-through (don’t swallow <a>)
-    qsa('.place-card', row).forEach(el => {
-      el.onclick = (e) => {
-        const a = e.target.closest('a');
-        if (a && a.dataset.link === 'site') return; // let website click behave normally
-        const mapA = el.querySelector('.map-link[href]');
-        if (mapA && mapA.href) window.open(mapA.href, '_blank', 'noopener');
-      };
-    });
+// card click opens Map; let Website clicks pass-through (existing block)
+qsa('.place-card', row).forEach(el => {
+  el.onclick = (e) => {
+    const a = e.target.closest('a');
+    if (a && a.dataset.link === 'site') return; // do nothing; browser handles it
+    const mapA = el.querySelector('.map-link[href]');
+    if (mapA && mapA.href) window.open(mapA.href, '_blank', 'noopener');
+  };
+});
 
     // lazy-enrich missing website links (limit to ~6 calls per rail)
     lazyAttachWebsites(row, 6);

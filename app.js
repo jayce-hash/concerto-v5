@@ -908,25 +908,38 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
     // Anchor-based card (no JS listeners needed)
     return `
-      <a class="place-card"
-         href="${esc(mapHref)}"
-         target="_blank" rel="noopener"
-         title="Open ${name} in Google Maps"
-         aria-label="Open ${name} in Google Maps">
-        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-        <div class="pc-body">
-          <div class="pc-title">${name}</div>
-          <div class="pc-meta">
-            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-            ${rating ? `<span>${esc(rating)}</span>` : ""}
-            ${price ? `<span>${esc(price)}</span>` : ""}
-          </div>
-          <div class="pc-actions">
-            <a class="btn btn-ghost btn-reserve" href="${esc(reserveHref)}" target="_blank" rel="noopener">Reserve table</a>
-          </div>
+  <article class="place-card">
+    <a class="pc-link"
+       href="${esc(norm.placeId ? googlePlaceLink(norm.placeId)
+                                : mapUrlFor({ name: norm.name, address: norm.address, lat: norm.lat, lng: norm.lng }))}"
+       target="_blank" rel="noopener"
+       title="Open ${name} in Google Maps" aria-label="Open ${name} in Google Maps">
+      <div class="pc-img">
+        ${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}
+      </div>
+      <div class="pc-body">
+        <div class="pc-title">${name}</div>
+        <div class="pc-meta">
+          ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+          ${rating ? `<span>${esc(rating)}</span>` : ""}
+          ${price ? `<span>${esc(price)}</span>` : ""}
         </div>
-      </a>
-    `;
+      </div>
+    </a>
+    <div class="pc-actions">
+      <a class="btn btn-ghost btn-reserve"
+         href="${
+           norm.opentableUrl && /opentable\.com/i.test(norm.opentableUrl)
+             ? esc(norm.opentableUrl)
+             : (norm.url && /opentable\.com/i.test(norm.url)
+                 ? esc(norm.url)
+                 : esc(norm.placeId ? googlePlaceLink(norm.placeId)
+                                    : mapUrlFor({ name: norm.name, address: norm.address, lat: norm.lat, lng: norm.lng })))
+         }"
+         target="_blank" rel="noopener">Reserve table</a>
+    </div>
+  </article>
+`;
   }).join("");
 
   row.innerHTML = cards;

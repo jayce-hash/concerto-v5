@@ -857,7 +857,8 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
 
   /* ---------- CARDS: full-card click to Maps + Reserve button ---------- */
- function fillRail(id, list, title){
+ // --------- Cards are native links to Google Maps; add Reserve button only if we have OpenTable ----------
+function fillRail(id, list, title){
   const row = ensureRail(id, title || '');
   if (!row) return;
 
@@ -876,27 +877,21 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       rating: (typeof p.rating === 'number') ? p.rating : null,
       price_level: (typeof p.price_level === 'number') ? p.price_level : null,
       photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : ""),
-      url: p.url || p.website || "",
-      opentableUrl: p.opentableUrl || ""
+      // If upstream already gives us an OpenTable link, use it.
+      // (We do NOT try to guess; we only render a button when we have a real OpenTable URL.)
+      opentableUrl: (p.opentableUrl && /opentable\.com/i.test(p.opentableUrl))
+        ? p.opentableUrl
+        : ((p.url && /opentable\.com/i.test(p.url)) ? p.url : "")
     };
 
-    // Build hrefs exactly like the original working version
-    const mapHref = norm.placeId ? googlePlaceLink(norm.placeId)
-                                 : mapUrlFor({ name: norm.name, address: norm.address, lat: norm.lat, lng: norm.lng });
+    const mapHref = mapUrlFor({
+      placeId: norm.placeId,
+      name: norm.name,
+      address: norm.address,
+      lat: norm.lat,
+      lng: norm.lng
+    });
 
-    // Reserve target: prefer explicit OpenTable URL; else if the place’s own site is OpenTable; else fall back to exact Google place (NOT broad city)
-    let reserveHref = '';
-    if (norm.opentableUrl && /opentable\.com/i.test(norm.opentableUrl)) {
-      reserveHref = norm.opentableUrl;
-    } else if (norm.url && /opentable\.com/i.test(norm.url)) {
-      reserveHref = norm.url;
-    } else if (norm.placeId) {
-      reserveHref = googlePlaceLink(norm.placeId);
-    } else {
-      reserveHref = mapHref;
-    }
-
-    // distance + meta
     let dist = '';
     const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
     if (miles != null) dist = miles.toFixed(1);
@@ -906,43 +901,39 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
     const img = norm.photoUrl;
 
-    // Anchor-based card (no JS listeners needed)
+    // NOTE: card is still a native <a> link to Google Maps — unchanged behavior.
+    // We render a sibling .pc-actions with a Reserve link ONLY if we already have an OpenTable URL.
+    const reserveHTML = norm.opentableUrl
+      ? `<div class="pc-actions">
+           <a class="btn btn-ghost btn-reserve" href="${esc(norm.opentableUrl)}" target="_blank" rel="noopener">Reserve table</a>
+         </div>`
+      : ``;
+
     return `
-  <article class="place-card">
-    <a class="pc-link"
-       href="${esc(norm.placeId ? googlePlaceLink(norm.placeId)
-                                : mapUrlFor({ name: norm.name, address: norm.address, lat: norm.lat, lng: norm.lng }))}"
-       target="_blank" rel="noopener"
-       title="Open ${name} in Google Maps" aria-label="Open ${name} in Google Maps">
-      <div class="pc-img">
-        ${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}
-      </div>
-      <div class="pc-body">
-        <div class="pc-title">${name}</div>
-        <div class="pc-meta">
-          ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-          ${rating ? `<span>${esc(rating)}</span>` : ""}
-          ${price ? `<span>${esc(price)}</span>` : ""}
+      <a class="place-card"
+         href="${esc(mapHref)}"
+         target="_blank" rel="noopener"
+         data-pid="${esc(norm.placeId || '')}"
+         title="Open ${name} in Google Maps">
+        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+        <div class="pc-body">
+          <div class="pc-title">${name}</div>
+          <div class="pc-meta">
+            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+            ${rating ? `<span>${esc(rating)}</span>` : ""}
+            ${price ? `<span>${esc(price)}</span>` : ""}
+          </div>
         </div>
-      </div>
-    </a>
-    <div class="pc-actions">
-      <a class="btn btn-ghost btn-reserve"
-         href="${
-           norm.opentableUrl && /opentable\.com/i.test(norm.opentableUrl)
-             ? esc(norm.opentableUrl)
-             : (norm.url && /opentable\.com/i.test(norm.url)
-                 ? esc(norm.url)
-                 : esc(norm.placeId ? googlePlaceLink(norm.placeId)
-                                    : mapUrlFor({ name: norm.name, address: norm.address, lat: norm.lat, lng: norm.lng })))
-         }"
-         target="_blank" rel="noopener">Reserve table</a>
-    </div>
-  </article>
-`;
+      </a>
+      ${reserveHTML}
+    `;
   }).join("");
 
   row.innerHTML = cards;
+
+  // Optional: if upstream doesn’t provide opentableUrl but you still want to catch the rare case
+  // where the Place "website" *is* an OpenTable URL, uncomment the next line to augment buttons:
+  // augmentReserveButtons(row);
 }
 
   /* ---------- Fallback search for empty categories ---------- */

@@ -655,17 +655,19 @@ if (state.eatWhen === "before" || state.eatWhen === "both") {
 const [afterAuto, extras] = await Promise.all([afterP, extrasP]);
 
       const locks = state.customStops || [];
-      const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
-      const dinnerPick = customDinner || (beforeAuto[0] || null);
+const customDinner = locks.find(p => p.when === 'before' && p.type === 'dinner');
+const dinnerPick = customDinner || (beforeAuto[0] || null);
+
+// normalize so itinerary gets real lat/lng (normalizePlace is defined below)
+const dinner = normalizePlace(dinnerPick);
 
 const itin = await buildItinerary({
   show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
   venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
   hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
   prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
-  picks: { dinner }   // <<< normalized or null
+  picks: { dinner } // may be null if no valid pick; buildItinerary should handle that
 });
-      });
 
       window.__lastItinerary = itin;
 

@@ -948,20 +948,19 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       // Reserve button
       const btn = el.querySelector('.btn-reserve');
-if (btn) {
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    // Pre-open a tab synchronously; navigate it after async resolution
-    const pre = window.open('', '_blank');
-    if (!pre) return; // popup blocked
-    (async () => {
-      let payload = {};
-      try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-      await openReserveFor(payload, pre);
-    })();
-  });
-}
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pre = window.open('', '_blank');
+      if (!pre) return;
+      (async () => {
+        let payload = {};
+        try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+        await openReserveFor(payload, pre);
+      })();
+    });
   }
+}); // ✅ close the forEach
 
   /* ---------- Fallback search for empty categories ---------- */
   function fallbackQueryFor(cat){

@@ -813,11 +813,29 @@ const itin = await buildItinerary({
     `;
   }
 
-  /* ===== Helper: ensure a rail container exists, show/hide ===== */
-  function ensureRail(id, title, { prepend = false } = {}){
+/* ===== Helper: ensure a rail container exists, show/hide ===== */
+function ensureRail(id, title, { prepend = false } = {}){
   let target = document.getElementById(id);
   const wrap = document.querySelector('#screen-results .container.wide');
   if (!wrap) return null;
+
+  // Helper: insert a section in the correct spot
+  function placeSection(section){
+    const firstRail = wrap.querySelector('.rail');            // first existing rail (after the tour card)
+    if (prepend && firstRail) {
+      wrap.insertBefore(section, firstRail);                  // put before first rail (but below tour card)
+    } else if (!firstRail) {
+      // no rails yet → put right after the tour card if present, else append
+      const tour = wrap.querySelector('.tour-card');
+      if (tour && tour.parentElement === wrap) {
+        tour.after(section);
+      } else {
+        wrap.appendChild(section);
+      }
+    } else {
+      wrap.appendChild(section);
+    }
+  }
 
   if (target) {
     const rail = target.closest('.rail');
@@ -825,20 +843,25 @@ const itin = await buildItinerary({
       const head = rail.querySelector('.rail-title');
       if (head && title) head.textContent = title;
       rail.style.display = '';
-      if (prepend) wrap.insertBefore(rail, wrap.firstChild);   // <<< move to top
+      if (prepend) {
+        const firstRail = wrap.querySelector('.rail');
+        if (firstRail && rail !== firstRail) {
+          wrap.insertBefore(rail, firstRail);                 // move before first existing rail
+        }
+      }
     }
     return target;
   }
 
+  // create the section
   const section = document.createElement('section');
   section.className = 'rail';
   section.innerHTML = `
     <header class="rail-head"><h3 class="rail-title">${esc(title || '')}</h3></header>
     <div id="${esc(id)}" class="h-scroll cards-rail"></div>
   `;
-  if (prepend) wrap.insertBefore(section, wrap.firstChild);     // <<< add at top
-  else wrap.appendChild(section);
 
+  placeSection(section);
   return document.getElementById(id);
 }
   function hideRail(id){

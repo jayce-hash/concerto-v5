@@ -665,6 +665,7 @@ const itin = await buildItinerary({
   prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
   picks: { dinner }   // <<< normalized or null
 });
+      });
 
       window.__lastItinerary = itin;
 

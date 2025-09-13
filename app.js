@@ -971,18 +971,6 @@ function fillRail(id, list, title){
 
   row.innerHTML = cards;
 
-  // Reserve button opens exact Maps place page (Reserve usually available there)
-  qsa('.btn-reserve', row).forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const pid = btn.getAttribute('data-pid');
-      const href = googlePlaceLink(pid);
-      if (href) window.open(href, '_blank', 'noopener');
-    });
-  });
-}
-
  // Normalize a place into a clean object with lat/lng, name, url, and a robust mapUrl
 function normalizePlace(p){
   if (!p || typeof p !== 'object') return null;

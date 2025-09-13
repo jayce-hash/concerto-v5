@@ -295,3 +295,47 @@ body.page-transition::before{
   transform: translateY(0);
   box-shadow: 0 3px 8px rgba(18,30,54,.12);
 }
+
+.place-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card, #fff);
+  border-radius: 14px;
+  box-shadow: 0 3px 12px rgba(0,0,0,.06);
+  overflow: hidden;
+  min-width: 280px;
+}
+
+.place-card .pc-link {
+  display: flex;
+  text-decoration: none;
+  color: inherit;
+}
+
+.place-card .pc-img {
+  flex: 0 0 44%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.place-card .pc-img img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.place-card .pc-body {
+  flex: 1 1 auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.place-card .pc-actions {
+  padding: 8px 14px 12px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.place-card .btn-reserve { white-space: nowrap; }

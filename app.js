@@ -906,9 +906,10 @@ function ensureRail(id, title, { prepend = false } = {}){
 function slug(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
 
 /* ---------- CARDS: full-card click to Maps + Reserve button ---------- */
+/* ---------- CARDS: full-card link to Google Maps (no reserve pill) ---------- */
 function fillRail(id, list, title){
   const isDinner = id === 'row-dinner' || id.startsWith('row-dinner-');
-  const row = ensureRail(id, title || '', { prepend: isDinner }); // put dinner rails first
+  const row = ensureRail(id, title || '', { prepend: isDinner }); // dinner rails appear as the first rails (but below the tour card)
   if (!row) return;
 
   if (!Array.isArray(list) || !list.length){
@@ -958,12 +959,6 @@ function fillRail(id, list, title){
             ${rating ? `<span>${esc(rating)}</span>` : ""}
             ${price ? `<span>${esc(price)}</span>` : ""}
           </div>
-          ${norm.placeId ? `
-          <div class="pc-actions">
-            <button class="btn btn-ghost btn-reserve" type="button" data-pid="${esc(norm.placeId)}">
-              Reserve table
-            </button>
-          </div>` : ``}
         </div>
       </a>
     `;
@@ -972,7 +967,7 @@ function fillRail(id, list, title){
   row.innerHTML = cards;
 }
 
- // Normalize a place into a clean object with lat/lng, name, url, and a robust mapUrl
+/* -------- Normalize a place into lat/lng + url (top-level function) -------- */
 function normalizePlace(p){
   if (!p || typeof p !== 'object') return null;
 
@@ -980,7 +975,6 @@ function normalizePlace(p){
   const address = p.address || p.formatted_address || p.vicinity || '';
   const placeId = p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '';
 
-  // lat / lng can come as numbers, strings, or google.maps.LatLng methods
   const lat =
     (typeof p.lat === 'number' ? p.lat :
      p.lat ? parseFloat(p.lat) :
@@ -992,14 +986,11 @@ function normalizePlace(p){
      (p.geometry?.location?.lng?.() ?? p.location?.lng ?? null));
 
   const url = p.url || p.website || '';
-
   const mapUrl = mapUrlFor({ placeId, name, address, lat, lng });
 
-  // If we still don’t have coordinates, itinerary can’t time dinner → return null
   if (!(typeof lat === 'number' && !Number.isNaN(lat) && typeof lng === 'number' && !Number.isNaN(lng))) {
     return null;
   }
-
   return { name, lat, lng, url, mapUrl };
 }
 

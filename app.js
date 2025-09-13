@@ -462,6 +462,48 @@ function mapUrlFor(p) {
   return '';
 }
 
+  /* ---------- OpenTable URL builder (best effort w/o API) ---------- */
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function showDateTimeLocalISO(){
+  // Use selected date/time; fallback to tonight 7:00 PM local
+  const hm = (state.showTime || '19:00').split(':').map(Number);
+  const now = new Date();
+  const d = state.showDate
+    ? new Date(
+        Number(state.showDate.slice(0,4)),
+        Number(state.showDate.slice(5,7))-1,
+        Number(state.showDate.slice(8,10)),
+        hm[0]||19, hm[1]||0
+      )
+    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm[0]||19, hm[1]||0);
+
+  // Format as YYYY-MM-DDTHH:MM (no timezone) for OpenTable search URLs
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function openTableUrlFor(place){
+  // 1) If we already have a direct OpenTable URL on the place, use it
+  const rawUrl = place?.opentableUrl || place?.openTableUrl || place?.url || '';
+  if (typeof rawUrl === 'string' && /opentable\.com/i.test(rawUrl)) return rawUrl;
+
+  // 2) Otherwise, build a targeted search (name + lat/lng + dateTime + covers)
+  const name = place?.name || '';
+  const lat  = (typeof place?.lat === 'number') ? place.lat : null;
+  const lng  = (typeof place?.lng === 'number') ? place.lng : null;
+  const dt   = showDateTimeLocalISO();
+
+  const params = new URLSearchParams();
+  params.set('term', name || 'restaurant');
+  params.set('covers', '2');
+  params.set('dateTime', dt);
+  if (lat != null && lng != null){
+    params.set('latitude', String(lat));
+    params.set('longitude', String(lng));
+  }
+  return `https://www.opentable.com/s?${params.toString()}`;
+}
+
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{
@@ -844,8 +886,7 @@ function otSearchUrlFor(place) {
   return `https://www.opentable.com/s?term=${term}&covers=2${dtParam}`;
 }
   
-// --------- NEW: Cards are native links to Google Maps ----------
-// --------- Cards: whole card opens Maps; Dinner rail also shows "Reserve Table" ----------
+// --------- Cards open Google Maps on click; button opens OpenTable ----------
 function fillRail(id, list, title){
   const row = ensureRail(id, title || '');
   if (!row) return;
@@ -854,8 +895,6 @@ function fillRail(id, list, title){
     row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
     return;
   }
-
-  const showReserve = (id === 'row-dinner'); // Reserve button only on Dinner rail
 
   const cards = list.map(p => {
     const norm = {
@@ -866,18 +905,23 @@ function fillRail(id, list, title){
       lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
       rating: (typeof p.rating === 'number') ? p.rating : null,
       price_level: (typeof p.price_level === 'number') ? p.price_level : null,
-      photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "")
+      photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : ""),
+      url: p.url || ''
     };
 
-    const dataP = encodeURIComponent(JSON.stringify({
+    // Where the CARD should go (Maps)
+    const mapHref = mapUrlFor({
+      placeId: norm.placeId,
       name: norm.name,
       address: norm.address,
-      placeId: norm.placeId,
       lat: norm.lat,
       lng: norm.lng
-    }));
+    });
 
-    // For the visible bits
+    // Where the RESERVE BUTTON should go (OpenTable)
+    const otHref = openTableUrlFor(norm);
+
+    // distance
     let dist = '';
     const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
     if (miles != null) dist = miles.toFixed(1);
@@ -887,14 +931,20 @@ function fillRail(id, list, title){
     const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
     const img = norm.photoUrl;
 
-    // Build the optional OpenTable link
-    const otHref = showReserve ? otSearchUrlFor(norm) : "";
+    // payload for the card click handler
+    const dataP = encodeURIComponent(JSON.stringify({
+      name: norm.name,
+      address: norm.address,
+      placeId: norm.placeId,
+      lat: norm.lat,
+      lng: norm.lng
+    }));
 
     return `
       <article class="place-card"
                data-p="${dataP}"
                ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}
-               title="Open ${name} in Google Maps"
+               title="Open in Google Maps"
                tabindex="0" role="button" aria-label="Open ${name} in Google Maps">
         <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
         <div class="pc-body">
@@ -904,11 +954,9 @@ function fillRail(id, list, title){
             ${rating ? `<span>${esc(rating)}</span>` : ""}
             ${price ? `<span>${esc(price)}</span>` : ""}
           </div>
-          ${showReserve ? `
-            <div class="pc-actions">
-              <a class="pc-reserve" href="${esc(otHref)}" target="_blank" rel="noopener" title="Reserve a table on OpenTable">Reserve Table</a>
-            </div>
-          ` : ""}
+          <div class="pc-actions">
+            <a class="pc-reserve" href="${esc(otHref)}" target="_blank" rel="noopener">Reserve Table</a>
+          </div>
         </div>
       </article>
     `;
@@ -916,7 +964,7 @@ function fillRail(id, list, title){
 
   row.innerHTML = cards;
 
-  // Entire card opens Maps on click/Enter/Space (buttons inside won't bubble)
+  // Behavior: click/Enter/Space on the CARD → open Google Maps
   qsa('.place-card', row).forEach(el => {
     const openMap = () => {
       let payload = {};
@@ -924,14 +972,16 @@ function fillRail(id, list, title){
       const href = mapUrlFor(payload);
       if (href) window.open(href, '_blank', 'noopener');
     };
-    el.addEventListener('click', (e) => {
-      // If click originated from the Reserve button, do nothing here
-      if ((e.target && (e.target.closest('.pc-actions') || e.target.classList.contains('pc-reserve')))) return;
-      openMap();
-    });
+    el.addEventListener('click', openMap);
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
     });
+  });
+
+  // IMPORTANT: prevent the OpenTable click from bubbling to the card
+  qsa('.pc-reserve', row).forEach(a => {
+    a.addEventListener('click', (e) => e.stopPropagation());
+    a.addEventListener('keydown', (e) => e.stopPropagation());
   });
 }
 

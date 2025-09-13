@@ -882,22 +882,11 @@ const itin = await buildItinerary({
   // Slug for stable DOM ids per cuisine
 function slug(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
 
-  // Open the exact Google Maps place page (works well for “Reserve”)
-function googlePlaceLink(placeId){
-  if (!placeId) return '';
-  return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
-}
-
-  /* ---------- CARDS: full-card click to Maps + Reserve button ---------- */
- // --------- Cards are native links to Google Maps; add Reserve button only if we have OpenTable ----------
-// --------- Cards stay native links; optional "Reserve" link under each card ---------
-// --------- Cards: anchor opens Maps; optional "Reserve" button (Maps Reserve) ---------
+/* ---------- CARDS: full-card click to Maps + Reserve button ---------- */
 function fillRail(id, list, title){
   const isDinner = id === 'row-dinner' || id.startsWith('row-dinner-');
-  const row = ensureRail(id, title || '', { prepend: isDinner }); // <<< prepend for dinner rails
+  const row = ensureRail(id, title || '', { prepend: isDinner }); // put dinner rails first
   if (!row) return;
-  ...
-}
 
   if (!Array.isArray(list) || !list.length){
     row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
@@ -906,12 +895,12 @@ function fillRail(id, list, title){
 
   const cards = list.map(p => {
     const norm = {
-      name: p.name || p.title || '',
+      name:    p.name || p.title || '',
       address: p.address || p.formatted_address || p.vicinity || '',
       placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-      lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
-      lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
-      rating: (typeof p.rating === 'number') ? p.rating : null,
+      lat:     (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
+      lng:     (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
+      rating:  (typeof p.rating === 'number') ? p.rating : null,
       price_level: (typeof p.price_level === 'number') ? p.price_level : null,
       photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "")
     };
@@ -930,8 +919,8 @@ function fillRail(id, list, title){
 
     const name = esc(norm.name);
     const rating = norm.rating != null ? `★ ${norm.rating.toFixed(1)}` : "";
-    const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
-    const img = norm.photoUrl;
+    const price  = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
+    const img    = norm.photoUrl;
 
     return `
       <a class="place-card"
@@ -959,11 +948,11 @@ function fillRail(id, list, title){
 
   row.innerHTML = cards;
 
-  // Attach a click handler to the reserve buttons ONLY (don’t affect card anchor)
+  // Reserve button opens exact Maps place page (Reserve usually available there)
   qsa('.btn-reserve', row).forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation(); // don’t trigger the outer anchor
+      e.stopPropagation();
       const pid = btn.getAttribute('data-pid');
       const href = googlePlaceLink(pid);
       if (href) window.open(href, '_blank', 'noopener');

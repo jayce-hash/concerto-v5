@@ -857,110 +857,108 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
 
   /* ---------- CARDS: full-card click to Maps + Reserve button ---------- */
-  function fillRail(id, list, title){
-    const row = ensureRail(id, title || '');
-    if (!row) return;
+ function fillRail(id, list, title){
+  const row = ensureRail(id, title || '');
+  if (!row) return;
 
-    if (!Array.isArray(list) || !list.length){
-      row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
-      return;
-    }
+  if (!Array.isArray(list) || !list.length){
+    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+    return;
+  }
 
-    const cards = list.map(p => {
-      const norm = {
-        name: p.name || p.title || '',
-        address: p.address || p.formatted_address || p.vicinity || '',
-        placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
-        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
-        rating: (typeof p.rating === 'number') ? p.rating : null,
-        price_level: (typeof p.price_level === 'number') ? p.price_level : null,
-        photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : ""),
-        url: p.url || p.website || "",
-        opentableUrl: p.opentableUrl || ""
-      };
+  const cards = list.map(p => {
+    const norm = {
+      name: p.name || p.title || '',
+      address: p.address || p.formatted_address || p.vicinity || '',
+      placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
+      lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
+      lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
+      rating: (typeof p.rating === 'number') ? p.rating : null,
+      price_level: (typeof p.price_level === 'number') ? p.price_level : null,
+      photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : ""),
+      url: p.url || p.website || "",
+      opentableUrl: p.opentableUrl || ""
+    };
 
-      // distance
-      let dist = '';
-      const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
-      if (miles != null) dist = miles.toFixed(1);
+    // distance
+    let dist = '';
+    const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
+    if (miles != null) dist = miles.toFixed(1);
 
-      const name = esc(norm.name);
-      const rating = norm.rating != null ? `★ ${norm.rating.toFixed(1)}` : "";
-      const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
-      const img = norm.photoUrl;
+    const name = esc(norm.name);
+    const rating = norm.rating != null ? `★ ${norm.rating.toFixed(1)}` : "";
+    const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
+    const img = norm.photoUrl;
 
-      const payload = {
-        name: norm.name,
-        address: norm.address,
-        placeId: norm.placeId,
-        lat: norm.lat,
-        lng: norm.lng,
-        url: norm.url,
-        opentableUrl: norm.opentableUrl
-      };
-      const dataP = encodeURIComponent(JSON.stringify(payload));
+    const payload = {
+      name: norm.name,
+      address: norm.address,
+      placeId: norm.placeId,
+      lat: norm.lat,
+      lng: norm.lng,
+      url: norm.url,
+      opentableUrl: norm.opentableUrl
+    };
+    const dataP = encodeURIComponent(JSON.stringify(payload));
 
-      return `
-        <article class="place-card"
-                 data-p="${dataP}"
-                 ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}
-                 title="Open in Google Maps"
-                 tabindex="0" role="button" aria-label="Open ${name} in Google Maps">
-          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-          <div class="pc-body">
-            <div class="pc-title">${name}</div>
-            <div class="pc-meta">
-              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-              ${rating ? `<span>${esc(rating)}</span>` : ""}
-              ${price ? `<span>${esc(price)}</span>` : ""}
-            </div>
-            <div class="pc-actions">
-              <button class="btn btn-ghost btn-reserve" type="button">Reserve table</button>
-            </div>
+    return `
+      <article class="place-card"
+               data-p="${dataP}"
+               ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}
+               title="Open in Google Maps"
+               tabindex="0" role="button" aria-label="Open ${name} in Google Maps">
+        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+        <div class="pc-body">
+          <div class="pc-title">${name}</div>
+          <div class="pc-meta">
+            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+            ${rating ? `<span>${esc(rating)}</span>` : ""}
+            ${price ? `<span>${esc(price)}</span>` : ""}
           </div>
-        </article>
-      `;
-    }).join("");
+          <div class="pc-actions">
+            <button class="btn btn-ghost btn-reserve" type="button">Reserve table</button>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
 
-    row.innerHTML = cards;
+  row.innerHTML = cards;
 
-    // Behavior: entire card → Maps (exact place), Reserve button → OpenTable/Maps place
-    qsa('.place-card', row).forEach(el => {
-      const openMap = () => {
-  // Open a tab synchronously to avoid popup blockers
-  const w = window.open('', '_blank');
-  if (!w) return; // popup blocked (very rare when done sync)
-  let payload = {};
-  try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-  const pid  = el.getAttribute('data-pid') || payload.placeId || '';
-  const href = pid ? googlePlaceLink(pid) : mapUrlFor(payload);
-  if (href) {
-    w.location.href = href;
-  } else {
-    w.close();
-  }
-};
-      el.addEventListener('click', openMap);
-      el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
-      });
+  // Behavior: entire card → Maps (exact place), Reserve button → OpenTable/Maps place
+  qsa('.place-card', row).forEach(el => {
+    const openMap = () => {
+      // Open a tab synchronously to avoid popup blockers
+      const w = window.open('', '_blank', 'noopener');
+      if (!w) return; // popup blocked
+      let payload = {};
+      try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+      const pid  = el.getAttribute('data-pid') || payload.placeId || '';
+      const href = pid ? googlePlaceLink(pid) : mapUrlFor(payload);
+      if (href) w.location.href = href; else w.close();
+    };
 
-      // Reserve button
-      const btn = el.querySelector('.btn-reserve');
-  if (btn) {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const pre = window.open('', '_blank');
-      if (!pre) return;
-      (async () => {
-        let payload = {};
-        try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-        await openReserveFor(payload, pre);
-      })();
+    el.addEventListener('click', openMap);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
     });
-  }
-}); // ✅ close the forEach
+
+    // Reserve button → try OpenTable; fall back to exact Google place
+    const btn = el.querySelector('.btn-reserve');
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pre = window.open('', '_blank', 'noopener');
+        if (!pre) return;
+        (async () => {
+          let payload = {};
+          try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+          await openReserveFor(payload, pre);
+        })();
+      });
+    }
+  });
+}
 
   /* ---------- Fallback search for empty categories ---------- */
   function fallbackQueryFor(cat){

@@ -856,15 +856,16 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
   }
 
-  function googlePlaceLink(placeId){
-  return placeId
-    ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`
-    : '';
+  // Open the exact Google Maps place page (works well for “Reserve”)
+function googlePlaceLink(placeId){
+  if (!placeId) return '';
+  return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
 }
 
   /* ---------- CARDS: full-card click to Maps + Reserve button ---------- */
  // --------- Cards are native links to Google Maps; add Reserve button only if we have OpenTable ----------
 // --------- Cards stay native links; optional "Reserve" link under each card ---------
+// --------- Cards: anchor opens Maps; optional "Reserve" button (Maps Reserve) ---------
 function fillRail(id, list, title){
   const row = ensureRail(id, title || '');
   if (!row) return;
@@ -903,37 +904,42 @@ function fillRail(id, list, title){
     const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
     const img = norm.photoUrl;
 
-    // Card (anchor) + optional Reserve link rendered as a sibling
-    const reserveHref = norm.placeId ? googlePlaceLink(norm.placeId) : '';
-
     return `
-      <div class="place-card-wrap">
-        <a class="place-card"
-           data-pid="${esc(norm.placeId)}"
-           href="${esc(mapHref)}"
-           target="_blank" rel="noopener"
-           title="Open ${name} in Google Maps">
-          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-          <div class="pc-body">
-            <div class="pc-title">${name}</div>
-            <div class="pc-meta">
-              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-              ${rating ? `<span>${esc(rating)}</span>` : ""}
-              ${price ? `<span>${esc(price)}</span>` : ""}
-            </div>
+      <a class="place-card"
+         href="${esc(mapHref)}"
+         target="_blank" rel="noopener"
+         title="Open ${name} in Google Maps">
+        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+        <div class="pc-body">
+          <div class="pc-title">${name}</div>
+          <div class="pc-meta">
+            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+            ${rating ? `<span>${esc(rating)}</span>` : ""}
+            ${price ? `<span>${esc(price)}</span>` : ""}
           </div>
-        </a>
-        ${reserveHref ? `
+          ${norm.placeId ? `
           <div class="pc-actions">
-            <a class="btn btn-ghost btn-reserve" href="${esc(reserveHref)}" target="_blank" rel="noopener">
+            <button class="btn btn-ghost btn-reserve" type="button" data-pid="${esc(norm.placeId)}">
               Reserve table
-            </a>
+            </button>
           </div>` : ``}
-      </div>
+        </div>
+      </a>
     `;
   }).join("");
 
   row.innerHTML = cards;
+
+  // Attach a click handler to the reserve buttons ONLY (don’t affect card anchor)
+  qsa('.btn-reserve', row).forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // don’t trigger the outer anchor
+      const pid = btn.getAttribute('data-pid');
+      const href = googlePlaceLink(pid);
+      if (href) window.open(href, '_blank', 'noopener');
+    });
+  });
 }
 
   /* ---------- Fallback search for empty categories ---------- */

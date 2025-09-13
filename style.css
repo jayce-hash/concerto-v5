@@ -269,3 +269,15 @@ body.page-transition::before{
 
 /* ===== Reduced motion ===== */
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.pc-actions {
+  margin-top: 8px;
+  display: flex;
+}
+
+.btn-reserve {
+  font-size: 0.9rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  line-height: 1.2;
+}

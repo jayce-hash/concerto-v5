@@ -630,6 +630,7 @@ function mapUrlFor(p) {
       note.textContent = 'Distances are from the venue.';
 
       const city = await venueCityName();
+      state.venueCity = city || "";          // <-- add this line
       renderTourCard(city, itin, dinnerPick);
 
       await renderRails({ before: beforeAuto, after: afterAuto, extras });
@@ -818,7 +819,33 @@ function mapUrlFor(p) {
     return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
   }
 
+  // ---------- OpenTable deep link ----------
+function otSearchUrlFor(place) {
+  const name = (place?.name || place?.title || "").trim();
+  const city = (window.__concertoState?.venueCity || "").trim();
+  if (!name) return "";
+
+  // Use show date/time if set
+  const st = (window.__concertoState || {});
+  let dtParam = "";
+  try {
+    if (st.showDate && st.showTime) {
+      const [Y, M, D] = st.showDate.split("-").map(n => parseInt(n, 10));
+      const [h, m] = st.showTime.split(":").map(n => parseInt(n, 10));
+      // OpenTable expects ISO-ish "YYYY-MM-DDTHH:MM"
+      const dt = new Date(Y, (M || 1) - 1, D || 1, h || 19, m || 0);
+      const iso = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}T${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      dtParam = `&dateTime=${encodeURIComponent(iso)}`;
+    }
+  } catch {}
+
+  const term = encodeURIComponent([name, city].filter(Boolean).join(" "));
+  // Covers default to 2; OT will refine by location/date inside the search UI
+  return `https://www.opentable.com/s?term=${term}&covers=2${dtParam}`;
+}
+  
 // --------- NEW: Cards are native links to Google Maps ----------
+// --------- Cards: whole card opens Maps; Dinner rail also shows "Reserve Table" ----------
 function fillRail(id, list, title){
   const row = ensureRail(id, title || '');
   if (!row) return;
@@ -827,6 +854,8 @@ function fillRail(id, list, title){
     row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
     return;
   }
+
+  const showReserve = (id === 'row-dinner'); // Reserve button only on Dinner rail
 
   const cards = list.map(p => {
     const norm = {
@@ -840,14 +869,15 @@ function fillRail(id, list, title){
       photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : "")
     };
 
-    const mapHref = mapUrlFor({
-      placeId: norm.placeId,
+    const dataP = encodeURIComponent(JSON.stringify({
       name: norm.name,
       address: norm.address,
+      placeId: norm.placeId,
       lat: norm.lat,
       lng: norm.lng
-    });
+    }));
 
+    // For the visible bits
     let dist = '';
     const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
     if (miles != null) dist = miles.toFixed(1);
@@ -857,11 +887,15 @@ function fillRail(id, list, title){
     const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
     const img = norm.photoUrl;
 
+    // Build the optional OpenTable link
+    const otHref = showReserve ? otSearchUrlFor(norm) : "";
+
     return `
-      <a class="place-card"
-         href="${esc(mapHref)}"
-         target="_blank" rel="noopener"
-         title="Open ${name} in Google Maps">
+      <article class="place-card"
+               data-p="${dataP}"
+               ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}
+               title="Open ${name} in Google Maps"
+               tabindex="0" role="button" aria-label="Open ${name} in Google Maps">
         <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
         <div class="pc-body">
           <div class="pc-title">${name}</div>
@@ -870,12 +904,35 @@ function fillRail(id, list, title){
             ${rating ? `<span>${esc(rating)}</span>` : ""}
             ${price ? `<span>${esc(price)}</span>` : ""}
           </div>
+          ${showReserve ? `
+            <div class="pc-actions">
+              <a class="pc-reserve" href="${esc(otHref)}" target="_blank" rel="noopener" title="Reserve a table on OpenTable">Reserve Table</a>
+            </div>
+          ` : ""}
         </div>
-      </a>
+      </article>
     `;
   }).join("");
 
   row.innerHTML = cards;
+
+  // Entire card opens Maps on click/Enter/Space (buttons inside won't bubble)
+  qsa('.place-card', row).forEach(el => {
+    const openMap = () => {
+      let payload = {};
+      try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+      const href = mapUrlFor(payload);
+      if (href) window.open(href, '_blank', 'noopener');
+    };
+    el.addEventListener('click', (e) => {
+      // If click originated from the Reserve button, do nothing here
+      if ((e.target && (e.target.closest('.pc-actions') || e.target.classList.contains('pc-reserve')))) return;
+      openMap();
+    });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
+    });
+  });
 }
 
   /* ---------- Fallback search for empty categories (ensures big cities populate) ---------- */

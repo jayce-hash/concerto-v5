@@ -466,18 +466,23 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
 
   /* Resolve an OpenTable (or fallback) URL for a place, then open it. */
-  async function openReserveFor(payload){
-    try{
-      const p = payload || {};
-      // 1) Explicit opentableUrl if present
-      if (p.opentableUrl && /opentable\.com/i.test(p.opentableUrl)) {
-        window.open(p.opentableUrl, '_blank', 'noopener'); return;
-      }
-      // 2) If payload has website and it's OpenTable
-      if (p.url && /opentable\.com/i.test(p.url)) {
-        window.open(p.url, '_blank', 'noopener'); return;
-      }
-      // 3) Try place details for website / url
+ async function openReserveFor(payload, preopened){
+  let target = '';
+  try{
+    const p = payload || {};
+
+    // 1) If we already have an OpenTable URL
+    if (p.opentableUrl && /opentable\.com/i.test(p.opentableUrl)) {
+      target = p.opentableUrl;
+    }
+
+    // 2) If payload has website that is OpenTable
+    if (!target && p.url && /opentable\.com/i.test(p.url)) {
+      target = p.url;
+    }
+
+    // 3) Try Places Details for website/url
+    if (!target) {
       const pid = p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || "";
       if (pid && mapsReady()){
         const svc = new google.maps.places.PlacesService(document.createElement('div'));
@@ -487,19 +492,30 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
           });
         });
         if (details?.website && /opentable\.com/i.test(details.website)) {
-          window.open(details.website, '_blank', 'noopener'); return;
+          target = details.website;
+        } else if (details?.url) {
+          // exact Google Maps place page (Reserve is often available here)
+          target = details.url;
         }
-        // If no OpenTable, open exact Google place page
-        if (details?.url) { window.open(details.url, '_blank', 'noopener'); return; }
       }
-      // 4) Fallback: robust Google link (exact place if we have placeId)
-      const url = pid ? googlePlaceLink(pid) : mapUrlFor(p);
-      if (url) window.open(url, '_blank', 'noopener');
-    }catch{
-      const href = mapUrlFor(payload || {});
-      if (href) window.open(href, '_blank', 'noopener');
     }
+
+    // 4) Fallback: robust Google link (exact place if we have placeId; else search)
+    if (!target) {
+      const pid = payload?.placeId || payload?.place_id || '';
+      target = pid ? googlePlaceLink(pid) : mapUrlFor(payload || {});
+    }
+  } catch {
+    target = mapUrlFor(payload || '');
   }
+
+  if (target) {
+    if (preopened) preopened.location.href = target;
+    else window.open(target, '_blank', 'noopener');
+  } else if (preopened) {
+    preopened.close();
+  }
+}
 
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
@@ -912,12 +928,19 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     // Behavior: entire card → Maps (exact place), Reserve button → OpenTable/Maps place
     qsa('.place-card', row).forEach(el => {
       const openMap = () => {
-        let payload = {};
-        try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-        const pid = el.getAttribute('data-pid') || payload.placeId || '';
-        const href = pid ? googlePlaceLink(pid) : mapUrlFor(payload);
-        if (href) window.open(href, '_blank', 'noopener');
-      };
+  // Open a tab synchronously to avoid popup blockers
+  const w = window.open('', '_blank');
+  if (!w) return; // popup blocked (very rare when done sync)
+  let payload = {};
+  try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+  const pid  = el.getAttribute('data-pid') || payload.placeId || '';
+  const href = pid ? googlePlaceLink(pid) : mapUrlFor(payload);
+  if (href) {
+    w.location.href = href;
+  } else {
+    w.close();
+  }
+};
       el.addEventListener('click', openMap);
       el.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
@@ -925,15 +948,19 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       // Reserve button
       const btn = el.querySelector('.btn-reserve');
-      if (btn) {
-        btn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          let payload = {};
-          try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-          await openReserveFor(payload);
-        });
-      }
-    });
+if (btn) {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    // Pre-open a tab synchronously; navigate it after async resolution
+    const pre = window.open('', '_blank');
+    if (!pre) return; // popup blocked
+    (async () => {
+      let payload = {};
+      try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+      await openReserveFor(payload, pre);
+    })();
+  });
+}
   }
 
   /* ---------- Fallback search for empty categories ---------- */

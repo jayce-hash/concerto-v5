@@ -1,4 +1,4 @@
-// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.4)
+// app.js — Concert step with Ticketmaster + Manual cards, tour card + refined rails (v8.0.5)
 import { buildItinerary } from './itinerary-engine.js';
 import { pickRestaurants, pickExtras } from './quality-filter.js';
 import { shareLinkOrCopy, toICS } from './export-tools.js';
@@ -6,7 +6,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 (() => {
   if (window.__concertoInit) { console.warn("Concerto already initialized"); return; }
   window.__concertoInit = true;
-  console.log("Concerto+ app.js v8.0.4 loaded");
+  console.log("Concerto+ app.js v8.0.5 loaded");
 
   const $  = (id) => document.getElementById(id);
   const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
@@ -29,7 +29,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   const state = window.__concertoState = {
     artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
     showDate: "", showTime: "",
-    showTz: "", // FIX: store venue/event timezone when available
+    showTz: "",
     hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
     eatWhen: "both",
     foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
@@ -37,7 +37,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     interests: {
       coffee:false, drinks:false, dessert:false, sights:false,
       lateNight:false, nightlife:false, shopping:false, relax:false
-    }, // <-- trailing comma required
+    },
     arrivalBufferMin: 45, doorsBeforeMin: 90,
     customStops: []
   };
@@ -224,7 +224,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       $('btn-next').textContent = "Next";
 
     } else {
-      // ACTIVITIES (Your Picks removed)
+      // ACTIVITIES
       w.innerHTML = `
         <h3 class="step-title">Activities & Interests</h3>
         <p class="step-help">Pick any extras to round out your night.</p>
@@ -337,7 +337,6 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       state.showDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       state.showTime = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
-    // FIX: capture venue/event timezone from Ticketmaster when available
     if (ev.timezone) state.showTz = ev.timezone;
 
     if (typeof ev.venueLat === 'number' && typeof ev.venueLng === 'number'){
@@ -423,86 +422,84 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     }).catch(()=>{});
   }
 
-  /* ---------- mapUrl synthesis (use query_place_id for reliability) ---------- */
-function mapUrlFor(p) {
-  const obj = (p && typeof p === 'object') ? p : {};
-
-  const placeId =
-    obj.placeId || obj.place_id || obj.googlePlaceId || obj.google_place_id ||
-    (obj.place && (obj.place.place_id || obj.place.id)) ||
-    (obj.google && (obj.google.place_id || obj.google.id)) ||
-    "";
-
-  const name =
-    obj.name || obj.title ||
-    (obj.place && (obj.place.name || obj.place.title)) || "";
-
-  const address =
-    obj.address || obj.formatted_address || obj.vicinity ||
-    (obj.location && (obj.location.address || obj.location.formatted_address)) || "";
-
-  // Best: query + query_place_id (works well on iOS & Android apps + web)
-  if (placeId) {
-    const q = [name, address].filter(Boolean).join(" ").trim() || "Place";
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}&query_place_id=${encodeURIComponent(placeId)}`;
+  /* ---------- Robust place URLs ---------- */
+  function googlePlaceLink(placeId){
+    if (!placeId) return '';
+    return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
   }
 
-  // Fallbacks if we don't have a placeId
-  const q = [name, address].filter(Boolean).join(" ").trim();
-  if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  function mapUrlFor(p) {
+    const obj = (p && typeof p === 'object') ? p : {};
 
-  const lat = obj.lat != null ? Number(obj.lat) :
-              (obj.location && obj.location.lat != null ? Number(obj.location.lat) : NaN);
-  const lng = obj.lng != null ? Number(obj.lng) :
-              (obj.location && obj.location.lng != null ? Number(obj.location.lng) : NaN);
+    const placeId =
+      obj.placeId || obj.place_id || obj.googlePlaceId || obj.google_place_id ||
+      (obj.place && (obj.place.place_id || obj.place.id)) ||
+      (obj.google && (obj.google.place_id || obj.google.id)) ||
+      "";
 
-  if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+    const name =
+      obj.name || obj.title ||
+      (obj.place && (obj.place.name || obj.place.title)) || "";
+
+    const address =
+      obj.address || obj.formatted_address || obj.vicinity ||
+      (obj.location && (obj.location.address || obj.location.formatted_address)) || "";
+
+    if (placeId) {
+      // Search with query + query_place_id is great for mobile apps
+      const q = [name, address].filter(Boolean).join(" ").trim() || "Place";
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}&query_place_id=${encodeURIComponent(placeId)}`;
+    }
+
+    const q = [name, address].filter(Boolean).join(" ").trim();
+    if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+
+    const lat = obj.lat != null ? Number(obj.lat) :
+                (obj.location && obj.location.lat != null ? Number(obj.location.lat) : NaN);
+    const lng = obj.lng != null ? Number(obj.lng) :
+                (obj.location && obj.location.lng != null ? Number(obj.location.lng) : NaN);
+
+    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+    }
+    return '';
   }
-  return '';
-}
 
-  /* ---------- OpenTable URL builder (best effort w/o API) ---------- */
-function pad2(n){ return String(n).padStart(2,'0'); }
-
-function showDateTimeLocalISO(){
-  // Use selected date/time; fallback to tonight 7:00 PM local
-  const hm = (state.showTime || '19:00').split(':').map(Number);
-  const now = new Date();
-  const d = state.showDate
-    ? new Date(
-        Number(state.showDate.slice(0,4)),
-        Number(state.showDate.slice(5,7))-1,
-        Number(state.showDate.slice(8,10)),
-        hm[0]||19, hm[1]||0
-      )
-    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm[0]||19, hm[1]||0);
-
-  // Format as YYYY-MM-DDTHH:MM (no timezone) for OpenTable search URLs
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-
-function openTableUrlFor(place){
-  // 1) If we already have a direct OpenTable URL on the place, use it
-  const rawUrl = place?.opentableUrl || place?.openTableUrl || place?.url || '';
-  if (typeof rawUrl === 'string' && /opentable\.com/i.test(rawUrl)) return rawUrl;
-
-  // 2) Otherwise, build a targeted search (name + lat/lng + dateTime + covers)
-  const name = place?.name || '';
-  const lat  = (typeof place?.lat === 'number') ? place.lat : null;
-  const lng  = (typeof place?.lng === 'number') ? place.lng : null;
-  const dt   = showDateTimeLocalISO();
-
-  const params = new URLSearchParams();
-  params.set('term', name || 'restaurant');
-  params.set('covers', '2');
-  params.set('dateTime', dt);
-  if (lat != null && lng != null){
-    params.set('latitude', String(lat));
-    params.set('longitude', String(lng));
+  /* Resolve an OpenTable (or fallback) URL for a place, then open it. */
+  async function openReserveFor(payload){
+    try{
+      const p = payload || {};
+      // 1) Explicit opentableUrl if present
+      if (p.opentableUrl && /opentable\.com/i.test(p.opentableUrl)) {
+        window.open(p.opentableUrl, '_blank', 'noopener'); return;
+      }
+      // 2) If payload has website and it's OpenTable
+      if (p.url && /opentable\.com/i.test(p.url)) {
+        window.open(p.url, '_blank', 'noopener'); return;
+      }
+      // 3) Try place details for website / url
+      const pid = p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || "";
+      if (pid && mapsReady()){
+        const svc = new google.maps.places.PlacesService(document.createElement('div'));
+        const details = await new Promise((resolve) => {
+          svc.getDetails({ placeId: pid, fields: ['website','url'] }, (d, s) => {
+            resolve(s === google.maps.places.PlacesServiceStatus.OK ? d : null);
+          });
+        });
+        if (details?.website && /opentable\.com/i.test(details.website)) {
+          window.open(details.website, '_blank', 'noopener'); return;
+        }
+        // If no OpenTable, open exact Google place page
+        if (details?.url) { window.open(details.url, '_blank', 'noopener'); return; }
+      }
+      // 4) Fallback: robust Google link (exact place if we have placeId)
+      const url = pid ? googlePlaceLink(pid) : mapUrlFor(p);
+      if (url) window.open(url, '_blank', 'noopener');
+    }catch{
+      const href = mapUrlFor(payload || {});
+      if (href) window.open(href, '_blank', 'noopener');
+    }
   }
-  return `https://www.opentable.com/s?${params.toString()}`;
-}
 
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
@@ -583,7 +580,6 @@ function openTableUrlFor(place){
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm.h, hm.m).toISOString();
   }
 
-  // FIX: Formatting in the venue timezone, with optional rounding (non-show times)
   function roundToNearest5(date){
     const d = new Date(date);
     const mins = d.getMinutes();
@@ -611,7 +607,6 @@ function openTableUrlFor(place){
 
       const targetISO = parseShowDateTimeISO();
 
-      // Run picks in parallel (faster)
       const beforeP = (state.eatWhen==="before" || state.eatWhen==="both")
         ? pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO })
         : Promise.resolve([]);
@@ -644,7 +639,6 @@ function openTableUrlFor(place){
 
       window.__lastItinerary = itin;
 
-      // Header in venue timezone
       const evtTz = state.showTz || '';
       const dHeader = new Date(targetISO);
       const dateStr = `${String(dHeader.getMonth()+1).padStart(2,'0')}/${String(dHeader.getDate()).padStart(2,'0')}/${dHeader.getFullYear()}`;
@@ -672,7 +666,6 @@ function openTableUrlFor(place){
       note.textContent = 'Distances are from the venue.';
 
       const city = await venueCityName();
-      state.venueCity = city || "";          // <-- add this line
       renderTourCard(city, itin, dinnerPick);
 
       await renderRails({ before: beforeAuto, after: afterAuto, extras });
@@ -704,7 +697,6 @@ function openTableUrlFor(place){
   }
 
   function estimateTravelMin(aLat, aLng, bLat, bLng){
-    // If we know the distance, use a simple model; else default 15min
     if ([aLat,aLng,bLat,bLng].every(v => typeof v === 'number' && !Number.isNaN(v))) {
       const toRad = x => x * Math.PI/180;
       const R = 3958.8; // miles
@@ -712,7 +704,6 @@ function openTableUrlFor(place){
       const dLng = toRad(bLng - aLng);
       const sa = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
       const miles = R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
-      // 5 min base + ~4 min per mile, clamped
       return Math.max(8, Math.min(45, 5 + miles * 4));
     }
     return 15;
@@ -721,17 +712,15 @@ function openTableUrlFor(place){
   function renderTourCard(city, items, dinnerPick){
     const el = $('schedule'); if (!el) return;
 
-    const arrive = items.find(i=>i.type==='arrive'); // venue arrival block
-    const dine   = items.find(i=>i.type==='dine');   // dinner block (start/end)
+    const arrive = items.find(i=>i.type==='arrive');
+    const dine   = items.find(i=>i.type==='dine');
     const show   = items.find(i=>i.type==='show');
     const post   = items.find(i=>i.type==='post');
 
     const tz = state.showTz || '';
     const parts = [];
 
-    // --- Dinner flow (with hotel) ---
     if (dine?.start) {
-      // estimate hotel -> dinner travel
       let leaveForDinner = new Date(dine.start);
       if (state.staying && state.hotelLat != null && state.hotelLng != null && dinnerPick?.lat != null && dinnerPick?.lng != null){
         const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
@@ -740,27 +729,21 @@ function openTableUrlFor(place){
         leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
       }
 
-      // 1) Leave hotel
       if (state.staying){
         parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Leave ${esc(state.hotel || 'hotel')}` });
-        // 2) Ride callout a couple minutes later so times don’t duplicate
         const rideTs = new Date(leaveForDinner.getTime() + 2*60000);
         parts.push({ ts: +rideTs, time: fmtInTz(rideTs, tz, { round:true }), label: `Uber/Taxi to dinner` });
       } else {
-        // no hotel — just show the ride to dinner at the leave time
         parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Uber/Taxi to dinner` });
       }
 
-      // 3) Arrive at dinner (exact shown time)
       parts.push({ ts: +new Date(dine.start), time: fmtInTz(dine.start, tz, { round:false }), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
 
-      // 4) Leave dinner for venue
       if (dine.end){
         parts.push({ ts: +new Date(dine.end), time: fmtInTz(dine.end, tz, { round:true }), label: `Head to ${esc(state.venue)} for the show` });
       }
     }
 
-    // 5) Arrive at venue (from itinerary)
     if (arrive){
       parts.push({
         ts: +new Date(arrive.start),
@@ -770,17 +753,14 @@ function openTableUrlFor(place){
       });
     }
 
-    // 6) Concert starts (never rounded)
     if (show){
       parts.push({ ts: +new Date(show.start), time: fmtInTz(show.start, tz, { round:false }), label: `Concert starts` });
     }
 
-    // 7) Post option
     if (post){
       parts.push({ ts: +new Date(post.start), time: fmtInTz(post.start, tz, { round:true }), label: `Leave the venue for dessert/drinks` });
     }
 
-    // Guarantee chronological order
     parts.sort((a,b)=> a.ts - b.ts);
 
     el.innerHTML = `
@@ -850,7 +830,6 @@ function openTableUrlFor(place){
     return out.slice(0, Math.max(min, Math.min(max, out.length)));
   }
 
-  /* ---------- distance helper ---------- */
   function milesBetween(aLat, aLng, bLat, bLng){
     if ([aLat,aLng,bLat,bLng].some(v => typeof v !== 'number' || Number.isNaN(v))) return null;
     const toRad = (x)=> x * Math.PI/180;
@@ -861,131 +840,103 @@ function openTableUrlFor(place){
     return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
   }
 
-  // ---------- OpenTable deep link ----------
-function otSearchUrlFor(place) {
-  const name = (place?.name || place?.title || "").trim();
-  const city = (window.__concertoState?.venueCity || "").trim();
-  if (!name) return "";
+  /* ---------- CARDS: full-card click to Maps + Reserve button ---------- */
+  function fillRail(id, list, title){
+    const row = ensureRail(id, title || '');
+    if (!row) return;
 
-  // Use show date/time if set
-  const st = (window.__concertoState || {});
-  let dtParam = "";
-  try {
-    if (st.showDate && st.showTime) {
-      const [Y, M, D] = st.showDate.split("-").map(n => parseInt(n, 10));
-      const [h, m] = st.showTime.split(":").map(n => parseInt(n, 10));
-      // OpenTable expects ISO-ish "YYYY-MM-DDTHH:MM"
-      const dt = new Date(Y, (M || 1) - 1, D || 1, h || 19, m || 0);
-      const iso = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}T${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-      dtParam = `&dateTime=${encodeURIComponent(iso)}`;
+    if (!Array.isArray(list) || !list.length){
+      row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
+      return;
     }
-  } catch {}
 
-  const term = encodeURIComponent([name, city].filter(Boolean).join(" "));
-  // Covers default to 2; OT will refine by location/date inside the search UI
-  return `https://www.opentable.com/s?term=${term}&covers=2${dtParam}`;
-}
-  
-// --------- Cards open Google Maps on click; button opens OpenTable ----------
-function fillRail(id, list, title){
-  const row = ensureRail(id, title || '');
-  if (!row) return;
+    const cards = list.map(p => {
+      const norm = {
+        name: p.name || p.title || '',
+        address: p.address || p.formatted_address || p.vicinity || '',
+        placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
+        lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
+        lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
+        rating: (typeof p.rating === 'number') ? p.rating : null,
+        price_level: (typeof p.price_level === 'number') ? p.price_level : null,
+        photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : ""),
+        url: p.url || p.website || "",
+        opentableUrl: p.opentableUrl || ""
+      };
 
-  if (!Array.isArray(list) || !list.length){
-    row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
-    return;
+      // distance
+      let dist = '';
+      const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
+      if (miles != null) dist = miles.toFixed(1);
+
+      const name = esc(norm.name);
+      const rating = norm.rating != null ? `★ ${norm.rating.toFixed(1)}` : "";
+      const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
+      const img = norm.photoUrl;
+
+      const payload = {
+        name: norm.name,
+        address: norm.address,
+        placeId: norm.placeId,
+        lat: norm.lat,
+        lng: norm.lng,
+        url: norm.url,
+        opentableUrl: norm.opentableUrl
+      };
+      const dataP = encodeURIComponent(JSON.stringify(payload));
+
+      return `
+        <article class="place-card"
+                 data-p="${dataP}"
+                 ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}
+                 title="Open in Google Maps"
+                 tabindex="0" role="button" aria-label="Open ${name} in Google Maps">
+          <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
+          <div class="pc-body">
+            <div class="pc-title">${name}</div>
+            <div class="pc-meta">
+              ${dist ? `<span>${esc(dist)} mi</span>` : ""}
+              ${rating ? `<span>${esc(rating)}</span>` : ""}
+              ${price ? `<span>${esc(price)}</span>` : ""}
+            </div>
+            <div class="pc-actions">
+              <button class="btn btn-ghost btn-reserve" type="button">Reserve table</button>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    row.innerHTML = cards;
+
+    // Behavior: entire card → Maps (exact place), Reserve button → OpenTable/Maps place
+    qsa('.place-card', row).forEach(el => {
+      const openMap = () => {
+        let payload = {};
+        try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+        const pid = el.getAttribute('data-pid') || payload.placeId || '';
+        const href = pid ? googlePlaceLink(pid) : mapUrlFor(payload);
+        if (href) window.open(href, '_blank', 'noopener');
+      };
+      el.addEventListener('click', openMap);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
+      });
+
+      // Reserve button
+      const btn = el.querySelector('.btn-reserve');
+      if (btn) {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          let payload = {};
+          try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
+          await openReserveFor(payload);
+        });
+      }
+    });
   }
 
-  const cards = list.map(p => {
-    const norm = {
-      name: p.name || p.title || '',
-      address: p.address || p.formatted_address || p.vicinity || '',
-      placeId: p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '',
-      lat: (typeof p.lat === 'number') ? p.lat : (p.lat ? parseFloat(p.lat) : (p.geometry?.location?.lat?.() ?? null)),
-      lng: (typeof p.lng === 'number') ? p.lng : (p.lng ? parseFloat(p.lng) : (p.geometry?.location?.lng?.() ?? null)),
-      rating: (typeof p.rating === 'number') ? p.rating : null,
-      price_level: (typeof p.price_level === 'number') ? p.price_level : null,
-      photoUrl: p.photoUrl || (p.photos && p.photos[0] && p.photos[0].getUrl ? p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 }) : ""),
-      url: p.url || ''
-    };
-
-    // Where the CARD should go (Maps)
-    const mapHref = mapUrlFor({
-      placeId: norm.placeId,
-      name: norm.name,
-      address: norm.address,
-      lat: norm.lat,
-      lng: norm.lng
-    });
-
-    // Where the RESERVE BUTTON should go (OpenTable)
-    const otHref = openTableUrlFor(norm);
-
-    // distance
-    let dist = '';
-    const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
-    if (miles != null) dist = miles.toFixed(1);
-
-    const name = esc(norm.name);
-    const rating = norm.rating != null ? `★ ${norm.rating.toFixed(1)}` : "";
-    const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
-    const img = norm.photoUrl;
-
-    // payload for the card click handler
-    const dataP = encodeURIComponent(JSON.stringify({
-      name: norm.name,
-      address: norm.address,
-      placeId: norm.placeId,
-      lat: norm.lat,
-      lng: norm.lng
-    }));
-
-    return `
-      <article class="place-card"
-               data-p="${dataP}"
-               ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}
-               title="Open in Google Maps"
-               tabindex="0" role="button" aria-label="Open ${name} in Google Maps">
-        <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
-        <div class="pc-body">
-          <div class="pc-title">${name}</div>
-          <div class="pc-meta">
-            ${dist ? `<span>${esc(dist)} mi</span>` : ""}
-            ${rating ? `<span>${esc(rating)}</span>` : ""}
-            ${price ? `<span>${esc(price)}</span>` : ""}
-          </div>
-          <div class="pc-actions">
-            <a class="pc-reserve" href="${esc(otHref)}" target="_blank" rel="noopener">Reserve Table</a>
-          </div>
-        </div>
-      </article>
-    `;
-  }).join("");
-
-  row.innerHTML = cards;
-
-  // Behavior: click/Enter/Space on the CARD → open Google Maps
-  qsa('.place-card', row).forEach(el => {
-    const openMap = () => {
-      let payload = {};
-      try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-      const href = mapUrlFor(payload);
-      if (href) window.open(href, '_blank', 'noopener');
-    };
-    el.addEventListener('click', openMap);
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
-    });
-  });
-
-  // IMPORTANT: prevent the OpenTable click from bubbling to the card
-  qsa('.pc-reserve', row).forEach(a => {
-    a.addEventListener('click', (e) => e.stopPropagation());
-    a.addEventListener('keydown', (e) => e.stopPropagation());
-  });
-}
-
-  /* ---------- Fallback search for empty categories (ensures big cities populate) ---------- */
+  /* ---------- Fallback search for empty categories ---------- */
   function fallbackQueryFor(cat){
     switch(cat){
       case 'coffee':    return { type:'cafe', keyword:'coffee' };
@@ -1034,7 +985,6 @@ function fillRail(id, list, title){
 
   // NEW: builds rails per selected interest (broad matching + fallback)
   async function renderRails({ before, after, extras }) {
-    // helper: build a searchable string from many possible fields
     const haystack = (x) => {
       const bits = [];
       if (x.section)   bits.push(String(x.section));
@@ -1045,7 +995,6 @@ function fillRail(id, list, title){
       return bits.join(' ').toLowerCase();
     };
 
-    // buckets
     const bucket = {
       dessert:   [],
       drinks:    [],
@@ -1057,7 +1006,6 @@ function fillRail(id, list, title){
       relax:     []
     };
 
-    // broadened patterns
     const rx = {
       dessert:   /(dessert|sweet|ice.?cream|gelato|bak(?:e|ery)|pastry|donut|cake|choco|cookie|creamery)/i,
       drinks:    /(drink|bar|pub|lounge|wine|cocktail|taproom|speakeasy|gastropub|brewery)/i,
@@ -1069,7 +1017,6 @@ function fillRail(id, list, title){
       relax:     /(relax|spa|recover|wellness|tea\s?house|onsen|soak|bathhouse|massage|sauna|yoga|float)/i
     };
 
-    // bucket the extras
     (extras || []).forEach(x => {
       const h = haystack(x);
       if (rx.dessert.test(h))        bucket.dessert.push(x);
@@ -1082,15 +1029,12 @@ function fillRail(id, list, title){
       else if (rx.relax.test(h))     bucket.relax.push(x);
     });
 
-    // Always render dinner
     const dinnerRow = pickRange(before, 5, 10, after);
     fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
 
-    // Hide all optional rails initially; show only selected
     const allRails = ['row-dessert','row-drinks','row-sights','row-coffee','row-nightlife','row-shopping','row-late','row-relax'];
     allRails.forEach(hideRail);
 
-    // For each selected category: try bucket → fallback → render
     const plan = [
       ['coffee',    'row-coffee',    'Coffee & Cafés'],
       ['drinks',    'row-drinks',    'Drinks & Lounges'],
@@ -1105,10 +1049,8 @@ function fillRail(id, list, title){
     for (const [key, id, title] of plan){
       if (!state.interests[key]) { hideRail(id); continue; }
 
-      // preferred picks
       let picks = pickRange(bucket[key], 5, 10);
 
-      // fallback if empty
       if (!picks.length) {
         try {
           const fb = await placesFallback(key, 10);
@@ -1121,7 +1063,7 @@ function fillRail(id, list, title){
     }
   }
 
-  /* ==================== Custom picks (helpers kept; UI removed) ==================== */
+  /* ==================== Custom picks (helpers kept) ==================== */
   function renderCustomPills(){
     const wrap = $('custom-pills'); if (!wrap) return;
     wrap.innerHTML = state.customStops.map((p, idx)=> `

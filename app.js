@@ -880,7 +880,23 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       opentableUrl: p.opentableUrl || ""
     };
 
-    // distance
+    // Build hrefs exactly like the original working version
+    const mapHref = norm.placeId ? googlePlaceLink(norm.placeId)
+                                 : mapUrlFor({ name: norm.name, address: norm.address, lat: norm.lat, lng: norm.lng });
+
+    // Reserve target: prefer explicit OpenTable URL; else if the place’s own site is OpenTable; else fall back to exact Google place (NOT broad city)
+    let reserveHref = '';
+    if (norm.opentableUrl && /opentable\.com/i.test(norm.opentableUrl)) {
+      reserveHref = norm.opentableUrl;
+    } else if (norm.url && /opentable\.com/i.test(norm.url)) {
+      reserveHref = norm.url;
+    } else if (norm.placeId) {
+      reserveHref = googlePlaceLink(norm.placeId);
+    } else {
+      reserveHref = mapHref;
+    }
+
+    // distance + meta
     let dist = '';
     const miles = milesBetween(state.venueLat, state.venueLng, Number(norm.lat), Number(norm.lng));
     if (miles != null) dist = miles.toFixed(1);
@@ -890,23 +906,13 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     const price = norm.price_level != null ? '$'.repeat(Math.max(1, Math.min(4, norm.price_level))) : "";
     const img = norm.photoUrl;
 
-    const payload = {
-      name: norm.name,
-      address: norm.address,
-      placeId: norm.placeId,
-      lat: norm.lat,
-      lng: norm.lng,
-      url: norm.url,
-      opentableUrl: norm.opentableUrl
-    };
-    const dataP = encodeURIComponent(JSON.stringify(payload));
-
+    // Anchor-based card (no JS listeners needed)
     return `
-      <article class="place-card"
-               data-p="${dataP}"
-               ${norm.placeId ? `data-pid="${esc(norm.placeId)}"` : ''}
-               title="Open in Google Maps"
-               tabindex="0" role="button" aria-label="Open ${name} in Google Maps">
+      <a class="place-card"
+         href="${esc(mapHref)}"
+         target="_blank" rel="noopener"
+         title="Open ${name} in Google Maps"
+         aria-label="Open ${name} in Google Maps">
         <div class="pc-img">${img ? `<img src="${esc(img)}" alt="${name}"/>` : `<div class="pc-img ph"></div>`}</div>
         <div class="pc-body">
           <div class="pc-title">${name}</div>
@@ -916,48 +922,14 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
             ${price ? `<span>${esc(price)}</span>` : ""}
           </div>
           <div class="pc-actions">
-            <button class="btn btn-ghost btn-reserve" type="button">Reserve table</button>
+            <a class="btn btn-ghost btn-reserve" href="${esc(reserveHref)}" target="_blank" rel="noopener">Reserve table</a>
           </div>
         </div>
-      </article>
+      </a>
     `;
   }).join("");
 
   row.innerHTML = cards;
-
-  // Behavior: entire card → Maps (exact place), Reserve button → OpenTable/Maps place
-  qsa('.place-card', row).forEach(el => {
-    const openMap = () => {
-      // Open a tab synchronously to avoid popup blockers
-      const w = window.open('', '_blank', 'noopener');
-      if (!w) return; // popup blocked
-      let payload = {};
-      try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-      const pid  = el.getAttribute('data-pid') || payload.placeId || '';
-      const href = pid ? googlePlaceLink(pid) : mapUrlFor(payload);
-      if (href) w.location.href = href; else w.close();
-    };
-
-    el.addEventListener('click', openMap);
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMap(); }
-    });
-
-    // Reserve button → try OpenTable; fall back to exact Google place
-    const btn = el.querySelector('.btn-reserve');
-    if (btn) {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const pre = window.open('', '_blank', 'noopener');
-        if (!pre) return;
-        (async () => {
-          let payload = {};
-          try { payload = JSON.parse(decodeURIComponent(el.getAttribute('data-p') || '{}')); } catch {}
-          await openReserveFor(payload, pre);
-        })();
-      });
-    }
-  });
 }
 
   /* ---------- Fallback search for empty categories ---------- */

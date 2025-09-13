@@ -658,21 +658,13 @@ const [afterAuto, extras] = await Promise.all([afterP, extrasP]);
       const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
       const dinnerPick = customDinner || (beforeAuto[0] || null);
 
-      const itin = await buildItinerary({
-        show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
-        venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
-        hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
-        prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
-        picks: {
-          dinner: dinnerPick ? {
-            name: dinnerPick.name,
-            lat:  dinnerPick.lat,
-            lng:  dinnerPick.lng,
-            url:  dinnerPick.url,
-            mapUrl: mapUrlFor(dinnerPick)
-          } : null
-        }
-      });
+const itin = await buildItinerary({
+  show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
+  venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
+  hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
+  prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
+  picks: { dinner }   // <<< normalized or null
+});
 
       window.__lastItinerary = itin;
 
@@ -819,26 +811,33 @@ const [afterAuto, extras] = await Promise.all([afterP, extrasP]);
   }
 
   /* ===== Helper: ensure a rail container exists, show/hide ===== */
-  function ensureRail(id, title){
-    let target = document.getElementById(id);
-    if (target) {
-      const head = target.closest('.rail')?.querySelector('.rail-title');
-      if (head && title) head.textContent = title;
-      target.closest('.rail').style.display = ''; // ensure visible
-      return target;
-    }
-    const wrap = document.querySelector('#screen-results .container.wide');
-    if (!wrap) return null;
+  function ensureRail(id, title, { prepend = false } = {}){
+  let target = document.getElementById(id);
+  const wrap = document.querySelector('#screen-results .container.wide');
+  if (!wrap) return null;
 
-    const section = document.createElement('section');
-    section.className = 'rail';
-    section.innerHTML = `
-      <header class="rail-head"><h3 class="rail-title">${esc(title || '')}</h3></header>
-      <div id="${esc(id)}" class="h-scroll cards-rail"></div>
-    `;
-    wrap.appendChild(section);
-    return document.getElementById(id);
+  if (target) {
+    const rail = target.closest('.rail');
+    if (rail) {
+      const head = rail.querySelector('.rail-title');
+      if (head && title) head.textContent = title;
+      rail.style.display = '';
+      if (prepend) wrap.insertBefore(rail, wrap.firstChild);   // <<< move to top
+    }
+    return target;
   }
+
+  const section = document.createElement('section');
+  section.className = 'rail';
+  section.innerHTML = `
+    <header class="rail-head"><h3 class="rail-title">${esc(title || '')}</h3></header>
+    <div id="${esc(id)}" class="h-scroll cards-rail"></div>
+  `;
+  if (prepend) wrap.insertBefore(section, wrap.firstChild);     // <<< add at top
+  else wrap.appendChild(section);
+
+  return document.getElementById(id);
+}
   function hideRail(id){
     const el = document.getElementById(id);
     if (el) { const s = el.closest('.rail'); if (s) s.style.display = 'none'; }
@@ -891,8 +890,11 @@ function googlePlaceLink(placeId){
 // --------- Cards stay native links; optional "Reserve" link under each card ---------
 // --------- Cards: anchor opens Maps; optional "Reserve" button (Maps Reserve) ---------
 function fillRail(id, list, title){
-  const row = ensureRail(id, title || '');
+  const isDinner = id === 'row-dinner' || id.startsWith('row-dinner-');
+  const row = ensureRail(id, title || '', { prepend: isDinner }); // <<< prepend for dinner rails
   if (!row) return;
+  ...
+}
 
   if (!Array.isArray(list) || !list.length){
     row.innerHTML = `<div class="muted" style="padding:8px 2px;">No options found.</div>`;
@@ -964,6 +966,37 @@ function fillRail(id, list, title){
       if (href) window.open(href, '_blank', 'noopener');
     });
   });
+}
+
+ // Normalize a place into a clean object with lat/lng, name, url, and a robust mapUrl
+function normalizePlace(p){
+  if (!p || typeof p !== 'object') return null;
+
+  const name = p.name || p.title || '';
+  const address = p.address || p.formatted_address || p.vicinity || '';
+  const placeId = p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '';
+
+  // lat / lng can come as numbers, strings, or google.maps.LatLng methods
+  const lat =
+    (typeof p.lat === 'number' ? p.lat :
+     p.lat ? parseFloat(p.lat) :
+     (p.geometry?.location?.lat?.() ?? p.location?.lat ?? null));
+
+  const lng =
+    (typeof p.lng === 'number' ? p.lng :
+     p.lng ? parseFloat(p.lng) :
+     (p.geometry?.location?.lng?.() ?? p.location?.lng ?? null));
+
+  const url = p.url || p.website || '';
+
+  const mapUrl = mapUrlFor({ placeId, name, address, lat, lng });
+
+  // If we still don’t have coordinates, itinerary can’t time dinner → return null
+  if (!(typeof lat === 'number' && !Number.isNaN(lat) && typeof lng === 'number' && !Number.isNaN(lng))) {
+    return null;
+  }
+
+  return { name, lat, lng, url, mapUrl };
 }
 
   /* ---------- Fallback search for empty categories ---------- */
@@ -1065,11 +1098,11 @@ document.querySelectorAll('[id^="row-dinner-"]').forEach(el => el.closest('.rail
 if (Array.isArray(selectedCuisines) && selectedCuisines.length > 1) {
   // Multiple cuisines: hide the legacy single rail and render one per cuisine
   hideRail('row-dinner');
-  selectedCuisines.forEach((c) => {
-    const id = `row-dinner-${slug(c)}`;
-    const picks = pickRange(dinnerByCuisine[c] || [], 5, 10, after);
-    if (picks.length) fillRail(id, picks, `Dinner near the venue — ${c}`);
-  });
+  [...selectedCuisines].reverse().forEach((c) => {
+  const id = `row-dinner-${slug(c)}`;
+  const picks = pickRange(dinnerByCuisine[c] || [], 5, 10, after);
+  if (picks.length) fillRail(id, picks, `Dinner near the venue — ${c}`);
+});
 } else {
   // Original single dinner rail
   const dinnerRow = pickRange(before, 5, 10, after);

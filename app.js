@@ -970,6 +970,7 @@ function fillRail(id, list, title){
   }).join("");
 
   row.innerHTML = cards;
+}
 
  // Normalize a place into a clean object with lat/lng, name, url, and a robust mapUrl
 function normalizePlace(p){

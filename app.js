@@ -623,15 +623,36 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
 
       const targetISO = parseShowDateTimeISO();
 
-      const beforeP = (state.eatWhen==="before" || state.eatWhen==="both")
-        ? pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO })
-        : Promise.resolve([]);
-      const afterP  = (state.eatWhen==="after"  || state.eatWhen==="both")
-        ? pickRestaurants({ wantOpenNow:true, state, slot:"after", targetISO })
-        : Promise.resolve([]);
-      const extrasP = pickExtras({ state });
+      // Selected cuisines
+const selectedCuisines = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
 
-      const [beforeAuto, afterAuto, extras] = await Promise.all([beforeP, afterP, extrasP]);
+// AFTER and EXTRAS (unchanged)
+const afterP  = (state.eatWhen==="after"  || state.eatWhen==="both")
+  ? pickRestaurants({ wantOpenNow:true, state, slot:"after", targetISO })
+  : Promise.resolve([]);
+const extrasP = pickExtras({ state });
+
+// BEFORE (split by cuisine when multiple are chosen)
+let dinnerByCuisine = {};   // { "Italian": [...], "Japanese/Sushi": [...] }
+let beforeAuto = [];        // legacy single list when 0 or 1 cuisine selected
+
+if (state.eatWhen === "before" || state.eatWhen === "both") {
+  if (selectedCuisines.length > 1) {
+    await Promise.all(selectedCuisines.map(async (c) => {
+      const list = await pickRestaurants({
+        wantOpenNow: false,
+        state: { ...state, foodStyles: [c] },
+        slot: "before",
+        targetISO
+      });
+      dinnerByCuisine[c] = list || [];
+    }));
+  } else {
+    beforeAuto = await pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO }) || [];
+  }
+}
+
+const [afterAuto, extras] = await Promise.all([afterP, extrasP]);
 
       const locks = state.customStops || [];
       const customDinner = locks.find(p => p.when==='before' && p.type==='dinner');
@@ -684,7 +705,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
       const city = await venueCityName();
       renderTourCard(city, itin, dinnerPick);
 
-      await renderRails({ before: beforeAuto, after: afterAuto, extras });
+      await renderRails({ before: beforeAuto, after: afterAuto, extras, dinnerByCuisine, selectedCuisines });
       show('results');
     }catch(e){
       console.error(e);
@@ -856,6 +877,9 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1-sa));
   }
 
+  // Slug for stable DOM ids per cuisine
+function slug(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
+
   // Open the exact Google Maps place page (works well for “Reserve”)
 function googlePlaceLink(placeId){
   if (!placeId) return '';
@@ -990,7 +1014,7 @@ function fillRail(id, list, title){
   }
 
   // NEW: builds rails per selected interest (broad matching + fallback)
-  async function renderRails({ before, after, extras }) {
+  async function renderRails({ before, after, extras, dinnerByCuisine = {}, selectedCuisines = [] }) {
     const haystack = (x) => {
       const bits = [];
       if (x.section)   bits.push(String(x.section));
@@ -1035,8 +1059,22 @@ function fillRail(id, list, title){
       else if (rx.relax.test(h))     bucket.relax.push(x);
     });
 
-    const dinnerRow = pickRange(before, 5, 10, after);
-    fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
+    // Clear any previously-added multi dinner rails
+document.querySelectorAll('[id^="row-dinner-"]').forEach(el => el.closest('.rail')?.remove());
+
+if (Array.isArray(selectedCuisines) && selectedCuisines.length > 1) {
+  // Multiple cuisines: hide the legacy single rail and render one per cuisine
+  hideRail('row-dinner');
+  selectedCuisines.forEach((c) => {
+    const id = `row-dinner-${slug(c)}`;
+    const picks = pickRange(dinnerByCuisine[c] || [], 5, 10, after);
+    if (picks.length) fillRail(id, picks, `Dinner near the venue — ${c}`);
+  });
+} else {
+  // Original single dinner rail
+  const dinnerRow = pickRange(before, 5, 10, after);
+  fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
+}
 
     const allRails = ['row-dessert','row-drinks','row-sights','row-coffee','row-nightlife','row-shopping','row-late','row-relax'];
     allRails.forEach(hideRail);

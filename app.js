@@ -27,26 +27,26 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   const steps = ["concert","travel","stay","dining","activities"];
 
   const state = window.__concertoState = {
-    artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
-    showDate: "", showTime: "",
-    showTz: "",
-    hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
-    eatWhen: "both",
-    foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
-    budget: "$$", tone: "balanced",
-    interests: {
-      coffee:false, drinks:false, dessert:false, sights:false,
-      lateNight:false, nightlife:false, shopping:false, relax:false
-    },
-    arrivalBufferMin: 45, doorsBeforeMin: 90,
-    customStops: []
-    planDay: true,
-dayStart: "10:00",
-    travel: {
-  inbound:  { airline:"", flightNo:"", date:"", arrISO:"", arrIATA:"", arrLat:null, arrLng:null },
-  outbound: { airline:"", flightNo:"", date:"", depISO:"", depIATA:"", depLat:null, depLng:null, taking:false }
-},
-  };
+  artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
+  showDate: "", showTime: "",
+  showTz: "",
+  hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
+  eatWhen: "both",
+  foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
+  budget: "$$", tone: "balanced",
+  interests: {
+    coffee:false, drinks:false, dessert:false, sights:false,
+    lateNight:false, nightlife:false, shopping:false, relax:false
+  },
+  arrivalBufferMin: 45, doorsBeforeMin: 90,
+  customStops: [],                 // ← add this comma
+  planDay: true,
+  dayStart: "10:00",
+  travel: {
+    inbound:  { airline:"", flightNo:"", date:"", arrISO:"", arrIATA:"", arrLat:null, arrLng:null },
+    outbound: { airline:"", flightNo:"", date:"", depISO:"", depIATA:"", depLat:null, depLng:null, taking:false }
+  },
+};
 
   /* ==================== Nav ==================== */
   $('btn-start')?.addEventListener('click', () => { show('form'); renderStep(); });

@@ -24,25 +24,38 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   };
 
   let step = 0;
-  const steps = ["concert","travel","stay","dining","activities"];
+  const steps = ["concert","travel","stay","lunch","dinner","activities"];
 
   const state = window.__concertoState = {
   artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
   showDate: "", showTime: "",
   showTz: "",
   hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
-  eatWhen: "both",
-  foodStyles: [], foodStyleOther: "", placeStyle: "sitdown",
-  budget: "$$", tone: "balanced",
-  interests: {
-    coffee:false, drinks:false, dessert:false, sights:false,
-    lateNight:false, nightlife:false, shopping:false, relax:false
-  },
-  arrivalBufferMin: 45, doorsBeforeMin: 90,
-  customStops: [],                 // ← add this comma
-  planDay: true,
-  dayStart: "10:00",
-  travel: {
+eatWhen: "both",                       // kept for dinner/after
+foodStyles: [], foodStyleOther: "",    // dinner cuisines
+placeStyle: "sitdown",
+budget: "$$",
+interests: {
+  coffee:false, drinks:false, dessert:false, sights:false,
+  lateNight:false, nightlife:false, shopping:false, relax:false
+},
+arrivalBufferMin: 45, doorsBeforeMin: 90,
+customStops: [],
+
+/* New: itinerary start time (single field) */
+startAt: "09:00",
+
+/* New: lunch prefs */
+lunch: {
+  want: true,
+  time: "12:30",
+  styles: [],          // cuisines for lunch
+  placeStyle: "fast",  // sitdown | fast | cafe | sandwich
+  budget: "$$"
+},
+
+/* Travel */
+travel: {
   inbound:  { airport:"", arrDate:"", arrTime:"" },
   outbound: { airport:"", depDate:"", depTime:"", taking:false }
 },
@@ -252,108 +265,149 @@ if (resumeBtn) {
       $('btn-prev').disabled = false;
       $('btn-next').textContent = "Next";
 
-    } else if (steps[step] === "dining"){
-      const cuisines = ["American","Italian","Japanese/Sushi","Mexican/Tacos","Steakhouse","Seafood","Mediterranean","Vegan/Vegetarian","Pizza","BBQ"];
-      w.innerHTML = `
-        <h3 class="step-title">Dining Preferences</h3>
-        <p class="step-help">We’ll pick restaurants near your venue.</p>
-        <div class="form-grid two">
-          <div>
-            <label>Eat when?</label>
-            <select id="eatWhen">
-              <option value="before"${state.eatWhen==="before" ? " selected" : ""}>Before the show</option>
-              <option value="after"${state.eatWhen==="after" ? " selected" : ""}>After the show</option>
-              <option value="both"${state.eatWhen==="both" ? " selected" : ""}>Both</option>
-            </select>
-          </div>
-          <div>
-            <label>Restaurant type</label>
-            <select id="placeStyle">
-              <option value="sitdown"${state.placeStyle==="sitdown" ? " selected" : ""}>Sit-down</option>
-              <option value="fast"${state.placeStyle==="fast" ? " selected" : ""}>Fast-casual / Quick</option>
-              <option value="bar"${state.placeStyle==="bar" ? " selected" : ""}>Bar / Lounge</option>
-              <option value="dessert"${state.placeStyle==="dessert" ? " selected" : ""}>Dessert / Cafe</option>
-            </select>
-          </div>
-          <div class="full">
-            <label>Cuisines (choose any)</label>
-            <div class="radio-group" id="cuisine-pills">
-              ${cuisines.map(c => `<div class="pill${state.foodStyles.includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
-            </div>
-          </div>
-          <div>
-            <label>Other cuisine (optional)</label>
-            <input id="foodStyleOther" type="text" placeholder="e.g., ramen, tapas, Ethiopian" value="${esc(state.foodStyleOther)}" />
-          </div>
-          <div>
-            <label>Budget</label>
-            <div class="radio-group segmented" id="budget-pills">
-              ${["$","$$","$$$","$$$$"].map(b => `<div class="pill${b===state.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
-            </div>
-          </div>
-          <div>
-            <label>Tone</label>
-            <select id="tone">
-              <option value="balanced"${state.tone==="balanced" ? " selected" : ""}>Balanced</option>
-              <option value="luxury"${state.tone==="luxury" ? " selected" : ""}>Luxury</option>
-              <option value="indie"${state.tone==="indie" ? " selected" : ""}>Indie</option>
-              <option value="family"${state.tone==="family" ? " selected" : ""}>Family</option>
-              <option value="foodie"${state.tone==="foodie" ? " selected" : ""}>Foodie</option>
-            </select>
+    } else if (steps[step] === "lunch"){
+  const lunchCuisines = ["Sandwiches","Burgers","Pizza","Mexican/Tacos","Mediterranean","Japanese/Sushi","Salads","Soup","BBQ","Cafe"];
+  const L = state.lunch || (state.lunch = { want:true, time:"12:30", styles:[], placeStyle:"fast", budget:"$$" });
+  w.innerHTML = `
+    <h3 class="step-title">Lunch</h3>
+    <p class="step-help">We’ll slot lunch before dinner and the show.</p>
+    <article class="card">
+      <div class="form-grid two">
+        <div>
+          <label><input id="l-want" type="checkbox" ${L.want?'checked':''}/> Include lunch</label>
+        </div>
+        <div>
+          <label>Target time</label>
+          <input id="l-time" type="time" value="${esc(L.time||'12:30')}" ${L.want?'':'disabled'} />
+        </div>
+        <div>
+          <label>Restaurant type</label>
+          <select id="l-style" ${L.want?'':'disabled'}>
+            <option value="sitdown"${L.placeStyle==="sitdown"?" selected":""}>Sit-down</option>
+            <option value="fast"${L.placeStyle==="fast"?" selected":""}>Fast-casual / Quick</option>
+            <option value="sandwich"${L.placeStyle==="sandwich"?" selected":""}>Sandwich shop</option>
+            <option value="cafe"${L.placeStyle==="cafe"?" selected":""}>Cafe</option>
+          </select>
+        </div>
+        <div>
+          <label>Budget</label>
+          <div class="radio-group segmented" id="l-budget" ${L.want?'':'style="opacity:.5;pointer-events:none"'}>
+            ${["$","$$","$$$"].map(b => `<div class="pill${b===L.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
           </div>
         </div>
-      `;
-      $('eatWhen').onchange = (e)=> state.eatWhen = e.target.value;
-      $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
-      $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
-      $('tone').onchange = (e)=> state.tone = e.target.value;
-      qsa('#cuisine-pills .pill').forEach(p=>{
-        p.onclick=()=>{ const v = p.dataset.val; const i = state.foodStyles.indexOf(v); if (i>=0) state.foodStyles.splice(i,1); else state.foodStyles.push(v); p.classList.toggle('active'); };
-      });
-      qsa('#budget-pills .pill').forEach(p=>{
-        p.onclick=()=>{ state.budget = p.dataset.val; qsa('#budget-pills .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
-      });
-      $('btn-prev').disabled = false;
-      $('btn-next').textContent = "Next";
+        <div class="full">
+          <label>Cuisines (choose any)</label>
+          <div class="radio-group" id="l-cuisines" ${L.want?'':'style="opacity:.5;pointer-events:none"'}>
+            ${lunchCuisines.map(c => `<div class="pill${(L.styles||[]).includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+          </div>
+        </div>
+      </div>
+    </article>
+  `;
+  const cb=$('l-want'), tm=$('l-time'), st=$('l-style');
+  cb.onchange=()=>{ L.want=cb.checked; tm.disabled=st.disabled=!L.want; $('l-cuisines').style.pointerEvents=$('l-budget').style.pointerEvents=L.want?'':'none'; $('l-cuisines').style.opacity=$('l-budget').style.opacity=L.want?'1':'.5'; };
+  tm.onchange=e=>{ L.time=e.target.value||"12:30"; };
+  st.onchange=e=>{ L.placeStyle=e.target.value; };
 
-    } else {
-      // ACTIVITIES
-w.innerHTML = `
-  <h3 class="step-title">Activities & Interests</h3>
-  <p class="step-help">Pick any extras to round out your night. You can also plan your whole day.</p>
+  qsa('#l-cuisines .pill').forEach(p=>{
+    p.onclick=()=>{ const v=p.dataset.val; const i=(L.styles||[]).indexOf(v);
+      if(i>=0){ L.styles.splice(i,1); } else { (L.styles||(L.styles=[])).push(v); }
+      p.classList.toggle('active');
+    };
+  });
+  qsa('#l-budget .pill').forEach(p=>{
+    p.onclick=()=>{ L.budget=p.dataset.val; qsa('#l-budget .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
+  });
 
-  <div class="form-grid two">
-    <div><label><input type="checkbox" id="int-coffee" ${state.interests.coffee?'checked':''}/> Coffee</label></div>
-    <div><label><input type="checkbox" id="int-drinks" ${state.interests.drinks?'checked':''}/> Drinks &amp; Lounge</label></div>
-    <div><label><input type="checkbox" id="int-dessert" ${state.interests.dessert?'checked':''}/> Dessert</label></div>
-    <div><label><input type="checkbox" id="int-lateNight" ${state.interests.lateNight?'checked':''}/> Late-Night Eats</label></div>
-    <div><label><input type="checkbox" id="int-nightlife" ${state.interests.nightlife?'checked':''}/> Nightlife &amp; Entertainment</label></div>
-    <div><label><input type="checkbox" id="int-shopping" ${state.interests.shopping?'checked':''}/> Shopping</label></div>
-    <div><label><input type="checkbox" id="int-sights" ${state.interests.sights?'checked':''}/> Sights &amp; Landmarks</label></div>
-    <div><label><input type="checkbox" id="int-relax" ${state.interests.relax?'checked':''}/> Relax &amp; Recover</label></div>
-  </div>
+  $('btn-prev').disabled=false;
+  $('btn-next').textContent="Next";
 
-  <div class="form-grid two" style="margin-top:12px;">
-    <div>
-      <label><input type="checkbox" id="plan-day" ${state.planDay?'checked':''}/> Plan my whole day</label>
-      <div class="tiny">We’ll map daytime stops before dinner.</div>
+    } else if (steps[step] === "dinner"){
+  const cuisines = ["American","Italian","Japanese/Sushi","Mexican/Tacos","Steakhouse","Seafood","Mediterranean","Vegan/Vegetarian","Pizza","BBQ"];
+  w.innerHTML = `
+    <h3 class="step-title">Dinner</h3>
+    <p class="step-help">We’ll pick dinner near your venue.</p>
+    <div class="form-grid two">
+      <div>
+        <label>Eat when?</label>
+        <select id="eatWhen">
+          <option value="before"${state.eatWhen==="before" ? " selected" : ""}>Before the show</option>
+          <option value="after"${state.eatWhen==="after" ? " selected" : ""}>After the show</option>
+          <option value="both"${state.eatWhen==="both" ? " selected" : ""}>Both</option>
+        </select>
+      </div>
+      <div>
+        <label>Restaurant type</label>
+        <select id="placeStyle">
+          <option value="sitdown"${state.placeStyle==="sitdown" ? " selected" : ""}>Sit-down</option>
+          <option value="fast"${state.placeStyle==="fast" ? " selected" : ""}>Fast-casual / Quick</option>
+          <option value="bar"${state.placeStyle==="bar" ? " selected" : ""}>Bar / Lounge</option>
+          <option value="dessert"${state.placeStyle==="dessert" ? " selected" : ""}>Dessert / Cafe</option>
+        </select>
+      </div>
+      <div class="full">
+        <label>Cuisines (choose any)</label>
+        <div class="radio-group" id="cuisine-pills">
+          ${cuisines.map(c => `<div class="pill${state.foodStyles.includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+        </div>
+      </div>
+      <div>
+        <label>Other cuisine (optional)</label>
+        <input id="foodStyleOther" type="text" placeholder="e.g., ramen, tapas, Ethiopian" value="${esc(state.foodStyleOther)}" />
+      </div>
+      <div>
+        <label>Budget</label>
+        <div class="radio-group segmented" id="budget-pills">
+          ${["$","$$","$$$","$$$$"].map(b => `<div class="pill${b===state.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
+        </div>
+      </div>
     </div>
-    <div>
-      <label>Day starts at</label>
-      <input id="day-start" type="time" value="${esc(state.dayStart||'10:00')}" ${state.planDay?'':'disabled'} />
-    </div>
-  </div>
-`;
-["coffee","drinks","dessert","lateNight","nightlife","shopping","sights","relax"].forEach(k=>{
-  const el = $('int-'+k); if (el) el.onchange = ()=>{ state.interests[k] = el.checked; };
-});
-const pd = $('plan-day'); const ds = $('day-start');
-pd?.addEventListener('change', ()=>{ state.planDay = !!pd.checked; if (ds) ds.disabled = !state.planDay; });
-ds?.addEventListener('change', e=>{ state.dayStart = e.target.value || "10:00"; });
+  `;
+  $('eatWhen').onchange = (e)=> state.eatWhen = e.target.value;
+  $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
+  $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
+  qsa('#cuisine-pills .pill').forEach(p=>{
+    p.onclick=()=>{ const v = p.dataset.val; const i = state.foodStyles.indexOf(v); if (i>=0) state.foodStyles.splice(i,1); else state.foodStyles.push(v); p.classList.toggle('active'); };
+  });
+  qsa('#budget-pills .pill').forEach(p=>{
+    p.onclick=()=>{ state.budget = p.dataset.val; qsa('#budget-pills .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
+  });
+  $('btn-prev').disabled = false;
+  $('btn-next').textContent = "Next";
+      
+  } else {
+  w.innerHTML = `
+    <h3 class="step-title">Activities & Interests</h3>
+    <p class="step-help">Pick extras to round out your day.</p>
 
-$('btn-prev').disabled = false;
-$('btn-next').textContent = "Generate Schedule";
-    }
+    <div class="form-grid two">
+      <div><label><input type="checkbox" id="int-coffee" ${state.interests.coffee?'checked':''}/> Coffee</label></div>
+      <div><label><input type="checkbox" id="int-drinks" ${state.interests.drinks?'checked':''}/> Drinks &amp; Lounge</label></div>
+      <div><label><input type="checkbox" id="int-dessert" ${state.interests.dessert?'checked':''}/> Dessert</label></div>
+      <div><label><input type="checkbox" id="int-lateNight" ${state.interests.lateNight?'checked':''}/> Late-Night Eats</label></div>
+      <div><label><input type="checkbox" id="int-nightlife" ${state.interests.nightlife?'checked':''}/> Nightlife &amp; Entertainment</label></div>
+      <div><label><input type="checkbox" id="int-shopping" ${state.interests.shopping?'checked':''}/> Shopping</label></div>
+      <div><label><input type="checkbox" id="int-sights" ${state.interests.sights?'checked':''}/> Sights &amp; Landmarks</label></div>
+      <div><label><input type="checkbox" id="int-relax" ${state.interests.relax?'checked':''}/> Relax &amp; Recover</label></div>
+    </div>
+
+    <article class="card" style="margin-top:12px;">
+      <div class="form-grid two">
+        <div>
+          <label>What time should your itinerary begin?</label>
+          <input id="start-at" type="time" value="${esc(state.startAt||'09:00')}" />
+        </div>
+      </div>
+    </article>
+  `;
+  ["coffee","drinks","dessert","lateNight","nightlife","shopping","sights","relax"].forEach(k=>{
+    const el = $('int-'+k); if (el) el.onchange = ()=>{ state.interests[k] = el.checked; };
+  });
+  $('start-at')?.addEventListener('change', e=>{ state.startAt = e.target.value || "09:00"; });
+
+  $('btn-prev').disabled = false;
+  $('btn-next').textContent = "Generate Schedule";
+}
   }
 
   /* ==================== Ticketmaster ==================== */
@@ -637,11 +691,11 @@ async function getVenueWebsite(){
           resolve(s === google.maps.places.PlacesServiceStatus.OK ? d : null);
         });
       });
-      if (det?.website) return det.website;
-      if (det?.url)     return det.url;  // exact Google Maps place page
+      if (det?.website && /^https?:\/\//i.test(det.website)) return det.website;
+      // Do NOT fall back to Google Maps URL as "website" – that confused users.
     }
   } catch {}
-  return mapUrlFor({ name: state.venue, lat: state.venueLat, lng: state.venueLng });
+  return ''; // empty disables the Website button
 }
 
 function venueInfoLinks(primaryUrl){
@@ -725,18 +779,19 @@ function pickNearest(fromLat, fromLng, list=[]){
 }
 function dwellByKey(k){ return k==='coffee'?35 : k==='sights'?75 : k==='shopping'?60 : k==='relax'?45 : 45; }
 
-async function buildDayItineraryParts({ state, extras, dinnerPick }){
-  if (!state.planDay) return [];
+async function buildDayItineraryParts({ state, extras, startAtHM, fromPoint }){
   const bucket = categorizeExtras(extras||[]);
   const selected = ['coffee','sights','shopping','relax'].filter(k=>state.interests[k]);
-  const order = await orderActivitiesWithCohere(selected, { tone:state.tone, budget:state.budget, venue:state.venue });
+  const order = await orderActivitiesWithCohere(selected, { venue:state.venue });
 
-  // Start from hotel if staying; else from venue
-  let cur = (state.staying && state.hotelLat!=null && state.hotelLng!=null)
-    ? { lat:state.hotelLat, lng:state.hotelLng, name:state.hotel||'hotel' }
-    : { lat:state.venueLat, lng:state.venueLng, name:state.venue||'venue' };
+  // Start from hotel (if staying) else venue (or supplied fromPoint)
+  let cur = fromPoint || (
+    (state.staying && state.hotelLat!=null && state.hotelLng!=null)
+      ? { lat:state.hotelLat, lng:state.hotelLng, name:state.hotel||'hotel' }
+      : { lat:state.venueLat, lng:state.venueLng, name:state.venue||'venue' }
+  );
 
-  let clock = dateOnShowWithHM(state.dayStart || "10:00");
+  let clock = dateOnShowWithHM(startAtHM || state.startAt || "09:00");
   const out = [];
 
   for (const key of order){
@@ -748,27 +803,13 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     const travel = (typeof lat==='number' && typeof lng==='number')
       ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng)) : 12;
 
-    // travel
-    if (cur?.name){
-      const leaveTs = new Date(clock.getTime());
-      out.push({ ts:+leaveTs, time:fmtInTz(leaveTs, state.showTz||'', {round:true}), label:`Uber/Taxi to ${pick.name || key}` });
-      clock = new Date(clock.getTime() + travel*60000);
-    }
-    // arrive
-    out.push({ ts:+clock, time:fmtInTz(clock, state.showTz||'', {round:false}), label:`Arrive at ${pick.name || key}` });
-    // dwell
-    clock = new Date(clock.getTime() + dwellByKey(key)*60000);
-    // move current point
+    // leave current for next
+    out.push({ ts:+clock, time:fmtInTz(clock, state.showTz||'', {round:true}),
+      label:`Leave ${cur.name || 'start'} for ${pick.name || key}` });
+
+    clock = new Date(clock.getTime() + travel*60000 + dwellByKey(key)*60000);
     cur = { lat:Number(lat)||cur.lat, lng:Number(lng)||cur.lng, name: pick.name||key };
   }
-
-  // Optional hop back to hotel before dinner
-  if (out.length && state.staying && state.hotelLat!=null && state.hotelLng!=null){
-    const mins = estimateTravelMin(cur.lat, cur.lng, state.hotelLat, state.hotelLng);
-    out.push({ ts:+clock, time:fmtInTz(clock, state.showTz||'', {round:true}), label:`Uber/Taxi back to hotel (optional)` });
-    clock = new Date(clock.getTime() + mins*60000);
-  }
-
   return out;
 }
 
@@ -878,6 +919,27 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 
       const targetISO = parseShowDateTimeISO();
 
+      // LUNCH picks (target the selected lunch time on show date)
+const lunchTargetISO = (() => {
+  const hm = (state.lunch?.time || "12:30");
+  const d  = new Date(parseShowDateTimeISO()); 
+  const [h,m] = (hm || "12:30").split(':').map(n=>parseInt(n,10));
+  d.setHours(h||12, m||30, 0, 0);
+  return d.toISOString();
+})();
+
+let lunchAuto = [];
+if (state.lunch?.want) {
+  const lunchState = {
+    ...state,
+    placeStyle: state.lunch.placeStyle,
+    budget: state.lunch.budget,
+    foodStyles: (state.lunch.styles||[]).length ? state.lunch.styles : state.foodStyles
+  };
+  lunchAuto = await pickRestaurants({ wantOpenNow:true, state:lunchState, slot:"lunch", targetISO:lunchTargetISO }) || [];
+  window.__lastLunch = lunchAuto;
+}
+
       // Selected cuisines
 const selectedCuisines = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
 
@@ -890,7 +952,7 @@ const extrasP = pickExtras({ state });
 // BEFORE (split by cuisine when multiple are chosen)
 let dinnerByCuisine = {};   // { "Italian": [...], "Japanese/Sushi": [...] }
 let beforeAuto = [];        // legacy single list when 0 or 1 cuisine selected
-
+      
 if (state.eatWhen === "before" || state.eatWhen === "both") {
   if (selectedCuisines.length > 1) {
     await Promise.all(selectedCuisines.map(async (c) => {
@@ -955,7 +1017,7 @@ const itin = await buildItinerary({
       const city = await venueCityName();
       await renderTourCard(city, itin, dinnerPick, extras);
 
-      await renderRails({ before: beforeAuto, after: afterAuto, extras, dinnerByCuisine, selectedCuisines });
+      await renderRails({ before: beforeAuto, after: afterAuto, extras, dinnerByCuisine, selectedCuisines, lunchList: lunchAuto });
       show('results');
       savePlan();
     }catch(e){
@@ -997,71 +1059,91 @@ const itin = await buildItinerary({
     return 15;
   }
 
-  async function renderTourCard(city, items, dinnerPick, extras){
+async function renderTourCard(city, items, dinnerPick, extras){
   const el = $('schedule'); if (!el) return;
 
-  const arrive = items.find(i=>i.type==='arrive');
-  const dine   = items.find(i=>i.type==='dine');
+  const arrive = items.find(i=>i.type==='arrive');  // venue arrival anchor
   const show   = items.find(i=>i.type==='show');
-  const post   = items.find(i=>i.type==='post');
 
   const tz = state.showTz || '';
   const parts = [];
 
-  // At the very top of parts[]
-if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime){
-  const dt = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
-  parts.push({
-    ts: +dt,
-    time: fmtInTz(dt, state.showTz||'', { round:false }),
-    label: `Arrive at ${state.travel.inbound.airport} airport`
-  });
-}
+  // Inbound flight -> leave airport for hotel/venue (arrival + 20m)
+  if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime){
+    const base = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
+    const leave = new Date(base.getTime() + 20*60000);
+    const dest = state.staying ? (state.hotel || 'hotel') : (state.venue || 'venue');
+    parts.push({ ts:+leave, time:fmtInTz(leave, tz, {round:true}),
+      label:`Leave ${state.travel.inbound.airport} airport for ${dest}` });
+  }
 
-if (state.travel?.outbound?.taking && state.travel?.outbound?.airport && state.travel?.outbound?.depDate && state.travel?.outbound?.depTime){
-  const dt = new Date(`${state.travel.outbound.depDate}T${state.travel.outbound.depTime}`);
-  parts.push({
-    ts: +dt,
-    time: fmtInTz(dt, state.showTz||'', { round:false }),
-    label: `Depart from ${state.travel.outbound.airport} airport`
+  // Daytime (Coffee/Sights/Shopping/Relax) — leave-only
+  const dayParts = await buildDayItineraryParts({
+    state,
+    extras,
+    startAtHM: state.startAt,
+    fromPoint: (state.staying && state.hotelLat!=null && state.hotelLng!=null) ? { lat:state.hotelLat, lng:state.hotelLng, name: state.hotel } : { lat:state.venueLat, lng:state.venueLng, name: state.venue }
   });
-}
-
-  // Daytime (Coffee / Sights / Shopping / Relax)
-  const dayParts = await buildDayItineraryParts({ state, extras, dinnerPick });
   parts.push(...dayParts);
 
-  // Dinner sequence (hotel → dinner → venue)
-  if (dine?.start) {
-    let leaveForDinner = new Date(dine.start);
-    if (state.staying && state.hotelLat!=null && state.hotelLng!=null && dinnerPick?.lat!=null && dinnerPick?.lng!=null){
-      const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
-      leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
-    } else {
-      leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
-    }
-    if (state.staying){
-      parts.push({ ts:+leaveForDinner, time:fmtInTz(leaveForDinner, tz, { round:true }), label:`Take an Uber/Lyft from the hotel to dinner` });
-    }
-    parts.push({ ts:+new Date(dine.start), time:fmtInTz(dine.start, tz, { round:false }), label:`Arrive at ${esc(dinnerPick?.name || 'dinner')}` });
-    if (dine.end){
-      parts.push({ ts:+new Date(dine.end), time:fmtInTz(dine.end, tz, { round:true }), label:`Head to ${esc(state.venue)}` });
+  // Lunch (if chosen) — compute "leave previous for lunch", then "leave lunch for next hop" is implied by later steps
+  let lunchPick = null;
+  if (state.lunch?.want && Array.isArray(window.__lastLunch) && window.__lastLunch.length){
+    lunchPick = normalizePlace(window.__lastLunch[0]);
+  }
+
+  // Dinner (first suggestion or custom)
+  const dinnerPickNorm = normalizePlace(dinnerPick);
+
+  // If we have lunch time, leave-from-current to lunch
+  if (state.lunch?.want && state.lunch.time && lunchPick){
+    const lunchTime = dateOnShowWithHM(state.lunch.time);
+    parts.push({ ts:+new Date(lunchTime), time:fmtInTz(lunchTime, tz, {round:true}),
+      label:`Leave current stop for ${lunchPick.name}` });
+  }
+
+  // Leave for dinner
+  if (dinnerPickNorm && arrive){
+    // Compute a reasonable pre-dinner leave time: 60m before dinner anchor in itinerary items
+    const dineAnchor = items.find(i=>i.type==='dine');
+    if (dineAnchor?.start){
+      const leave = new Date(new Date(dineAnchor.start).getTime() - 15*60000);
+      parts.push({ ts:+leave, time:fmtInTz(leave, tz, {round:true}),
+        label:`Leave ${state.staying? (state.hotel||'hotel') : 'current stop'} for ${dinnerPickNorm.name}` });
     }
   }
 
+  // Leave dinner for venue
   if (arrive){
-    parts.push({ ts:+new Date(arrive.start), time:fmtInTz(arrive.start, tz, { round:true }), label:`Arrive at ${esc(state.venue)}`, note:`No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start` });
+    const leave = new Date(new Date(arrive.start).getTime());
+    parts.push({ ts:+leave, time:fmtInTz(leave, tz, {round:true}),
+      label:`Leave dinner for ${state.venue}` });
   }
+
+  // Concert starts (kept)
   if (show){
     parts.push({ ts:+new Date(show.start), time:fmtInTz(show.start, tz, { round:false }), label:`Concert starts` });
   }
+
+  // Dessert/drinks/nightlife (if after selected)
+  const post = items.find(i=>i.type==='post');
   if (post){
-    parts.push({ ts:+new Date(post.start), time:fmtInTz(post.start, tz, { round:true }), label:`Leave the venue for dessert/drinks` });
+    parts.push({ ts:+new Date(post.start), time:fmtInTz(post.start, tz, {round:true}),
+      label:`Leave the venue for dessert/drinks` });
+  }
+
+  // Outbound: leave for airport at depTime - 2h
+  if (state.travel?.outbound?.taking && state.travel?.outbound?.airport && state.travel?.outbound?.depDate && state.travel?.outbound?.depTime){
+    const dep = new Date(`${state.travel.outbound.depDate}T${state.travel.outbound.depTime}`);
+    const leave = new Date(dep.getTime() - 120*60000);
+    const origin = post ? 'dessert/drinks' : state.venue || 'venue';
+    parts.push({ ts:+leave, time:fmtInTz(leave, tz, {round:true}),
+      label:`Leave ${origin} for ${state.travel.outbound.airport} airport` });
   }
 
   parts.sort((a,b)=> a.ts - b.ts);
 
-  // Venue quick links
+  // Venue quick links (website only if we have one)
   const website = await getVenueWebsite().catch(()=> '');
   const links = venueInfoLinks(website);
   const actionsHtml = `
@@ -1083,7 +1165,6 @@ if (state.travel?.outbound?.taking && state.travel?.outbound?.airport && state.t
           <div class="tstep">
             <div class="t-time">${esc(p.time || '')}</div>
             <div class="t-label">${p.label}</div>
-            ${p.note ? `<div class="t-note">· ${esc(p.note)}</div>` : ""}
           </div>
         `).join("")}
       </div>
@@ -1321,16 +1402,30 @@ function normalizePlace(p){
   }
 
   // NEW: builds rails per selected interest (broad matching + fallback)
-  async function renderRails({ before, after, extras, dinnerByCuisine = {}, selectedCuisines = [] }) {
-    const haystack = (x) => {
-      const bits = [];
-      if (x.section)   bits.push(String(x.section));
-      if (x.category)  bits.push(String(x.category));
-      if (x.name)      bits.push(String(x.name));
-      if (Array.isArray(x.types)) bits.push(x.types.join(' '));
-      if (Array.isArray(x.tags))  bits.push(x.tags.join(' '));
-      return bits.join(' ').toLowerCase();
-    };
+async function renderRails({
+  before,
+  after,
+  extras,
+  dinnerByCuisine = {},
+  selectedCuisines = [],
+  lunchList = []        // ← add this param
+}) {
+  // ---- LUNCH rail FIRST (single rail) ----
+  if (Array.isArray(lunchList) && lunchList.length) {
+    fillRail('row-lunch', lunchList.slice(0, 10), 'Lunch near the venue');
+  } else {
+    hideRail('row-lunch');
+  }
+
+  const haystack = (x) => {
+    const bits = [];
+    if (x.section)   bits.push(String(x.section));
+    if (x.category)  bits.push(String(x.category));
+    if (x.name)      bits.push(String(x.name));
+    if (Array.isArray(x.types)) bits.push(x.types.join(' '));
+    if (Array.isArray(x.tags))  bits.push(x.tags.join(' '));
+    return bits.join(' ').toLowerCase();
+  };
 
     const bucket = {
       dessert:   [],

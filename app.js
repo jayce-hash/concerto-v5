@@ -734,6 +734,22 @@ async function renderVenueInfoCard(){
   `;
 }
 
+  /* ===== Venue actions (safe links only) ===== */
+async function venueActionsHtml(){
+  const website = await getVenueWebsite().catch(()=> '');
+  const links = venueInfoLinks(website);
+  const hasHost = !!hostnameFromUrl(website);
+  const btn = (href, label) => href ? `<a class="btn" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>` : '';
+  return `
+    <div class="pc-actions" style="gap:10px;flex-wrap:wrap;margin-top:10px;">
+      ${btn(website, 'Venue Website')}
+      ${hasHost ? btn(links.bagPolicy, 'Bag Policy') : ''}
+      ${hasHost ? btn(links.concessions, 'Concessions') : ''}
+      ${hasHost ? btn(links.parking, 'Parking') : ''}
+    </div>
+  `;
+}
+
   /* ===== Day planning helpers ===== */
 async function orderActivitiesWithCohere(keys, context){
   try {
@@ -779,20 +795,23 @@ function pickNearest(fromLat, fromLng, list=[]){
 }
 function dwellByKey(k){ return k==='coffee'?35 : k==='sights'?75 : k==='shopping'?60 : k==='relax'?45 : 45; }
 
-async function buildDayItineraryParts({ state, extras, startAtHM, fromPoint }){
+async function buildDayItineraryParts({ state, extras, dinnerPick }){
+  // Build even if planDay is false; we drive everything from dayStart now
   const bucket = categorizeExtras(extras||[]);
   const selected = ['coffee','sights','shopping','relax'].filter(k=>state.interests[k]);
   const order = await orderActivitiesWithCohere(selected, { venue:state.venue });
 
-  // Start from hotel (if staying) else venue (or supplied fromPoint)
-  let cur = fromPoint || (
-    (state.staying && state.hotelLat!=null && state.hotelLng!=null)
-      ? { lat:state.hotelLat, lng:state.hotelLng, name:state.hotel||'hotel' }
-      : { lat:state.venueLat, lng:state.venueLng, name:state.venue||'venue' }
-  );
+  // Start from hotel if staying; else from venue
+  let cur = (state.staying && state.hotelLat!=null && state.hotelLng!=null)
+    ? { lat:state.hotelLat, lng:state.hotelLng, name:state.hotel||'hotel' }
+    : { lat:state.venueLat, lng:state.venueLng, name:state.venue||'venue' };
 
-  let clock = dateOnShowWithHM(startAtHM || state.startAt || "09:00");
+  let clock = dateOnShowWithHM(state.dayStart || "10:00");
   const out = [];
+
+  const pushLeave = (ts, from, to) => {
+    out.push({ ts:+ts, time:fmtInTz(ts, state.showTz||'', {round:true}), label:`Leave ${from} for ${to}` });
+  };
 
   for (const key of order){
     const list = bucket[key]||[]; if (!list.length) continue;
@@ -803,13 +822,23 @@ async function buildDayItineraryParts({ state, extras, startAtHM, fromPoint }){
     const travel = (typeof lat==='number' && typeof lng==='number')
       ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng)) : 12;
 
-    // leave current for next
-    out.push({ ts:+clock, time:fmtInTz(clock, state.showTz||'', {round:true}),
-      label:`Leave ${cur.name || 'start'} for ${pick.name || key}` });
+    // leave current stop for next pick
+    pushLeave(clock, cur?.name || 'current stop', pick.name || key);
 
-    clock = new Date(clock.getTime() + travel*60000 + dwellByKey(key)*60000);
+    // advance clock by travel + dwell
+    clock = new Date(clock.getTime() + (travel + dwellByKey(key)) * 60000);
+
+    // move current point
     cur = { lat:Number(lat)||cur.lat, lng:Number(lng)||cur.lng, name: pick.name||key };
   }
+
+  // Optional hop back to hotel before dinner
+  if (out.length && state.staying && state.hotelLat!=null && state.hotelLng!=null){
+    const mins = estimateTravelMin(cur.lat, cur.lng, state.hotelLat, state.hotelLng);
+    pushLeave(clock, cur.name || 'current stop', state.hotel || 'hotel');
+    clock = new Date(clock.getTime() + mins*60000);
+  }
+
   return out;
 }
 
@@ -971,6 +1000,11 @@ if (state.eatWhen === "before" || state.eatWhen === "both") {
 
 const [afterAuto, extras] = await Promise.all([afterP, extrasP]);
 
+      // LUNCH: pick options and a primary pick
+const lunchAuto = await pickRestaurants({ wantOpenNow:false, state, slot:"lunch", targetISO });
+const lunchPickRaw = (lunchAuto && lunchAuto[0]) || null;
+const lunchPick = lunchPickRaw ? normalizePlace(lunchPickRaw) : null;
+
       const locks = state.customStops || [];
 const customDinner = locks.find(p => p.when === 'before' && p.type === 'dinner');
 const dinnerPick = customDinner || (beforeAuto[0] || null);
@@ -1062,116 +1096,98 @@ const itin = await buildItinerary({
 async function renderTourCard(city, items, dinnerPick, extras){
   const el = $('schedule'); if (!el) return;
 
-  const arrive = items.find(i=>i.type==='arrive');  // venue arrival anchor
-  const show   = items.find(i=>i.type==='show');
+  // Helper: push a single "Leave X for Y" line
+const steps = [];
+const pushLeave = (ts, from, to) => {
+  steps.push({ ts:+ts, label: `Leave ${from} for ${to}` });
+};
 
-  const tz = state.showTz || '';
-  const parts = [];
+// Start-of-day anchor
+const startClock = dateOnShowWithHM(state.dayStart || "10:00");
 
-  // Inbound flight -> leave airport for hotel/venue (arrival + 20m)
-  if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime){
-    const base = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
-    const leave = new Date(base.getTime() + 20*60000);
-    const dest = state.staying ? (state.hotel || 'hotel') : (state.venue || 'venue');
-    parts.push({ ts:+leave, time:fmtInTz(leave, tz, {round:true}),
-      label:`Leave ${state.travel.inbound.airport} airport for ${dest}` });
-  }
-
-  // Daytime (Coffee/Sights/Shopping/Relax) — leave-only
-  const dayParts = await buildDayItineraryParts({
-    state,
-    extras,
-    startAtHM: state.startAt,
-    fromPoint: (state.staying && state.hotelLat!=null && state.hotelLng!=null) ? { lat:state.hotelLat, lng:state.hotelLng, name: state.hotel } : { lat:state.venueLat, lng:state.venueLng, name: state.venue }
-  });
-  parts.push(...dayParts);
-
-  // Lunch (if chosen) — compute "leave previous for lunch", then "leave lunch for next hop" is implied by later steps
-  let lunchPick = null;
-  if (state.lunch?.want && Array.isArray(window.__lastLunch) && window.__lastLunch.length){
-    lunchPick = normalizePlace(window.__lastLunch[0]);
-  }
-
-  // Dinner (first suggestion or custom)
-  const dinnerPickNorm = normalizePlace(dinnerPick);
-
-  // If we have lunch time, leave-from-current to lunch
-  if (state.lunch?.want && state.lunch.time && lunchPick){
-    const lunchTime = dateOnShowWithHM(state.lunch.time);
-    parts.push({ ts:+new Date(lunchTime), time:fmtInTz(lunchTime, tz, {round:true}),
-      label:`Leave current stop for ${lunchPick.name}` });
-  }
-
-  // Leave for dinner
-  if (dinnerPickNorm && arrive){
-    // Compute a reasonable pre-dinner leave time: 60m before dinner anchor in itinerary items
-    const dineAnchor = items.find(i=>i.type==='dine');
-    if (dineAnchor?.start){
-      const leave = new Date(new Date(dineAnchor.start).getTime() - 15*60000);
-      parts.push({ ts:+leave, time:fmtInTz(leave, tz, {round:true}),
-        label:`Leave ${state.staying? (state.hotel||'hotel') : 'current stop'} for ${dinnerPickNorm.name}` });
-    }
-  }
-
-  // Leave dinner for venue
-  if (arrive){
-    const leave = new Date(new Date(arrive.start).getTime());
-    parts.push({ ts:+leave, time:fmtInTz(leave, tz, {round:true}),
-      label:`Leave dinner for ${state.venue}` });
-  }
-
-  // Concert starts (kept)
-  if (show){
-    parts.push({ ts:+new Date(show.start), time:fmtInTz(show.start, tz, { round:false }), label:`Concert starts` });
-  }
-
-  // Dessert/drinks/nightlife (if after selected)
-  const post = items.find(i=>i.type==='post');
-  if (post){
-    parts.push({ ts:+new Date(post.start), time:fmtInTz(post.start, tz, {round:true}),
-      label:`Leave the venue for dessert/drinks` });
-  }
-
-  // Outbound: leave for airport at depTime - 2h
-  if (state.travel?.outbound?.taking && state.travel?.outbound?.airport && state.travel?.outbound?.depDate && state.travel?.outbound?.depTime){
-    const dep = new Date(`${state.travel.outbound.depDate}T${state.travel.outbound.depTime}`);
-    const leave = new Date(dep.getTime() - 120*60000);
-    const origin = post ? 'dessert/drinks' : state.venue || 'venue';
-    parts.push({ ts:+leave, time:fmtInTz(leave, tz, {round:true}),
-      label:`Leave ${origin} for ${state.travel.outbound.airport} airport` });
-  }
-
-  parts.sort((a,b)=> a.ts - b.ts);
-
-  // Venue quick links (website only if we have one)
-  const website = await getVenueWebsite().catch(()=> '');
-  const links = venueInfoLinks(website);
-  const actionsHtml = `
-    <div class="pc-actions" style="gap:10px;flex-wrap:wrap;margin-top:10px;">
-      ${links.website ? `<a class="btn" href="${esc(links.website)}" target="_blank" rel="noopener">Venue Website</a>` : ''}
-      <a class="btn" href="${esc(links.bagPolicy)}" target="_blank" rel="noopener">Bag Policy</a>
-      <a class="btn" href="${esc(links.concessions)}" target="_blank" rel="noopener">Concessions</a>
-      <a class="btn" href="${esc(links.parking)}" target="_blank" rel="noopener">Parking</a>
-    </div>
-  `;
-
-  el.innerHTML = `
-    <article class="card tour-card">
-      <div class="tour-head">
-        <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-      </div>
-      <div class="tour-steps">
-        ${parts.map(p => `
-          <div class="tstep">
-            <div class="t-time">${esc(p.time || '')}</div>
-            <div class="t-label">${p.label}</div>
-          </div>
-        `).join("")}
-      </div>
-      ${actionsHtml}
-    </article>
-  `;
+// 1) Flight IN (exception: show the landing time line)
+if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {
+  const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
+  steps.push({ ts:+land, label: `Land at ${state.travel.inbound.airport}` });
 }
+
+// 2) Daytime chain (coffee → sights/shopping → lunch)
+// buildDayItineraryParts should return **only the next destination name** + the computed leave time
+// If yours currently returns “Arrive …”, change it to only emit “Leave … for …” records.
+const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // return array like [{ts,label}, …]
+steps.push(...day);
+
+// 3) Lunch (if picked)
+if (lunchPick?.name && lunchPick?.startISO) {
+  // Leave current stop for lunch; if hotel exists and it’s the first hop, leave hotel
+  const lastName = day?.length ? day[day.length-1].label.replace(/^Leave\s(.+)\sfor\s.+$/,'$1') : (state.hotel || 'hotel');
+  const leaveForLunch = new Date(new Date(lunchPick.startISO).getTime() - 15*60000);
+  pushLeave(leaveForLunch, lastName, lunchPick.name);
+}
+
+// 4) Dinner chain (hotel → dinner → venue), leave-only
+if (dine?.start && dinnerPick?.name) {
+  let fromName = state.staying ? (state.hotel || 'hotel') : (dinnerPick.name || 'dinner');
+  let leaveForDinner = new Date(dine.start);
+  if (state.staying && state.hotelLat!=null && state.hotelLng!=null && dinnerPick?.lat!=null && dinnerPick?.lng!=null) {
+    const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
+    leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
+  } else {
+    leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
+    fromName = 'current stop';
+  }
+  pushLeave(leaveForDinner, fromName, dinnerPick.name);
+
+  // After dinner → venue
+  if (dine.end) {
+    const afterDinner = new Date(dine.end);
+    pushLeave(afterDinner, dinnerPick.name, state.venue);
+  }
+}
+
+// 5) Venue arrival buffer (leave-only): compute when to leave to arrive ≥ arrivalBufferMin before show
+if (arrive?.start && state.venue) {
+  const aStart = new Date(arrive.start); // "arrive by" time
+  const leaveForVenue = new Date(aStart.getTime() - 15*60000); // simple 15-min default if we can’t calc distance
+  pushLeave(leaveForVenue, 'current stop', state.venue);
+}
+
+// 6) Concert line (exception: keep this)
+if (show?.start) {
+  steps.push({ ts:+new Date(show.start), label: `Concert starts` });
+}
+
+// 7) After-show hop (leave-only)
+if (post?.start && (state.interests.dessert || state.interests.drinks || state.interests.nightlife)) {
+  const postTs = new Date(post.start);
+  const dest = state.interests.dessert ? 'dessert' : state.interests.drinks ? 'drinks' : 'nightlife';
+  pushLeave(postTs, 'the venue', dest);
+}
+
+// 8) Flight OUT (exception: show the departure time line)
+if (state.travel?.outbound?.taking && state.travel?.outbound?.airport && state.travel?.outbound?.depDate && state.travel?.outbound?.depTime) {
+  const dep = new Date(`${state.travel.outbound.depDate}T${state.travel.outbound.depTime}`);
+  steps.push({ ts:+dep, label: `Depart from ${state.travel.outbound.airport}` });
+}
+
+// Sort + render with only times + leave lines (and concert line)
+steps.sort((a,b)=> a.ts - b.ts);
+const tz = state.showTz || '';
+el.innerHTML = `
+  <article class="card tour-card">
+    <div class="tour-head"><h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3></div>
+    <div class="tour-steps">
+      ${steps.map(s => `
+        <div class="tstep">
+          <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
+          <div class="t-label">${esc(s.label)}</div>
+        </div>
+      `).join('')}
+    </div>
+    ${await venueActionsHtml()}
+  </article>
+`;
+}  
   
 /* ===== Helper: ensure a rail container exists, show/hide ===== */
 function ensureRail(id, title, { prepend = false } = {}){

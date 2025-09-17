@@ -968,9 +968,7 @@ if (state.lunch?.want) {
   lunchAuto = await pickRestaurants({ wantOpenNow:true, state:lunchState, slot:"lunch", targetISO:lunchTargetISO }) || [];
   window.__lastLunch = lunchAuto;
 }
-      const lunchPickRaw = (lunchAuto && lunchAuto[0]) || null;
-const lunchPick = lunchPickRaw ? normalizePlace(lunchPickRaw) : null;
-
+  
       // Selected cuisines
 const selectedCuisines = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
 
@@ -1119,12 +1117,30 @@ if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.tr
 const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // return array like [{ts,label}, …]
 steps.push(...day);
 
-// 3) Lunch (if picked)
-if (lunchPick?.name && lunchPick?.startISO) {
-  // Leave current stop for lunch; if hotel exists and it’s the first hop, leave hotel
-  const lastName = day?.length ? day[day.length-1].label.replace(/^Leave\s(.+)\sfor\s.+$/,'$1') : (state.hotel || 'hotel');
-  const leaveForLunch = new Date(new Date(lunchPick.startISO).getTime() - 15*60000);
-  pushLeave(leaveForLunch, lastName, lunchPick.name);
+// 3) Lunch (if picked) — FIXED (self-contained)
+{
+  // Pull the first lunch suggestion we already fetched in generate()
+  const lunchPick = (window.__lastLunch && window.__lastLunch[0])
+    ? normalizePlace(window.__lastLunch[0])
+    : null;
+
+  if (state.lunch?.want && lunchPick?.name) {
+    // Build the target lunch time on show date (e.g., "12:30")
+    const hm = state.lunch.time || "12:30";
+    const [h, m] = hm.split(':').map(n => parseInt(n, 10));
+    const target = new Date(parseShowDateTimeISO());
+    target.setHours(h || 12, m || 30, 0, 0);
+
+    // Leave 15 min before target (simple default)
+    const leaveForLunch = new Date(target.getTime() - 15 * 60000);
+
+    // If there’s already a previous step, use its "from" place; else start at hotel/current stop
+    const lastFrom = steps.length
+      ? steps[steps.length - 1].label.replace(/^Leave\s(.+)\sfor\s.*$/, '$1')
+      : (state.staying ? (state.hotel || 'hotel') : 'current stop');
+
+    pushLeave(leaveForLunch, lastFrom, lunchPick.name);
+  }
 }
 
 // 4) Dinner chain (hotel → dinner → venue), leave-only

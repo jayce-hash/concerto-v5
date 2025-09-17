@@ -347,5 +347,3 @@ body.page-transition::before{
   text-underline-offset:2px
 }
 .pc-actions a:not(.btn-reserve):hover{color:var(--accent)}
-
-.pc-actions .btn { touch-action: manipulation; }

@@ -478,10 +478,17 @@ $('btn-next').textContent = "Generate Schedule";
    Implement fetchFlights() to call your provider (AeroAPI/FlightStats/aviationstack/Amadeus)
    and return normalized results: [{ airline, flightNo, arrISO, depISO, arrIATA, depIATA, arrLat, arrLng, depLat, depLng, summary }]
 */
-async function fetchFlights(query){
-  // TODO: wire to your backend proxy that calls a flight API.
-  console.warn('fetchFlights() not wired to a live API yet', query);
-  return [];
+async function fetchFlights({ kind, airline, flightNo, date }) {
+  const qs = new URLSearchParams({ kind, airline, flightNo, date });
+  const url = `/.netlify/functions/flights?${qs.toString()}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  try {
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
 }
 
 function renderFlightResults(kind, list){

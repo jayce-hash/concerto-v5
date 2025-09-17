@@ -58,20 +58,49 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     const url = `${location.origin}${location.pathname}?a=${enc}`;
     await shareLinkOrCopy("Your Concerto+ plan", url);
   });
-  $('btn-ics')?.addEventListener('click', () => {
-    const items = window.__lastItinerary || [];
-    const blob = toICS(items, 'Concerto+ — Concert Day');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'concerto-itinerary.ics';
-    document.body.appendChild(a); a.click(); a.remove();
-  });
 
   // deep-link restore
   try {
     const enc = new URLSearchParams(location.search).get("a");
     if (enc) { Object.assign(state, JSON.parse(decodeURIComponent(atob(enc)))); show('form'); step = steps.length-1; renderStep(); }
   } catch {}
+    /* ===== Persist/Resume plan (localStorage) ===== */
+const STORAGE_KEY = 'concertoPlus:lastState';
+function savePlan(){
+  try {
+    const payload = { state, ts: Date.now() };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch {}
+}
+function loadPlan(maxAgeMs = 1000*60*60*24*14){ // 14 days
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj?.state || !obj?.ts) return null;
+    if (Date.now() - obj.ts > maxAgeMs) return null;
+    return obj.state;
+  } catch { return null; }
+}
+
+// Resume-plan UI on welcome screen (only if no deep link is active)
+const resumeBtn = $('btn-resume');
+if (resumeBtn) {
+  const saved = loadPlan();
+  if (saved && !new URLSearchParams(location.search).get("a")) {
+    resumeBtn.style.display = 'inline-block';
+    resumeBtn.onclick = async () => {
+      Object.assign(state, saved);
+      show('loading');
+      try { await generate(); }
+      catch (e) {
+        console.warn(e);
+        alert("Couldn't resume the last plan.");
+        show('welcome');
+      }
+    };
+  }
+}
 
   /* ==================== Steps UI ==================== */
   function renderStep(){
@@ -517,6 +546,64 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   }
 }
 
+  /* ===== Venue info helpers ===== */
+function hostnameFromUrl(u){
+  try { return new URL(u).hostname.replace(/^www\./,''); } catch { return ''; }
+}
+
+async function getVenueWebsite(){
+  try{
+    const pid = state.venuePlaceId || '';
+    if (pid && mapsReady()){
+      const svc = new google.maps.places.PlacesService(document.createElement('div'));
+      const det = await new Promise((resolve)=> {
+        svc.getDetails({ placeId: pid, fields: ['website','url','name'] }, (d, s) => {
+          resolve(s === google.maps.places.PlacesServiceStatus.OK ? d : null);
+        });
+      });
+      if (det?.website) return det.website;
+      if (det?.url)     return det.url;  // exact Google Maps place page
+    }
+  } catch {}
+  return mapUrlFor({ name: state.venue, lat: state.venueLat, lng: state.venueLng });
+}
+
+function venueInfoLinks(primaryUrl){
+  const siteHost = hostnameFromUrl(primaryUrl);
+  const q = (topic) => siteHost
+    ? `https://www.google.com/search?q=site:${encodeURIComponent(siteHost)}+${encodeURIComponent(topic)}`
+    : `https://www.google.com/search?q=${encodeURIComponent(state.venue+' '+topic)}`;
+
+  return {
+    website: primaryUrl || '',
+    bagPolicy: q('bag policy'),
+    concessions: q('concessions'),
+    parking: q('parking')
+  };
+}
+
+/* Render a single-wide card rail at the bottom */
+async function renderVenueInfoCard(){
+  const wrap = ensureRail('row-venue-info', `${state.venue || 'Venue'} · Information`);
+  if (!wrap) return;
+  const website = await getVenueWebsite();
+  const links = venueInfoLinks(website);
+
+  const ven = esc(state.venue || 'Your Venue');
+  wrap.innerHTML = `
+    <article class="card" style="min-width:280px;max-width:760px;margin:0 auto;">
+      <h3 class="step-title" style="margin-bottom:6px;">${ven} — Information</h3>
+      <p class="muted" style="margin:2px 0 12px;">Quick links for your night.</p>
+      <div class="pc-actions" style="gap:10px;flex-wrap:wrap;">
+        ${links.website ? `<a class="btn" href="${esc(links.website)}" target="_blank" rel="noopener">Venue Website</a>` : ''}
+        <a class="btn" href="${esc(links.bagPolicy)}" target="_blank" rel="noopener">Bag Policy</a>
+        <a class="btn" href="${esc(links.concessions)}" target="_blank" rel="noopener">Concessions</a>
+        <a class="btn" href="${esc(links.parking)}" target="_blank" rel="noopener">Parking</a>
+      </div>
+    </article>
+  `;
+}
+
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{
@@ -702,6 +789,7 @@ const itin = await buildItinerary({
 
       await renderRails({ before: beforeAuto, after: afterAuto, extras, dinnerByCuisine, selectedCuisines });
       show('results');
+      savePlan();
     }catch(e){
       console.error(e);
       alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
@@ -1133,6 +1221,8 @@ if (Array.isArray(selectedCuisines) && selectedCuisines.length > 1) {
       showRail(id);
       fillRail(id, picks, title);
     }
+    // Always show the venue info card at the bottom
+await renderVenueInfoCard();
   }
 
   /* ==================== Custom picks (helpers kept) ==================== */

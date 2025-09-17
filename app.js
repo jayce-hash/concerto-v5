@@ -806,7 +806,7 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     ? { lat:state.hotelLat, lng:state.hotelLng, name:state.hotel||'hotel' }
     : { lat:state.venueLat, lng:state.venueLng, name:state.venue||'venue' };
 
-  let clock = dateOnShowWithHM(state.dayStart || "10:00");
+  let clock = dateOnShowWithHM(state.startAt || "09:00");
   const out = [];
 
   const pushLeave = (ts, from, to) => {
@@ -968,6 +968,8 @@ if (state.lunch?.want) {
   lunchAuto = await pickRestaurants({ wantOpenNow:true, state:lunchState, slot:"lunch", targetISO:lunchTargetISO }) || [];
   window.__lastLunch = lunchAuto;
 }
+      const lunchPickRaw = (lunchAuto && lunchAuto[0]) || null;
+const lunchPick = lunchPickRaw ? normalizePlace(lunchPickRaw) : null;
 
       // Selected cuisines
 const selectedCuisines = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
@@ -999,11 +1001,6 @@ if (state.eatWhen === "before" || state.eatWhen === "both") {
 }
 
 const [afterAuto, extras] = await Promise.all([afterP, extrasP]);
-
-      // LUNCH: pick options and a primary pick
-const lunchAuto = await pickRestaurants({ wantOpenNow:false, state, slot:"lunch", targetISO });
-const lunchPickRaw = (lunchAuto && lunchAuto[0]) || null;
-const lunchPick = lunchPickRaw ? normalizePlace(lunchPickRaw) : null;
 
       const locks = state.customStops || [];
 const customDinner = locks.find(p => p.when === 'before' && p.type === 'dinner');
@@ -1096,6 +1093,11 @@ const itin = await buildItinerary({
 async function renderTourCard(city, items, dinnerPick, extras){
   const el = $('schedule'); if (!el) return;
 
+  const arrive = items.find(i=>i.type==='arrive');
+const dine   = items.find(i=>i.type==='dine');
+const show   = items.find(i=>i.type==='show');
+const post   = items.find(i=>i.type==='post');
+
   // Helper: push a single "Leave X for Y" line
 const steps = [];
 const pushLeave = (ts, from, to) => {
@@ -1103,7 +1105,7 @@ const pushLeave = (ts, from, to) => {
 };
 
 // Start-of-day anchor
-const startClock = dateOnShowWithHM(state.dayStart || "10:00");
+const startClock = dateOnShowWithHM(state.startAt || "09:00");
 
 // 1) Flight IN (exception: show the landing time line)
 if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {

@@ -231,22 +231,8 @@ if (resumeBtn) {
 
   $('btn-prev').disabled = false;
   $('btn-next').textContent = "Next";
-}
 
-  // bindings for the travel step
-  $('outb-taking')?.addEventListener('change', e => {
-    state.travel = state.travel || {};
-    state.travel.outbound = state.travel.outbound || {};
-    state.travel.outbound.taking = !!e.target.checked;
-  });
-
-  bindFlightSearch('inbound');
-  bindFlightSearch('outbound');
-
-  $('btn-prev').disabled = false;
-  $('btn-next').textContent = "Next";
-
-    } else if (steps[step] === "stay"){
+  } else if (steps[step] === "stay"){
       w.innerHTML = `
         <h3 class="step-title">Accommodation</h3>
         <p class="step-help">Let us plan around your hotel.</p>
@@ -480,90 +466,6 @@ $('btn-next').textContent = "Generate Schedule";
     state.venueLat = place.geometry.location.lat();
     state.venueLng = place.geometry.location.lng();
   }
-
-/* ===== Flights search (provider-agnostic scaffolding) =====
-   Implement fetchFlights() to call your provider (AeroAPI/FlightStats/aviationstack/Amadeus)
-   and return normalized results: [{ airline, flightNo, arrISO, depISO, arrIATA, depIATA, arrLat, arrLng, depLat, depLng, summary }]
-*/
-async function fetchFlights({ kind, airline, flightNo, date }) {
-  const qs = new URLSearchParams({ kind, airline, flightNo, date });
-  const url = `/.netlify/functions/flights?${qs.toString()}`;
-  const res = await fetch(url);
-  if (!res.ok) return [];
-  try {
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
-function renderFlightResults(kind, list){
-  const box = $(kind === 'inbound' ? 'inb-results' : 'out-results');
-  if (!box) return;
-  if (!list.length){
-    box.style.display = 'block';
-    box.innerHTML = `<div class="suggest-item muted">No flights found. Try manual or different search.</div>`;
-    return;
-  }
-  box.style.display = 'block';
-  box.innerHTML = list.map((f,i)=>`
-    <div class="suggest-item" data-idx="${i}">
-      <div style="font-weight:600">${esc(f.summary || `${(f.airline||'').trim()} ${(f.flightNo||'').trim()}`)}</div>
-      <div class="muted" style="font-size:.95rem">
-        Arr: ${esc(f.arrIATA||'')} · ${esc(f.arrISO ? new Date(f.arrISO).toLocaleString([], {hour:'numeric', minute:'2-digit', month:'short', day:'numeric'}) : 'TBA')}
-        &nbsp; | &nbsp; Dep: ${esc(f.depIATA||'')} · ${esc(f.depISO ? new Date(f.depISO).toLocaleString([], {hour:'numeric', minute:'2-digit', month:'short', day:'numeric'}) : 'TBA')}
-      </div>
-      <button class="btn btn-ghost" style="margin-top:6px">Use this flight</button>
-    </div>
-  `).join('');
-  qsa('.suggest-item', box).forEach((row)=>{
-    row.querySelector('button')?.addEventListener('click', ()=>{
-      const idx = parseInt(row.dataset.idx,10);
-      const f = list[idx];
-      if (!f) return;
-      if (kind === 'inbound'){
-        state.travel = state.travel || {};
-        state.travel.inbound = {
-          airline: f.airline||'', flightNo: f.flightNo||'', date: state.travel.inbound?.date || state.showDate || '',
-          arrISO: f.arrISO||'', arrIATA: f.arrIATA||'', arrLat: f.arrLat??null, arrLng: f.arrLng??null
-        };
-      } else {
-        state.travel = state.travel || {};
-        state.travel.outbound = {
-          ...(state.travel.outbound || {}),
-          airline: f.airline||'', flightNo: f.flightNo||'', date: state.travel.outbound?.date || state.showDate || '',
-          depISO: f.depISO||'', depIATA: f.depIATA||'', depLat: f.depLat??null, depLng: f.depLng??null
-        };
-      }
-      box.style.display = 'none';
-    });
-  });
-}
-
-function bindFlightSearch(kind){
-  const fn = $(kind==='inbound'?'inb-fn':'out-fn');
-  const dt = $(kind==='inbound'?'inb-date':'out-date');
-  const btn = $(kind==='inbound'?'inb-search':'out-search');
-  const box = $(kind==='inbound'?'inb-results':'out-results');
-  if (!fn || !dt || !btn || !box) return;
-
-  btn.onclick = async ()=>{
-    box.style.display = 'block';
-    box.innerHTML = `<div class="suggest-item muted">Searching flights…</div>`;
-    const raw = fn.value.trim();
-    const date = dt.value || state.showDate || '';
-    const m = raw.match(/^\s*([A-Za-z]+)\s*0*([0-9]+)\s*$/);
-    const airline = m ? m[1] : '';
-    const flightNo = m ? m[2] : raw;
-    try{
-      const res = await fetchFlights({ kind, airline, flightNo, date });
-      renderFlightResults(kind, res||[]);
-    }catch{
-      renderFlightResults(kind, []);
-    }
-  };
-}
 
   /* ==================== Places helpers ==================== */
   function mapsReady(){ return !!(window.google && google.maps && google.maps.places); }

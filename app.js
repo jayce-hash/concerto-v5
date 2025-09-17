@@ -43,9 +43,9 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   planDay: true,
   dayStart: "10:00",
   travel: {
-    inbound:  { airline:"", flightNo:"", date:"", arrISO:"", arrIATA:"", arrLat:null, arrLng:null },
-    outbound: { airline:"", flightNo:"", date:"", depISO:"", depIATA:"", depLat:null, depLng:null, taking:false }
-  },
+  inbound:  { airport:"", arrDate:"", arrTime:"" },
+  outbound: { airport:"", depDate:"", depTime:"", taking:false }
+},
 };
 
   /* ==================== Nav ==================== */
@@ -174,57 +174,64 @@ if (resumeBtn) {
       $('btn-prev').disabled = true;
       $('btn-next').textContent = "Next";
 
-    } else if (steps[step] === "travel"){
+} else if (steps[step] === "travel"){
   w.innerHTML = `
     <h3 class="step-title">Travel</h3>
-    <p class="step-help">Optionally add your flight(s) so we can plan the whole day around them.</p>
+    <p class="step-help">Optionally add flights so we can plan the day around them.</p>
 
     <article class="card" style="margin-bottom:12px;">
       <h3 class="step-title" style="margin-bottom:6px;">Flying in?</h3>
       <div class="form-grid two">
         <div>
-          <label>Airline & Flight #</label>
-          <input id="inb-fn" type="text" placeholder="e.g., Delta 123" value="${esc([state.travel?.inbound?.airline, state.travel?.inbound?.flightNo].filter(Boolean).join(' '))}">
+          <label>Arrival Airport</label>
+          <input id="inb-airport" type="text" placeholder="e.g., JFK" value="${esc(state.travel?.inbound?.airport || '')}">
         </div>
         <div>
-          <label>Flight date</label>
-          <input id="inb-date" type="date" value="${esc(state.travel?.inbound?.date || state.showDate || '')}">
+          <label>Arrival Date</label>
+          <input id="inb-date" type="date" value="${esc(state.travel?.inbound?.arrDate || state.showDate || '')}">
         </div>
         <div>
-          <label>&nbsp;</label>
-          <button id="inb-search" class="btn btn-primary" type="button">Search flights</button>
-        </div>
-        <div class="full">
-          <div id="inb-results" class="suggest-list" style="display:none;"></div>
+          <label>Arrival Time</label>
+          <input id="inb-time" type="time" value="${esc(state.travel?.inbound?.arrTime || '')}">
         </div>
       </div>
-      <div class="tiny">Or add manually if needed.</div>
     </article>
 
     <article class="card">
       <h3 class="step-title" style="margin-bottom:6px;">Flying out after the show?</h3>
       <div class="form-grid two">
         <div>
-          <label><input id="outb-taking" type="checkbox" ${state.travel?.outbound?.taking?'checked':''}/> I’m taking a flight home after the show</label>
+          <label><input id="outb-taking" type="checkbox" ${state.travel?.outbound?.taking?'checked':''}/> Yes, I’m flying out</label>
         </div>
         <div>
-          <label>Airline & Flight #</label>
-          <input id="out-fn" type="text" placeholder="e.g., JetBlue 890" value="${esc([state.travel?.outbound?.airline, state.travel?.outbound?.flightNo].filter(Boolean).join(' '))}">
+          <label>Departure Airport</label>
+          <input id="out-airport" type="text" placeholder="e.g., LAX" value="${esc(state.travel?.outbound?.airport || '')}">
         </div>
         <div>
-          <label>Flight date</label>
-          <input id="out-date" type="date" value="${esc(state.travel?.outbound?.date || state.showDate || '')}">
+          <label>Departure Date</label>
+          <input id="out-date" type="date" value="${esc(state.travel?.outbound?.depDate || state.showDate || '')}">
         </div>
         <div>
-          <label>&nbsp;</label>
-          <button id="out-search" class="btn" type="button">Search flights</button>
-        </div>
-        <div class="full">
-          <div id="out-results" class="suggest-list" style="display:none;"></div>
+          <label>Departure Time</label>
+          <input id="out-time" type="time" value="${esc(state.travel?.outbound?.depTime || '')}">
         </div>
       </div>
     </article>
   `;
+
+  // Bind values back to state
+  $('inb-airport').oninput = e => state.travel.inbound.airport = e.target.value.trim();
+  $('inb-date').onchange = e => state.travel.inbound.arrDate = e.target.value;
+  $('inb-time').onchange = e => state.travel.inbound.arrTime = e.target.value;
+
+  $('outb-taking').onchange = e => state.travel.outbound.taking = e.target.checked;
+  $('out-airport').oninput = e => state.travel.outbound.airport = e.target.value.trim();
+  $('out-date').onchange = e => state.travel.outbound.depDate = e.target.value;
+  $('out-time').onchange = e => state.travel.outbound.depTime = e.target.value;
+
+  $('btn-prev').disabled = false;
+  $('btn-next').textContent = "Next";
+}
 
   // bindings for the travel step
   $('outb-taking')?.addEventListener('change', e => {
@@ -1098,6 +1105,25 @@ const itin = await buildItinerary({
 
   const tz = state.showTz || '';
   const parts = [];
+
+  // At the very top of parts[]
+if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime){
+  const dt = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
+  parts.push({
+    ts: +dt,
+    time: fmtInTz(dt, state.showTz||'', { round:false }),
+    label: `Arrive at ${state.travel.inbound.airport} airport`
+  });
+}
+
+if (state.travel?.outbound?.taking && state.travel?.outbound?.airport && state.travel?.outbound?.depDate && state.travel?.outbound?.depTime){
+  const dt = new Date(`${state.travel.outbound.depDate}T${state.travel.outbound.depTime}`);
+  parts.push({
+    ts: +dt,
+    time: fmtInTz(dt, state.showTz||'', { round:false }),
+    label: `Depart from ${state.travel.outbound.airport} airport`
+  });
+}
 
   // Daytime (Coffee / Sights / Shopping / Relax)
   const dayParts = await buildDayItineraryParts({ state, extras, dinnerPick });

@@ -24,7 +24,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   };
 
   let step = 0;
-  const steps = ["concert","stay","dining","activities"];
+  const steps = ["concert","travel","stay","dining","activities"];
 
   const state = window.__concertoState = {
     artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
@@ -40,6 +40,12 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
     },
     arrivalBufferMin: 45, doorsBeforeMin: 90,
     customStops: []
+    planDay: true,
+dayStart: "10:00",
+    travel: {
+  inbound:  { airline:"", flightNo:"", date:"", arrISO:"", arrIATA:"", arrLat:null, arrLng:null },
+  outbound: { airline:"", flightNo:"", date:"", depISO:"", depIATA:"", depLat:null, depLng:null, taking:false }
+},
   };
 
   /* ==================== Nav ==================== */
@@ -168,6 +174,71 @@ if (resumeBtn) {
       $('btn-prev').disabled = true;
       $('btn-next').textContent = "Next";
 
+    } else if (steps[step] === "travel"){
+  w.innerHTML = `
+    <h3 class="step-title">Travel</h3>
+    <p class="step-help">Optionally add your flight(s) so we can plan the whole day around them.</p>
+
+    <article class="card" style="margin-bottom:12px;">
+      <h3 class="step-title" style="margin-bottom:6px;">Flying in?</h3>
+      <div class="form-grid two">
+        <div>
+          <label>Airline & Flight #</label>
+          <input id="inb-fn" type="text" placeholder="e.g., Delta 123" value="${esc([state.travel?.inbound?.airline, state.travel?.inbound?.flightNo].filter(Boolean).join(' '))}">
+        </div>
+        <div>
+          <label>Flight date</label>
+          <input id="inb-date" type="date" value="${esc(state.travel?.inbound?.date || state.showDate || '')}">
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="inb-search" class="btn btn-primary" type="button">Search flights</button>
+        </div>
+        <div class="full">
+          <div id="inb-results" class="suggest-list" style="display:none;"></div>
+        </div>
+      </div>
+      <div class="tiny">Or add manually if needed.</div>
+    </article>
+
+    <article class="card">
+      <h3 class="step-title" style="margin-bottom:6px;">Flying out after the show?</h3>
+      <div class="form-grid two">
+        <div>
+          <label><input id="outb-taking" type="checkbox" ${state.travel?.outbound?.taking?'checked':''}/> I’m taking a flight home after the show</label>
+        </div>
+        <div>
+          <label>Airline & Flight #</label>
+          <input id="out-fn" type="text" placeholder="e.g., JetBlue 890" value="${esc([state.travel?.outbound?.airline, state.travel?.outbound?.flightNo].filter(Boolean).join(' '))}">
+        </div>
+        <div>
+          <label>Flight date</label>
+          <input id="out-date" type="date" value="${esc(state.travel?.outbound?.date || state.showDate || '')}">
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="out-search" class="btn" type="button">Search flights</button>
+        </div>
+        <div class="full">
+          <div id="out-results" class="suggest-list" style="display:none;"></div>
+        </div>
+      </div>
+    </article>
+  `;
+
+  // bindings for the travel step
+  $('outb-taking')?.addEventListener('change', e => {
+    state.travel = state.travel || {};
+    state.travel.outbound = state.travel.outbound || {};
+    state.travel.outbound.taking = !!e.target.checked;
+  });
+
+  bindFlightSearch('inbound');
+  bindFlightSearch('outbound');
+
+  $('btn-prev').disabled = false;
+  $('btn-next').textContent = "Next";
+
     } else if (steps[step] === "stay"){
       w.innerHTML = `
         <h3 class="step-title">Accommodation</h3>
@@ -254,29 +325,41 @@ if (resumeBtn) {
 
     } else {
       // ACTIVITIES
-      w.innerHTML = `
-        <h3 class="step-title">Activities & Interests</h3>
-        <p class="step-help">Pick any extras to round out your night.</p>
+w.innerHTML = `
+  <h3 class="step-title">Activities & Interests</h3>
+  <p class="step-help">Pick any extras to round out your night. You can also plan your whole day.</p>
 
-        <div class="form-grid two">
-          <div><label><input type="checkbox" id="int-coffee" ${state.interests.coffee?'checked':''}/> Coffee</label></div>
-          <div><label><input type="checkbox" id="int-drinks" ${state.interests.drinks?'checked':''}/> Drinks &amp; Lounge</label></div>
-          <div><label><input type="checkbox" id="int-dessert" ${state.interests.dessert?'checked':''}/> Dessert</label></div>
-          <div><label><input type="checkbox" id="int-lateNight" ${state.interests.lateNight?'checked':''}/> Late-Night Eats</label></div>
-          <div><label><input type="checkbox" id="int-nightlife" ${state.interests.nightlife?'checked':''}/> Nightlife &amp; Entertainment</label></div>
-          <div><label><input type="checkbox" id="int-shopping" ${state.interests.shopping?'checked':''}/> Shopping</label></div>
-          <div><label><input type="checkbox" id="int-sights" ${state.interests.sights?'checked':''}/> Sights &amp; Landmarks</label></div>
-          <div><label><input type="checkbox" id="int-relax" ${state.interests.relax?'checked':''}/> Relax &amp; Recover</label></div>
-        </div>
-      `;
+  <div class="form-grid two">
+    <div><label><input type="checkbox" id="int-coffee" ${state.interests.coffee?'checked':''}/> Coffee</label></div>
+    <div><label><input type="checkbox" id="int-drinks" ${state.interests.drinks?'checked':''}/> Drinks &amp; Lounge</label></div>
+    <div><label><input type="checkbox" id="int-dessert" ${state.interests.dessert?'checked':''}/> Dessert</label></div>
+    <div><label><input type="checkbox" id="int-lateNight" ${state.interests.lateNight?'checked':''}/> Late-Night Eats</label></div>
+    <div><label><input type="checkbox" id="int-nightlife" ${state.interests.nightlife?'checked':''}/> Nightlife &amp; Entertainment</label></div>
+    <div><label><input type="checkbox" id="int-shopping" ${state.interests.shopping?'checked':''}/> Shopping</label></div>
+    <div><label><input type="checkbox" id="int-sights" ${state.interests.sights?'checked':''}/> Sights &amp; Landmarks</label></div>
+    <div><label><input type="checkbox" id="int-relax" ${state.interests.relax?'checked':''}/> Relax &amp; Recover</label></div>
+  </div>
 
-      ["coffee","drinks","dessert","lateNight","nightlife","shopping","sights","relax"].forEach(k=>{
-        const el = $('int-'+k);
-        if (el) el.onchange = ()=>{ state.interests[k] = el.checked; };
-      });
+  <div class="form-grid two" style="margin-top:12px;">
+    <div>
+      <label><input type="checkbox" id="plan-day" ${state.planDay?'checked':''}/> Plan my whole day</label>
+      <div class="tiny">We’ll map daytime stops before dinner.</div>
+    </div>
+    <div>
+      <label>Day starts at</label>
+      <input id="day-start" type="time" value="${esc(state.dayStart||'10:00')}" ${state.planDay?'':'disabled'} />
+    </div>
+  </div>
+`;
+["coffee","drinks","dessert","lateNight","nightlife","shopping","sights","relax"].forEach(k=>{
+  const el = $('int-'+k); if (el) el.onchange = ()=>{ state.interests[k] = el.checked; };
+});
+const pd = $('plan-day'); const ds = $('day-start');
+pd?.addEventListener('change', ()=>{ state.planDay = !!pd.checked; if (ds) ds.disabled = !state.planDay; });
+ds?.addEventListener('change', e=>{ state.dayStart = e.target.value || "10:00"; });
 
-      $('btn-prev').disabled = false;
-      $('btn-next').textContent = "Generate Schedule";
+$('btn-prev').disabled = false;
+$('btn-next').textContent = "Generate Schedule";
     }
   }
 
@@ -390,6 +473,83 @@ if (resumeBtn) {
     state.venueLat = place.geometry.location.lat();
     state.venueLng = place.geometry.location.lng();
   }
+
+/* ===== Flights search (provider-agnostic scaffolding) =====
+   Implement fetchFlights() to call your provider (AeroAPI/FlightStats/aviationstack/Amadeus)
+   and return normalized results: [{ airline, flightNo, arrISO, depISO, arrIATA, depIATA, arrLat, arrLng, depLat, depLng, summary }]
+*/
+async function fetchFlights(query){
+  // TODO: wire to your backend proxy that calls a flight API.
+  console.warn('fetchFlights() not wired to a live API yet', query);
+  return [];
+}
+
+function renderFlightResults(kind, list){
+  const box = $(kind === 'inbound' ? 'inb-results' : 'out-results');
+  if (!box) return;
+  if (!list.length){
+    box.style.display = 'block';
+    box.innerHTML = `<div class="suggest-item muted">No flights found. Try manual or different search.</div>`;
+    return;
+  }
+  box.style.display = 'block';
+  box.innerHTML = list.map((f,i)=>`
+    <div class="suggest-item" data-idx="${i}">
+      <div style="font-weight:600">${esc(f.summary || `${(f.airline||'').trim()} ${(f.flightNo||'').trim()}`)}</div>
+      <div class="muted" style="font-size:.95rem">
+        Arr: ${esc(f.arrIATA||'')} · ${esc(f.arrISO ? new Date(f.arrISO).toLocaleString([], {hour:'numeric', minute:'2-digit', month:'short', day:'numeric'}) : 'TBA')}
+        &nbsp; | &nbsp; Dep: ${esc(f.depIATA||'')} · ${esc(f.depISO ? new Date(f.depISO).toLocaleString([], {hour:'numeric', minute:'2-digit', month:'short', day:'numeric'}) : 'TBA')}
+      </div>
+      <button class="btn btn-ghost" style="margin-top:6px">Use this flight</button>
+    </div>
+  `).join('');
+  qsa('.suggest-item', box).forEach((row)=>{
+    row.querySelector('button')?.addEventListener('click', ()=>{
+      const idx = parseInt(row.dataset.idx,10);
+      const f = list[idx];
+      if (!f) return;
+      if (kind === 'inbound'){
+        state.travel = state.travel || {};
+        state.travel.inbound = {
+          airline: f.airline||'', flightNo: f.flightNo||'', date: state.travel.inbound?.date || state.showDate || '',
+          arrISO: f.arrISO||'', arrIATA: f.arrIATA||'', arrLat: f.arrLat??null, arrLng: f.arrLng??null
+        };
+      } else {
+        state.travel = state.travel || {};
+        state.travel.outbound = {
+          ...(state.travel.outbound || {}),
+          airline: f.airline||'', flightNo: f.flightNo||'', date: state.travel.outbound?.date || state.showDate || '',
+          depISO: f.depISO||'', depIATA: f.depIATA||'', depLat: f.depLat??null, depLng: f.depLng??null
+        };
+      }
+      box.style.display = 'none';
+    });
+  });
+}
+
+function bindFlightSearch(kind){
+  const fn = $(kind==='inbound'?'inb-fn':'out-fn');
+  const dt = $(kind==='inbound'?'inb-date':'out-date');
+  const btn = $(kind==='inbound'?'inb-search':'out-search');
+  const box = $(kind==='inbound'?'inb-results':'out-results');
+  if (!fn || !dt || !btn || !box) return;
+
+  btn.onclick = async ()=>{
+    box.style.display = 'block';
+    box.innerHTML = `<div class="suggest-item muted">Searching flights…</div>`;
+    const raw = fn.value.trim();
+    const date = dt.value || state.showDate || '';
+    const m = raw.match(/^\s*([A-Za-z]+)\s*0*([0-9]+)\s*$/);
+    const airline = m ? m[1] : '';
+    const flightNo = m ? m[2] : raw;
+    try{
+      const res = await fetchFlights({ kind, airline, flightNo, date });
+      renderFlightResults(kind, res||[]);
+    }catch{
+      renderFlightResults(kind, []);
+    }
+  };
+}
 
   /* ==================== Places helpers ==================== */
   function mapsReady(){ return !!(window.google && google.maps && google.maps.places); }
@@ -604,6 +764,98 @@ async function renderVenueInfoCard(){
   `;
 }
 
+  /* ===== Day planning helpers ===== */
+async function orderActivitiesWithCohere(keys, context){
+  try {
+    if (window.concertoCohere?.rankDayOrder) {
+      const out = await window.concertoCohere.rankDayOrder(keys, context);
+      if (Array.isArray(out) && out.length) return out.filter(k=>keys.includes(k));
+    }
+  } catch {}
+  return keys;
+}
+function dateOnShowWithHM(hhmm){
+  const hm = parseHM(hhmm) || {h:10,m:0};
+  const d = new Date(parseShowDateTimeISO()); d.setHours(hm.h, hm.m, 0, 0); return d;
+}
+function categorizeExtras(extras=[]){
+  const hay = x => [x.section,x.category,x.name,Array.isArray(x.types)&&x.types.join(' '),Array.isArray(x.tags)&&x.tags.join(' ')].filter(Boolean).join(' ').toLowerCase();
+  const rx = {
+    dessert:/(dessert|ice.?cream|gelato|bak(?:e|ery)|pastry|donut|cake|choco|cookie|creamery)/i,
+    drinks: /(drink|bar|pub|lounge|wine|cocktail|taproom|speakeasy|gastropub|brewery)/i,
+    coffee: /(coffee|café|cafe|espresso|roastery|tea\s?house)/i,
+    lateNight: /(late.?night|after.?hours|24.?\/?7|diner|fast.?food|pizza|taco|noodle|ramen|burger|shawarma|kebab|wings?)/i,
+    nightlife: /(nightlife|night.?club|club|karaoke|live\s?music|entertainment|dj|dance|comedy\s?club)/i,
+    shopping: /(shop|shopping|boutique|record\s?store|vintage|market|mall|store|department|thrift|book\s?store|gift\s?shop)/i,
+    sights: /(sight|landmark|viewpoint|overlook|park|museum|gallery|statue|monument|bridge|plaza|observatory|tourist)/i,
+    relax:  /(relax|spa|recover|wellness|tea\s?house|onsen|soak|bathhouse|massage|sauna|yoga|float)/i
+  };
+  const bucket = { dessert:[], drinks:[], coffee:[], lateNight:[], nightlife:[], shopping:[], sights:[], relax:[] };
+  extras.forEach(x=>{ const h=hay(x); for (const k of Object.keys(rx)) if (rx[k].test(h)) { bucket[k].push(x); break; }});
+  return bucket;
+}
+function pickNearest(fromLat, fromLng, list=[]){
+  if (typeof fromLat!=='number'||typeof fromLng!=='number') return list[0]||null;
+  let best=null, bestD=Infinity;
+  list.forEach(p=>{
+    const lat = p.lat ?? p.geometry?.location?.lat?.();
+    const lng = p.lng ?? p.geometry?.location?.lng?.();
+    if (typeof lat==='number' && typeof lng==='number'){
+      const d = milesBetween(fromLat, fromLng, Number(lat), Number(lng)) ?? 999;
+      if (d<bestD){ best=p; bestD=d; }
+    }
+  });
+  return best || list[0] || null;
+}
+function dwellByKey(k){ return k==='coffee'?35 : k==='sights'?75 : k==='shopping'?60 : k==='relax'?45 : 45; }
+
+async function buildDayItineraryParts({ state, extras, dinnerPick }){
+  if (!state.planDay) return [];
+  const bucket = categorizeExtras(extras||[]);
+  const selected = ['coffee','sights','shopping','relax'].filter(k=>state.interests[k]);
+  const order = await orderActivitiesWithCohere(selected, { tone:state.tone, budget:state.budget, venue:state.venue });
+
+  // Start from hotel if staying; else from venue
+  let cur = (state.staying && state.hotelLat!=null && state.hotelLng!=null)
+    ? { lat:state.hotelLat, lng:state.hotelLng, name:state.hotel||'hotel' }
+    : { lat:state.venueLat, lng:state.venueLng, name:state.venue||'venue' };
+
+  let clock = dateOnShowWithHM(state.dayStart || "10:00");
+  const out = [];
+
+  for (const key of order){
+    const list = bucket[key]||[]; if (!list.length) continue;
+    const pick = pickNearest(cur.lat, cur.lng, list); if (!pick) continue;
+
+    const lat = pick.lat ?? pick.geometry?.location?.lat?.();
+    const lng = pick.lng ?? pick.geometry?.location?.lng?.();
+    const travel = (typeof lat==='number' && typeof lng==='number')
+      ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng)) : 12;
+
+    // travel
+    if (cur?.name){
+      const leaveTs = new Date(clock.getTime());
+      out.push({ ts:+leaveTs, time:fmtInTz(leaveTs, state.showTz||'', {round:true}), label:`Uber/Taxi to ${pick.name || key}` });
+      clock = new Date(clock.getTime() + travel*60000);
+    }
+    // arrive
+    out.push({ ts:+clock, time:fmtInTz(clock, state.showTz||'', {round:false}), label:`Arrive at ${pick.name || key}` });
+    // dwell
+    clock = new Date(clock.getTime() + dwellByKey(key)*60000);
+    // move current point
+    cur = { lat:Number(lat)||cur.lat, lng:Number(lng)||cur.lng, name: pick.name||key };
+  }
+
+  // Optional hop back to hotel before dinner
+  if (out.length && state.staying && state.hotelLat!=null && state.hotelLng!=null){
+    const mins = estimateTravelMin(cur.lat, cur.lng, state.hotelLat, state.hotelLng);
+    out.push({ ts:+clock, time:fmtInTz(clock, state.showTz||'', {round:true}), label:`Uber/Taxi back to hotel (optional)` });
+    clock = new Date(clock.getTime() + mins*60000);
+  }
+
+  return out;
+}
+
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{
@@ -785,7 +1037,7 @@ const itin = await buildItinerary({
       note.textContent = 'Distances are from the venue.';
 
       const city = await venueCityName();
-      renderTourCard(city, itin, dinnerPick);
+      await renderTourCard(city, itin, dinnerPick, extras);
 
       await renderRails({ before: beforeAuto, after: afterAuto, extras, dinnerByCuisine, selectedCuisines });
       show('results');
@@ -829,78 +1081,82 @@ const itin = await buildItinerary({
     return 15;
   }
 
-  function renderTourCard(city, items, dinnerPick){
-    const el = $('schedule'); if (!el) return;
+  async function renderTourCard(city, items, dinnerPick, extras){
+  const el = $('schedule'); if (!el) return;
 
-    const arrive = items.find(i=>i.type==='arrive');
-    const dine   = items.find(i=>i.type==='dine');
-    const show   = items.find(i=>i.type==='show');
-    const post   = items.find(i=>i.type==='post');
+  const arrive = items.find(i=>i.type==='arrive');
+  const dine   = items.find(i=>i.type==='dine');
+  const show   = items.find(i=>i.type==='show');
+  const post   = items.find(i=>i.type==='post');
 
-    const tz = state.showTz || '';
-    const parts = [];
+  const tz = state.showTz || '';
+  const parts = [];
 
-    if (dine?.start) {
-      let leaveForDinner = new Date(dine.start);
-      if (state.staying && state.hotelLat != null && state.hotelLng != null && dinnerPick?.lat != null && dinnerPick?.lng != null){
-        const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
-        leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
-      } else if (state.staying) {
-        leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
-      }
+  // Daytime (Coffee / Sights / Shopping / Relax)
+  const dayParts = await buildDayItineraryParts({ state, extras, dinnerPick });
+  parts.push(...dayParts);
 
-      if (state.staying){
-        parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Leave ${esc(state.hotel || 'hotel')}` });
-        const rideTs = new Date(leaveForDinner.getTime() + 2*60000);
-        parts.push({ ts: +rideTs, time: fmtInTz(rideTs, tz, { round:true }), label: `Uber/Taxi to dinner` });
-      } else {
-        parts.push({ ts: +leaveForDinner, time: fmtInTz(leaveForDinner, tz, { round:true }), label: `Uber/Taxi to dinner` });
-      }
-
-      parts.push({ ts: +new Date(dine.start), time: fmtInTz(dine.start, tz, { round:false }), label: `Arrive at ${esc(dinnerPick?.name || 'restaurant')}` });
-
-      if (dine.end){
-        parts.push({ ts: +new Date(dine.end), time: fmtInTz(dine.end, tz, { round:true }), label: `Head to ${esc(state.venue)} for the show` });
-      }
+  // Dinner sequence (hotel → dinner → venue)
+  if (dine?.start) {
+    let leaveForDinner = new Date(dine.start);
+    if (state.staying && state.hotelLat!=null && state.hotelLng!=null && dinnerPick?.lat!=null && dinnerPick?.lng!=null){
+      const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
+      leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
+    } else {
+      leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
     }
-
-    if (arrive){
-      parts.push({
-        ts: +new Date(arrive.start),
-        time: fmtInTz(arrive.start, tz, { round:true }),
-        label: `Arrive at ${esc(state.venue)}`,
-        note: `No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start time`
-      });
+    if (state.staying){
+      parts.push({ ts:+leaveForDinner, time:fmtInTz(leaveForDinner, tz, { round:true }), label:`Take an Uber/Lyft from the hotel to dinner` });
     }
-
-    if (show){
-      parts.push({ ts: +new Date(show.start), time: fmtInTz(show.start, tz, { round:false }), label: `Concert starts` });
+    parts.push({ ts:+new Date(dine.start), time:fmtInTz(dine.start, tz, { round:false }), label:`Arrive at ${esc(dinnerPick?.name || 'dinner')}` });
+    if (dine.end){
+      parts.push({ ts:+new Date(dine.end), time:fmtInTz(dine.end, tz, { round:true }), label:`Head to ${esc(state.venue)}` });
     }
-
-    if (post){
-      parts.push({ ts: +new Date(post.start), time: fmtInTz(post.start, tz, { round:true }), label: `Leave the venue for dessert/drinks` });
-    }
-
-    parts.sort((a,b)=> a.ts - b.ts);
-
-    el.innerHTML = `
-      <article class="card tour-card">
-        <div class="tour-head">
-          <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-        </div>
-        <div class="tour-steps">
-          ${parts.map(p => `
-            <div class="tstep">
-              <div class="t-time">${esc(p.time || '')}</div>
-              <div class="t-label">${p.label}</div>
-              ${p.note ? `<div class="t-note">· ${esc(p.note)}</div>` : ""}
-            </div>
-          `).join("")}
-        </div>
-      </article>
-    `;
   }
 
+  if (arrive){
+    parts.push({ ts:+new Date(arrive.start), time:fmtInTz(arrive.start, tz, { round:true }), label:`Arrive at ${esc(state.venue)}`, note:`No less than ${Math.max(45, state.arrivalBufferMin||45)} min before concert start` });
+  }
+  if (show){
+    parts.push({ ts:+new Date(show.start), time:fmtInTz(show.start, tz, { round:false }), label:`Concert starts` });
+  }
+  if (post){
+    parts.push({ ts:+new Date(post.start), time:fmtInTz(post.start, tz, { round:true }), label:`Leave the venue for dessert/drinks` });
+  }
+
+  parts.sort((a,b)=> a.ts - b.ts);
+
+  // Venue quick links
+  const website = await getVenueWebsite().catch(()=> '');
+  const links = venueInfoLinks(website);
+  const actionsHtml = `
+    <div class="pc-actions" style="gap:10px;flex-wrap:wrap;margin-top:10px;">
+      ${links.website ? `<a class="btn" href="${esc(links.website)}" target="_blank" rel="noopener">Venue Website</a>` : ''}
+      <a class="btn" href="${esc(links.bagPolicy)}" target="_blank" rel="noopener">Bag Policy</a>
+      <a class="btn" href="${esc(links.concessions)}" target="_blank" rel="noopener">Concessions</a>
+      <a class="btn" href="${esc(links.parking)}" target="_blank" rel="noopener">Parking</a>
+    </div>
+  `;
+
+  el.innerHTML = `
+    <article class="card tour-card">
+      <div class="tour-head">
+        <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+      </div>
+      <div class="tour-steps">
+        ${parts.map(p => `
+          <div class="tstep">
+            <div class="t-time">${esc(p.time || '')}</div>
+            <div class="t-label">${p.label}</div>
+            ${p.note ? `<div class="t-note">· ${esc(p.note)}</div>` : ""}
+          </div>
+        `).join("")}
+      </div>
+      ${actionsHtml}
+    </article>
+  `;
+}
+  
 /* ===== Helper: ensure a rail container exists, show/hide ===== */
 function ensureRail(id, title, { prepend = false } = {}){
   let target = document.getElementById(id);

@@ -1143,135 +1143,121 @@ const itin = await buildItinerary({
 async function renderTourCard(city, items, dinnerPick, extras){
   const el = $('schedule'); if (!el) return;
 
+  // Pull key phases from the itinerary engine
   const arrive = items.find(i=>i.type==='arrive');
   const dine   = items.find(i=>i.type==='dine');
   const show   = items.find(i=>i.type==='show');
   const post   = items.find(i=>i.type==='post');
 
-// New helpers for the arrow-style lines
-const steps = [];
-const pushAct = (ts, verb, dest) => {          // e.g., 10:45 → grab coffee at 787 Coffee
-  steps.push({ ts:+ts, verb, dest });
-};
-const pushGoTo = (ts, dest) => pushAct(ts, 'go to', dest);
-  
-  // Flight IN
+  // Helpers: arrow-style steps (time → verb + destination)
+  const steps = [];
+  const pushAct = (ts, verb, dest) => { steps.push({ ts:+ts, verb, dest }); };
+  const tz = state.showTz || '';
+
+  // 1) Flight IN (if provided)
   if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {
     const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
-    steps.push({ ts:+land, label:`Land at ${state.travel.inbound.airport}` });
+    pushAct(land, 'land at', state.travel.inbound.airport);
   }
 
-const day = await buildDayItineraryParts({ state, extras, dinnerPick });
-// day is your ordered “leave” suggestions; collapse to action-at-destination lines
-for (const d of day) {
-  // Guess a verb from the bucket key included in the label (cheap + works well)
-  const low = (d.label || '').toLowerCase();
-  const dest = d.label?.replace(/^Leave\s.+\sfor\s(.+)$/, '$1') || 'next stop';
-  const verb =
-    /coffee/.test(low)     ? 'grab coffee at' :
-    /dessert|gelato|ice/.test(low) ? 'dessert at' :
-    /drink|bar|lounge/.test(low)   ? 'drinks at' :
-    /shop/.test(low)       ? 'go shopping at' :
-    /sight|park|museum|gallery|landmark/.test(low) ? 'explore' :
-    /relax|spa|sauna/.test(low)    ? 'relax at' :
-    'visit';
-  pushAct(d.ts, verb, dest);
-}
+  // 2) Daytime chain (coffee/sights/shopping/relax) built from extras
+  const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // [{ts, label:"Leave A for B"}, ...]
+  for (const d of (day || [])) {
+    const low  = (d.label || '').toLowerCase();
+    const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
+    const verb =
+      /coffee/.test(low)                   ? 'grab coffee at' :
+      /(dessert|gelato|ice\s?cream)/.test(low) ? 'dessert at' :
+      /(drink|bar|lounge)/.test(low)       ? 'drinks at' :
+      /shop/.test(low)                     ? 'go shopping at' :
+      /(sight|park|museum|gallery|landmark|view)/.test(low) ? 'explore' :
+      /(relax|spa|sauna|wellness|yoga)/.test(low) ? 'relax at' :
+      'visit';
+    pushAct(d.ts, verb, dest);
+  }
 
-  // Lunch hop (uses list already fetched during generate)
-  const lunchPick = (window.__lastLunch && window.__lastLunch[0])
-    ? normalizePlace(window.__lastLunch[0]) : null;
-
+  // 3) Lunch (if enabled) – uses picks we already fetched during generate()
+  const lunchPick = (window.__lastLunch && window.__lastLunch[0]) ? normalizePlace(window.__lastLunch[0]) : null;
   if (state.lunch?.want && lunchPick?.name) {
     const hm = state.lunch.time || "12:30";
-    const [h, m] = hm.split(':').map(n => parseInt(n,10));
+    const [h, m] = hm.split(':').map(n=>parseInt(n,10));
     const target = new Date(parseShowDateTimeISO());
     target.setHours(h||12, m||30, 0, 0);
     const leaveForLunch = new Date(target.getTime() - 15*60000);
     pushAct(leaveForLunch, 'eat lunch at', lunchPick.name);
   }
-}
 
-  // Dinner chain
-if (dine?.start && dinnerPick?.name) {
-  // when to leave for dinner
-  let leaveForDinner = new Date(dine.start);
-  if (state.staying && state.hotelLat!=null && state.hotelLng!=null && dinnerPick?.lat!=null && dinnerPick?.lng!=null) {
-    const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
-    leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
-  } else {
-    leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
+  // 4) Dinner (before-show flow)
+  if (dine?.start && dinnerPick?.name) {
+    let leaveForDinner = new Date(dine.start);
+    if (state.staying && state.hotelLat!=null && state.hotelLng!=null && dinnerPick?.lat!=null && dinnerPick?.lng!=null) {
+      const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
+      leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
+    } else {
+      leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
+    }
+    pushAct(leaveForDinner, 'dinner at', dinnerPick.name);
   }
-  pushAct(leaveForDinner, 'dinner at', dinnerPick.name);
 
- // Always add a "go to venue" line that lands before doors/arrival buffer
-if (show?.start && state.venue) {
-  const arriveBy = new Date(new Date(show.start).getTime() - (state.arrivalBufferMin || 45)*60000);
-  // default 15 min travel if we can't compute from a previous geo; we only care about the “leave at” time here
-  const leaveForVenue = new Date(arriveBy.getTime() - 15*60000);
-  pushGoTo(leaveForVenue, state.venue);
- }
-}
-
-  // Arrival buffer → venue
-  if (arrive?.start && state.venue) {
+  // 5) Always add an explicit “go to venue” line (arrive ≥ arrivalBufferMin before show)
+  if (show?.start && state.venue) {
+    const arriveBy = new Date(new Date(show.start).getTime() - (state.arrivalBufferMin || 45)*60000);
+    const leaveForVenue = new Date(arriveBy.getTime() - 15*60000); // simple default travel buffer
+    pushAct(leaveForVenue, 'go to', state.venue);
+  } else if (arrive?.start && state.venue) {
+    // Fallback to itinerary "arrive" anchor
     const aStart = new Date(arrive.start);
     const leaveForVenue = new Date(aStart.getTime() - 15*60000);
-    pushLeave(leaveForVenue, 'current stop', state.venue);
+    pushAct(leaveForVenue, 'go to', state.venue);
   }
 
-  // Concert event
-  if (show?.start) steps.push({ ts:+new Date(show.start), label:'Concert starts' });
+  // 6) Concert event
+  if (show?.start) {
+    steps.push({ ts:+new Date(show.start), verb:'concert starts' });
+  }
 
-  // 7) After-show chain from selected interests
-  const afterSteps = await buildAfterShowParts({ state, extras, items });
-  steps.push(...afterSteps);
+  // 7) After-show chain (dessert/drinks/nightlife/late-night)
+  const afterSteps = await buildAfterShowParts({ state, extras, items }); // [{ts,label:"Leave A for B"}, ...]
+  for (const d of (afterSteps || [])) {
+    const low  = (d.label || '').toLowerCase();
+    const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
+    const verb =
+      /(dessert|gelato|ice\s?cream)/.test(low) ? 'dessert at' :
+      /(drink|bar|lounge)/.test(low)           ? 'drinks at' :
+      /(nightlife|club|dj|karaoke)/.test(low)  ? 'nightlife at' :
+      /(late.?night)/.test(low)                ? 'late-night at' :
+      'go to';
+    pushAct(d.ts, verb, dest);
+  }
 
-  // Flight OUT
+  // 8) Flight OUT
   if (state.travel?.outbound?.taking && state.travel?.outbound?.airport && state.travel?.outbound?.depDate && state.travel?.outbound?.depTime) {
     const dep = new Date(`${state.travel.outbound.depDate}T${state.travel.outbound.depTime}`);
-    steps.push({ ts:+dep, label:`Depart from ${state.travel.outbound.airport}` });
+    pushAct(dep, 'depart from', state.travel.outbound.airport);
   }
 
-  // Sort + render
-  steps.sort((a,b)=>a.ts-b.ts);
-  const tz = state.showTz || '';
-
-  function renderLabel(label){
-    // Leave A for B  →  A → B
-    const m = /^Leave\s(.+?)\sfor\s(.+)$/.exec(label);
-    if (m) {
-      const from = esc(m[1]); const to = esc(m[2]);
-      return `<span class="t-from">${from}</span> <span class="t-arr">→</span> <span class="t-to">${to}</span>`;
-    }
-    // Events
-    if (/^Concert starts$/i.test(label)) return `<span class="t-event">Concert starts</span>`;
-    if (/^Land at (.+)$/i.test(label))   return `<span class="t-fly">Lands at</span> <span class="t-air">${esc(RegExp.$1)}</span>`;
-    if (/^Depart from (.+)$/i.test(label)) return `<span class="t-fly">Departs</span> <span class="t-air">${esc(RegExp.$1)}</span>`;
-    // Fallback
-    return esc(label);
-  }
-
-steps.sort((a,b)=> a.ts - b.ts);
-const tz = state.showTz || '';
-el.innerHTML = `
-  <article class="card tour-card">
-    <div class="tour-head"><h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3></div>
-    <div class="tour-steps">
-      ${steps.map(s => `
-        <div class="tstep">
-          <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
-          <div class="t-label">
-            <span class="t-arrow">→</span>
-            <span class="t-verb">${esc(s.verb || '')}</span>
-            ${s.dest ? ` <strong class="t-dest">${esc(s.dest)}</strong>` : ''}
+  // Render
+  steps.sort((a,b)=> a.ts - b.ts);
+  el.innerHTML = `
+    <article class="card tour-card">
+      <div class="tour-head">
+        <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+      </div>
+      <div class="tour-steps" style="max-height:460px;overflow:auto;padding-right:6px;">
+        ${steps.map(s => `
+          <div class="tstep">
+            <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
+            <div class="t-label">
+              <span class="t-arrow">→</span>
+              <span class="t-verb">${esc(s.verb || '')}</span>
+              ${s.dest ? ` <strong class="t-dest">${esc(s.dest)}</strong>` : ''}
+            </div>
           </div>
-        </div>
-      `).join('')}
-    </div>
-    ${await venueActionsHtml()}
-  </article>
-`;
+        `).join('')}
+      </div>
+      ${await venueActionsHtml()}
+    </article>
+  `;
 }
   
 /* ===== Helper: ensure a rail container exists, show/hide ===== */

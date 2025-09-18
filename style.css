@@ -465,3 +465,78 @@ input[type="text"], input[type="time"], input[type="date"], select{
   padding:.5rem .75rem;
   font-size:.88rem;
 }
+
+/* ===== Mobile refinements (phones only) ===== */
+@media (max-width: 768px){
+
+  /* Global rhythm + container */
+  .container{ padding: 14px 0 !important; }
+  #step-wrapper{ gap: 12px !important; padding: 6px 0 !important; }
+  .progress{ height: 4px !important; margin: 6px 0 12px !important; }
+
+  /* Section title + helper copy */
+  .step-title{
+    margin-bottom: 4px !important;
+    font-size: 0.92rem !important;
+  }
+  .step-help{
+    margin: 0 0 8px !important;
+    font-size: 0.9rem !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Form cards tighter */
+  .form-grid{
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+  .form-grid.two{ grid-template-columns: 1fr !important; } /* single column on phone */
+
+  /* Labels + inputs a touch smaller */
+  label{
+    margin: 0 0 4px !important;
+    font-size: 0.85rem !important;
+  }
+  input[type="text"],
+  input[type="time"],
+  input[type="date"],
+  select{
+    padding: .58rem .75rem !important;
+    min-height: 38px !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Buttons */
+  .btn{ min-height: 40px !important; padding: .6rem .9rem !important; }
+  .btn-cta{ min-height: 44px !important; padding: .85rem 1.4rem !important; }
+
+  /* Pills (bubbles) — smaller, consistent */
+  .radio-group{ gap: 8px !important; }
+  .pill{
+    padding: .42rem .7rem !important;
+    min-height: 32px !important;
+    font-size: 0.88rem !important;
+  }
+  .radio-group.segmented .pill{ border-radius: 9px !important; }
+
+  /* Rails + cards a bit denser */
+  .rail{ margin-top: 16px !important; }
+  .rail-head{ margin-bottom: 8px !important; }
+  .rail-title{ font-size: 0.95rem !important; }
+  .h-scroll{ gap: 10px !important; padding-bottom: 4px !important; }
+
+  .place-card{
+    min-width: 170px !important;
+    max-width: 190px !important;
+  }
+  .pc-body{ padding: 8px 10px 10px !important; }
+  .pc-title{ font-size: .94rem !important; margin: 0 0 4px !important; }
+  .pc-meta{ font-size: .88rem !important; gap: .45rem !important; }
+
+  /* Venue actions row under tour card */
+  .pc-actions{ gap: 8px !important; }
+  .btn-reserve{ font-size: .88rem !important; padding: 5px 10px !important; }
+
+  /* Results header spacing */
+  .results-header{ margin-bottom: 10px !important; }
+}

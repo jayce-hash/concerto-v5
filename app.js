@@ -326,16 +326,8 @@ if (resumeBtn) {
   const cuisines = ["American","Italian","Japanese/Sushi","Mexican/Tacos","Steakhouse","Seafood","Mediterranean","Vegan/Vegetarian","Pizza","BBQ"];
   w.innerHTML = `
     <h3 class="step-title">Dinner</h3>
-    <p class="step-help">We’ll pick dinner near your venue.</p>
+    <p class="step-help">We’ll pick dinner near your venue (before the show).</p>
     <div class="form-grid two">
-      <div>
-        <label>Eat when?</label>
-        <select id="eatWhen">
-          <option value="before"${state.eatWhen==="before" ? " selected" : ""}>Before the show</option>
-          <option value="after"${state.eatWhen==="after" ? " selected" : ""}>After the show</option>
-          <option value="both"${state.eatWhen==="both" ? " selected" : ""}>Both</option>
-        </select>
-      </div>
       <div>
         <label>Restaurant type</label>
         <select id="placeStyle">
@@ -363,7 +355,6 @@ if (resumeBtn) {
       </div>
     </div>
   `;
-  $('eatWhen').onchange = (e)=> state.eatWhen = e.target.value;
   $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
   $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
   qsa('#cuisine-pills .pill').forEach(p=>{
@@ -796,10 +787,9 @@ function pickNearest(fromLat, fromLng, list=[]){
 function dwellByKey(k){ return k==='coffee'?35 : k==='sights'?75 : k==='shopping'?60 : k==='relax'?45 : 45; }
 
 async function buildDayItineraryParts({ state, extras, dinnerPick }){
-  // Build even if planDay is false; we drive everything from dayStart now
+  // Pre-concert order: coffee → shopping → (lunch handled in renderTourCard) → sights → relax
   const bucket = categorizeExtras(extras||[]);
-  const selected = Object.keys(state.interests).filter(k => state.interests[k] && k !== 'nightlife' && k !== 'lateNight');
-  const order = await orderActivitiesWithCohere(selected, { venue:state.venue });
+  const preOrder = ['coffee','shopping','sights','relax'];
 
   // Start from hotel if staying; else from venue
   let cur = (state.staying && state.hotelLat!=null && state.hotelLng!=null)
@@ -813,7 +803,7 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     out.push({ ts:+ts, time:fmtInTz(ts, state.showTz||'', {round:true}), label:`Leave ${from} for ${to}` });
   };
 
-  for (const key of order){
+  for (const key of preOrder){
     const list = bucket[key]||[]; if (!list.length) continue;
     const pick = pickNearest(cur.lat, cur.lng, list); if (!pick) continue;
 
@@ -832,7 +822,7 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     cur = { lat:Number(lat)||cur.lat, lng:Number(lng)||cur.lng, name: pick.name||key };
   }
 
-  // Optional hop back to hotel before dinner
+  // Optional: hop back to hotel before dinner
   if (out.length && state.staying && state.hotelLat!=null && state.hotelLng!=null){
     const mins = estimateTravelMin(cur.lat, cur.lng, state.hotelLat, state.hotelLng);
     pushLeave(clock, cur.name || 'current stop', state.hotel || 'hotel');
@@ -843,7 +833,7 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 }
 
   async function buildAfterShowParts({ state, extras, items }) {
-  // Use post.start when available; otherwise fall back to show.end (or show.start + 150min).
+  // Post-concert order: dessert → drinks → nightlife
   const show = items.find(i => i.type === 'show') || {};
   const post = items.find(i => i.type === 'post') || {};
 
@@ -854,19 +844,12 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 
   if (!startTs || !(state.venueLat && state.venueLng)) return [];
 
-  // Bucket extras we already fetched
   const bucket = categorizeExtras(extras || []);
+  const wanted = ['dessert','drinks','nightlife'].filter(k => state.interests[k]);
 
-  // Order: Dessert → Drinks → Nightlife → Late-Night
-  const wanted = ['dessert','drinks','nightlife','lateNight'].filter(k => !!state.interests[k]);
-
-  // Start from the venue
   let cur = { lat: state.venueLat, lng: state.venueLng, name: 'the venue' };
   const out = [];
-
-  const pushLeave = (ts, from, to) => {
-    out.push({ ts:+ts, label: `Leave ${from} for ${to}` });
-  };
+  const pushLeave = (ts, from, to) => out.push({ ts:+ts, label: `Leave ${from} for ${to}` });
 
   for (const key of wanted) {
     const list = bucket[key] || [];
@@ -881,13 +864,8 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
       ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng))
       : 12;
 
-    // leave current spot for this pick
     pushLeave(startTs, cur.name || 'current stop', pick.name || key);
-
-    // advance clock by travel + dwell
     startTs = new Date(startTs.getTime() + (mins + dwellByKey(key)) * 60000);
-
-    // move current point
     cur = { lat: Number(lat) || cur.lat, lng: Number(lng) || cur.lng, name: pick.name || key };
   }
 
@@ -1021,32 +999,28 @@ if (state.lunch?.want) {
   window.__lastLunch = lunchAuto;
 }
   
-      // Selected cuisines
+      /// Selected cuisines (for multi-rail dinner UI)
 const selectedCuisines = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
 
-// AFTER and EXTRAS (unchanged)
-const afterP  = (state.eatWhen==="after"  || state.eatWhen==="both")
-  ? pickRestaurants({ wantOpenNow:true, state, slot:"after", targetISO })
-  : Promise.resolve([]);
-const extrasP = pickExtras({ state });
+// EXTRAS (things like coffee/drinks/dessert/sights/shopping/relax)
+const extras = await pickExtras({ state });
 
-// BEFORE (split by cuisine when multiple are chosen)
+// DINNER picks (always BEFORE the show now)
 let dinnerByCuisine = {};   // { "Italian": [...], "Japanese/Sushi": [...] }
 let beforeAuto = [];        // legacy single list when 0 or 1 cuisine selected
-      
-if (state.eatWhen === "before" || state.eatWhen === "both") {
-  if (selectedCuisines.length > 1) {
-    await Promise.all(selectedCuisines.map(async (c) => {
-      const list = await pickRestaurants({
-        wantOpenNow: false,
-        state: { ...state, foodStyles: [c] },
-        slot: "before",
-        targetISO
-      });
-      dinnerByCuisine[c] = list || [];
-    }));
-  } else {
-    beforeAuto = await pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO }) || [];
+
+if (selectedCuisines.length > 1) {
+  await Promise.all(selectedCuisines.map(async (c) => {
+    const list = await pickRestaurants({
+      wantOpenNow: false,
+      state: { ...state, foodStyles: [c] },
+      slot: "before",                // <-- only before
+      targetISO
+    });
+    dinnerByCuisine[c] = list || [];
+  }));
+} else {
+  beforeAuto = await pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO }) || [];
   }
 }
 
@@ -1098,7 +1072,7 @@ const itin = await buildItinerary({
       const city = await venueCityName();
       await renderTourCard(city, itin, dinnerPick, extras);
 
-      await renderRails({ before: beforeAuto, after: afterAuto, extras, dinnerByCuisine, selectedCuisines, lunchList: lunchAuto });
+      await renderRails({ before: beforeAuto, after: [], extras, dinnerByCuisine, selectedCuisines, lunchList: lunchAuto });
       show('results');
       savePlan();
     }catch(e){

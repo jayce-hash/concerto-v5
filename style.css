@@ -614,3 +614,19 @@ input[type="date"], input[type="time"]{
 }
 .t-fly{color:var(--muted)}
 .t-air{font-weight:600}
+
+/* Make "Your Night" card scroll if it gets long */
+.tour-card .tour-steps{
+  max-height: 48vh;           /* fits nicely under the header/buttons */
+  overflow: auto;
+  padding-right: 4px;         /* room for scrollbar */
+}
+
+/* Inline arrow format */
+.tstep{display:flex; gap:.9rem; align-items:flex-start; padding:10px 0; border-bottom:1px dashed var(--line-soft)}
+.tstep:last-child{border-bottom:none}
+.t-time{min-width:70px; color:var(--muted); font-variant-numeric:tabular-nums}
+.t-label{flex:1; line-height:1.45}
+.t-arrow{opacity:.6; margin-right:.25rem}
+.t-verb{color:var(--ink)}
+.t-dest{font-weight:600}

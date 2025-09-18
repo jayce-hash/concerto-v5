@@ -798,7 +798,7 @@ function dwellByKey(k){ return k==='coffee'?35 : k==='sights'?75 : k==='shopping
 async function buildDayItineraryParts({ state, extras, dinnerPick }){
   // Build even if planDay is false; we drive everything from dayStart now
   const bucket = categorizeExtras(extras||[]);
-  const selected = ['coffee','sights','shopping','relax'].filter(k=>state.interests[k]);
+  const selected = Object.keys(state.interests).filter(k => state.interests[k] && k !== 'nightlife' && k !== 'lateNight');
   const order = await orderActivitiesWithCohere(selected, { venue:state.venue });
 
   // Start from hotel if staying; else from venue
@@ -837,6 +837,58 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     const mins = estimateTravelMin(cur.lat, cur.lng, state.hotelLat, state.hotelLng);
     pushLeave(clock, cur.name || 'current stop', state.hotel || 'hotel');
     clock = new Date(clock.getTime() + mins*60000);
+  }
+
+  return out;
+}
+
+  async function buildAfterShowParts({ state, extras, items }) {
+  // Use post.start when available; otherwise fall back to show.end (or show.start + 150min).
+  const show = items.find(i => i.type === 'show') || {};
+  const post = items.find(i => i.type === 'post') || {};
+
+  let startTs = post?.start ? new Date(post.start)
+             : show?.end   ? new Date(show.end)
+             : show?.start ? new Date(new Date(show.start).getTime() + 150*60000)
+             : null;
+
+  if (!startTs || !(state.venueLat && state.venueLng)) return [];
+
+  // Bucket extras we already fetched
+  const bucket = categorizeExtras(extras || []);
+
+  // Order: Dessert → Drinks → Nightlife → Late-Night
+  const wanted = ['dessert','drinks','nightlife','lateNight'].filter(k => !!state.interests[k]);
+
+  // Start from the venue
+  let cur = { lat: state.venueLat, lng: state.venueLng, name: 'the venue' };
+  const out = [];
+
+  const pushLeave = (ts, from, to) => {
+    out.push({ ts:+ts, label: `Leave ${from} for ${to}` });
+  };
+
+  for (const key of wanted) {
+    const list = bucket[key] || [];
+    if (!list.length) continue;
+
+    const pick = pickNearest(cur.lat, cur.lng, list);
+    if (!pick) continue;
+
+    const lat = pick.lat ?? pick.geometry?.location?.lat?.();
+    const lng = pick.lng ?? pick.geometry?.location?.lng?.();
+    const mins = (typeof lat === 'number' && typeof lng === 'number')
+      ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng))
+      : 12;
+
+    // leave current spot for this pick
+    pushLeave(startTs, cur.name || 'current stop', pick.name || key);
+
+    // advance clock by travel + dwell
+    startTs = new Date(startTs.getTime() + (mins + dwellByKey(key)) * 60000);
+
+    // move current point
+    cur = { lat: Number(lat) || cur.lat, lng: Number(lng) || cur.lng, name: pick.name || key };
   }
 
   return out;
@@ -1154,12 +1206,9 @@ async function renderTourCard(city, items, dinnerPick, extras){
   // Concert event
   if (show?.start) steps.push({ ts:+new Date(show.start), label:'Concert starts' });
 
-  // After-show hop
-  if (post?.start && (state.interests.dessert || state.interests.drinks || state.interests.nightlife)) {
-    const postTs = new Date(post.start);
-    const dest = state.interests.dessert ? 'dessert' : state.interests.drinks ? 'drinks' : 'nightlife';
-    pushLeave(postTs, 'the venue', dest);
-  }
+  // 7) After-show chain from selected interests
+  const afterSteps = await buildAfterShowParts({ state, extras, items });
+  steps.push(...afterSteps);
 
   // Flight OUT
   if (state.travel?.outbound?.taking && state.travel?.outbound?.airport && state.travel?.outbound?.depDate && state.travel?.outbound?.depTime) {

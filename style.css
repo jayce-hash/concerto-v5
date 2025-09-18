@@ -347,3 +347,68 @@ body.page-transition::before{
   text-underline-offset:2px
 }
 .pc-actions a:not(.btn-reserve):hover{color:var(--accent)}
+
+/* ===== Concerto+ light refinements (drop-in overrides) ===== */
+
+/* 1) Slightly slimmer global spacing for forms & cards */
+.container{ padding: var(--s-5) 0; }                 /* was --s-6 */
+.progress{ height:4px; }                              /* was 6px */
+.card.tour-card{ padding: var(--s-4); }               /* tighter tour card */
+.step-title{ margin-bottom:4px; }
+.step-help{ margin:2px 0 12px; }
+
+/* 2) Form grid: reduce inner padding & gaps a touch */
+.form-grid{ padding:14px; gap:14px; }                 /* was 18/16 */
+.form-grid.two{ grid-template-columns:1fr 1fr; }
+
+/* 3) Inputs: same height everywhere (so rows align) */
+input[type="text"],
+input[type="time"],
+input[type="date"],
+select{
+  min-height:42px;                                    /* was 44px */
+  padding:.7rem .9rem;                                /* slightly slimmer */
+  font-size:.98rem;
+}
+
+/* 4) Pills/bubbles: unify size, shape & color */
+.radio-group{ gap:10px; }
+.pill{
+  padding:.5rem .9rem;                                /* consistent */
+  min-height:38px;                                    /* consistent */
+  border-radius:999px;
+  background:linear-gradient(180deg,#FFF,#F6F8FB);    /* consistent */
+  border:1px solid #E1E7F0;                           /* consistent */
+}
+.pill.active{
+  background:#E9EEF6;                                 /* consistent active bg */
+  border-color:#C8D3E6;
+  box-shadow:0 1px 0 rgba(0,0,0,.02), inset 0 0 0 1px rgba(42,58,99,.04);
+}
+/* Segmented pills (budget etc.) keep the same visual language */
+.radio-group.segmented .pill{ border-radius:10px; }
+
+/* 5) Venue action buttons on tour card: compact row */
+.pc-actions{ gap:8px; margin-top:8px; flex-wrap:wrap; }
+.pc-actions .btn{
+  min-height:40px;
+  padding:.6rem .9rem;
+  font-size:.92rem;
+}
+
+/* 6) Rails/cards: shave a little vertical space */
+.rail{ margin-top:18px; }                             /* was 22px */
+.rail-head{ margin-bottom:8px; }
+.cards-rail{ gap:10px; padding-bottom:4px; }
+.place-card .pc-body{ padding:10px 12px; }
+
+/* 7) Mobile tightness (helps avoid scrolling on small phones) */
+@media (max-width:720px){
+  .form-grid,.form-grid.two{ padding:12px; gap:12px; }
+  .pill{ padding:.48rem .85rem; min-height:36px; }
+  .pc-actions .btn{ padding:.55rem .85rem; font-size:.9rem; }
+  .place-card{ min-width:180px; max-width:200px; }
+}
+
+/* 8) Times align better in schedule/tour card */
+.schedule .time{ font-variant-numeric:tabular-nums; }

@@ -497,14 +497,14 @@ input[type="text"], input[type="time"], input[type="date"], select{
     margin: 0 0 4px !important;
     font-size: 0.85rem !important;
   }
-  input[type="text"],
-  input[type="time"],
-  input[type="date"],
-  select{
-    padding: .58rem .75rem !important;
-    min-height: 38px !important;
-    font-size: 0.95rem !important;
-  }
+input[type="text"],
+input[type="time"],
+input[type="date"],
+select {
+  padding: 0.65rem 0.75rem 0.4rem !important;
+  min-height: 36px !important;
+  font-size: 0.85rem !important; /* smaller font */
+}
 
   /* Buttons */
   .btn{ min-height: 40px !important; padding: .6rem .9rem !important; }
@@ -540,3 +540,33 @@ input[type="text"], input[type="time"], input[type="date"], select{
   /* Results header spacing */
   .results-header{ margin-bottom: 10px !important; }
 }
+
+/* --- Fix: prevent form controls from overflowing their card --- */
+.form-grid > *{ min-width:0 }                 /* allow grid children to shrink */
+.form-grid input,
+.form-grid select{ width:100%; max-width:100% }
+
+/* Make sure long placeholders/values wrap instead of pushing width */
+input, select { overflow:hidden; text-overflow:ellipsis; }
+
+/* iOS date/time controls won’t oversize the grid */
+input[type="date"], input[type="time"]{
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* --- Segmented pills: no negative-overflow at edges --- */
+.form-grid .radio-group.segmented{
+  overflow:hidden;           /* clip tiny borders so they don't stick out */
+  border-radius:10px;
+}
+.form-grid .radio-group.segmented .pill{
+  margin:0;                  /* kill the -1px join trick that can overflow */
+  border-radius:0;
+}
+.form-grid .radio-group.segmented .pill:first-child{ border-radius:10px 0 0 10px }
+.form-grid .radio-group.segmented .pill:last-child { border-radius:0 10px 10px 0 }
+
+/* Safety: allow all pill groups to wrap before they force width growth */
+.radio-group{ flex-wrap:wrap }
+.radio-group .pill{ max-width:100% }

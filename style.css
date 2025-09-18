@@ -412,3 +412,56 @@ select{
 
 /* 8) Times align better in schedule/tour card */
 .schedule .time{ font-variant-numeric:tabular-nums; }
+
+/* ===== Concerto+ refinement: font + bubble scaling ===== */
+
+/* Typography: step down all headings & body */
+h1{ font-size:clamp(26px,3.5vw,38px); }
+h2{ font-size:clamp(20px,2.8vw,26px); }
+h3{ font-size:clamp(16px,2vw,20px); }
+p, label, .step-help, .tiny, input, select{
+  font-size:0.95rem;     /* slightly smaller */
+  line-height:1.5;
+}
+
+/* Buttons: reduce padding/font size slightly */
+.btn, .btn-primary, .btn-ghost{
+  min-height:40px;
+  padding:.6rem .9rem;
+  font-size:0.9rem;
+}
+.btn-cta{
+  padding:.85rem 1.4rem;
+  font-size:1rem;
+  min-height:44px;
+}
+
+/* Pills (the bubbles for cuisine, budget, etc.) */
+.pill{
+  padding:.42rem .8rem;       /* was ~.56/.9 */
+  min-height:34px;            /* was 38–40 */
+  font-size:0.88rem;          /* was ~.95 */
+}
+.pill.active{
+  background:#E6EBF3;
+  border-color:#C0CCE0;
+}
+
+/* Inputs: slimmer to match */
+input[type="text"], input[type="time"], input[type="date"], select{
+  min-height:40px;
+  font-size:0.92rem;
+  padding:.65rem .8rem;
+}
+
+/* Schedule text a notch smaller */
+.schedule .title{ font-size:.95rem; }
+.schedule .time{ font-size:.9rem; }
+.schedule .note{ font-size:.9rem; }
+
+/* Venue action buttons smaller */
+.pc-actions .btn{
+  min-height:36px;
+  padding:.5rem .75rem;
+  font-size:.88rem;
+}

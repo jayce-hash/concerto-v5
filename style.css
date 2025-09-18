@@ -570,3 +570,47 @@ input[type="date"], input[type="time"]{
 /* Safety: allow all pill groups to wrap before they force width growth */
 .radio-group{ flex-wrap:wrap }
 .radio-group .pill{ max-width:100% }
+
+/* Tour card timeline polish */
+.tour-card{max-width:760px;margin:0 auto 18px}
+.tour-head{margin-bottom:8px}
+.tour-title{margin:0}
+
+.tour-steps{
+  display:block;
+  max-height:68vh;            /* keeps the card from taking the whole screen */
+  overflow:auto;
+  padding-right:4px;
+  border-top:1px dashed var(--line-soft);
+  margin-top:8px;
+}
+
+.tstep{
+  display:grid;
+  grid-template-columns: 78px 1fr;  /* fixed time column */
+  align-items:flex-start;
+  gap:10px;
+  padding:10px 0;
+  border-bottom:1px dashed var(--line-soft);
+}
+.tstep:last-child{border-bottom:none}
+
+.t-time{
+  color:var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space:nowrap;
+}
+
+.t-label{line-height:1.35}
+.t-arr{margin:0 .4ch; opacity:.8}
+.t-from{font-weight:500}
+.t-to{font-weight:600}
+
+/* Event/flight lines */
+.t-event{
+  font-family:'Cormorant Garamond', Georgia, serif;
+  text-transform:uppercase; letter-spacing:.06em;
+  font-weight:600;
+}
+.t-fly{color:var(--muted)}
+.t-air{font-weight:600}

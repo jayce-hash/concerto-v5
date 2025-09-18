@@ -1148,53 +1148,70 @@ async function renderTourCard(city, items, dinnerPick, extras){
   const show   = items.find(i=>i.type==='show');
   const post   = items.find(i=>i.type==='post');
 
-  // Collect timeline steps as {ts, label}
-  const steps = [];
-  const pushLeave = (ts, from, to) => steps.push({ ts:+ts, label:`Leave ${from} for ${to}` });
-
+// New helpers for the arrow-style lines
+const steps = [];
+const pushAct = (ts, verb, dest) => {          // e.g., 10:45 → grab coffee at 787 Coffee
+  steps.push({ ts:+ts, verb, dest });
+};
+const pushGoTo = (ts, dest) => pushAct(ts, 'go to', dest);
+  
   // Flight IN
   if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {
     const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
     steps.push({ ts:+land, label:`Land at ${state.travel.inbound.airport}` });
   }
 
-  // Daytime chain (coffee/sights/shopping)
-  const day = await buildDayItineraryParts({ state, extras, dinnerPick });
-  steps.push(...day);
+const day = await buildDayItineraryParts({ state, extras, dinnerPick });
+// day is your ordered “leave” suggestions; collapse to action-at-destination lines
+for (const d of day) {
+  // Guess a verb from the bucket key included in the label (cheap + works well)
+  const low = (d.label || '').toLowerCase();
+  const dest = d.label?.replace(/^Leave\s.+\sfor\s(.+)$/, '$1') || 'next stop';
+  const verb =
+    /coffee/.test(low)     ? 'grab coffee at' :
+    /dessert|gelato|ice/.test(low) ? 'dessert at' :
+    /drink|bar|lounge/.test(low)   ? 'drinks at' :
+    /shop/.test(low)       ? 'go shopping at' :
+    /sight|park|museum|gallery|landmark/.test(low) ? 'explore' :
+    /relax|spa|sauna/.test(low)    ? 'relax at' :
+    'visit';
+  pushAct(d.ts, verb, dest);
+}
 
   // Lunch hop (uses list already fetched during generate)
-  {
-    const lunchPick = (window.__lastLunch && window.__lastLunch[0]) ? normalizePlace(window.__lastLunch[0]) : null;
-    if (state.lunch?.want && lunchPick?.name) {
-      const hm = state.lunch.time || "12:30";
-      const [h, m] = hm.split(':').map(n=>parseInt(n,10));
-      const target = new Date(parseShowDateTimeISO()); target.setHours(h||12, m||30, 0, 0);
-      const leaveForLunch = new Date(target.getTime() - 15*60000);
-      const lastFrom = steps.length
-        ? steps[steps.length-1].label.replace(/^Leave\s(.+)\sfor\s.*$/, '$1')
-        : (state.staying ? (state.hotel || 'hotel') : 'current stop');
-      pushLeave(leaveForLunch, lastFrom, lunchPick.name);
-    }
+  const lunchPick = (window.__lastLunch && window.__lastLunch[0])
+    ? normalizePlace(window.__lastLunch[0]) : null;
+
+  if (state.lunch?.want && lunchPick?.name) {
+    const hm = state.lunch.time || "12:30";
+    const [h, m] = hm.split(':').map(n => parseInt(n,10));
+    const target = new Date(parseShowDateTimeISO());
+    target.setHours(h||12, m||30, 0, 0);
+    const leaveForLunch = new Date(target.getTime() - 15*60000);
+    pushAct(leaveForLunch, 'eat lunch at', lunchPick.name);
   }
+}
 
   // Dinner chain
-  if (dine?.start && dinnerPick?.name) {
-    let fromName = state.staying ? (state.hotel || 'hotel') : (dinnerPick.name || 'dinner');
-    let leaveForDinner = new Date(dine.start);
-    if (state.staying && state.hotelLat!=null && state.hotelLng!=null && dinnerPick?.lat!=null && dinnerPick?.lng!=null) {
-      const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
-      leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
-    } else {
-      leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
-      fromName = 'current stop';
-    }
-    pushLeave(leaveForDinner, fromName, dinnerPick.name);
-
-    if (dine.end) {
-      const afterDinner = new Date(dine.end);
-      pushLeave(afterDinner, dinnerPick.name, state.venue);
-    }
+if (dine?.start && dinnerPick?.name) {
+  // when to leave for dinner
+  let leaveForDinner = new Date(dine.start);
+  if (state.staying && state.hotelLat!=null && state.hotelLng!=null && dinnerPick?.lat!=null && dinnerPick?.lng!=null) {
+    const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
+    leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
+  } else {
+    leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
   }
+  pushAct(leaveForDinner, 'dinner at', dinnerPick.name);
+
+ // Always add a "go to venue" line that lands before doors/arrival buffer
+if (show?.start && state.venue) {
+  const arriveBy = new Date(new Date(show.start).getTime() - (state.arrivalBufferMin || 45)*60000);
+  // default 15 min travel if we can't compute from a previous geo; we only care about the “leave at” time here
+  const leaveForVenue = new Date(arriveBy.getTime() - 15*60000);
+  pushGoTo(leaveForVenue, state.venue);
+ }
+}
 
   // Arrival buffer → venue
   if (arrive?.start && state.venue) {
@@ -1235,22 +1252,26 @@ async function renderTourCard(city, items, dinnerPick, extras){
     return esc(label);
   }
 
-  el.innerHTML = `
-    <article class="card tour-card">
-      <div class="tour-head">
-        <h3 class="tour-title">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-      </div>
-      <div class="tour-steps">
-        ${steps.map(s => `
-          <div class="tstep">
-            <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
-            <div class="t-label">${renderLabel(s.label)}</div>
+steps.sort((a,b)=> a.ts - b.ts);
+const tz = state.showTz || '';
+el.innerHTML = `
+  <article class="card tour-card">
+    <div class="tour-head"><h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3></div>
+    <div class="tour-steps">
+      ${steps.map(s => `
+        <div class="tstep">
+          <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
+          <div class="t-label">
+            <span class="t-arrow">→</span>
+            <span class="t-verb">${esc(s.verb || '')}</span>
+            ${s.dest ? ` <strong class="t-dest">${esc(s.dest)}</strong>` : ''}
           </div>
-        `).join('')}
-      </div>
-      ${await venueActionsHtml()}
-    </article>
-  `;
+        </div>
+      `).join('')}
+    </div>
+    ${await venueActionsHtml()}
+  </article>
+`;
 }
   
 /* ===== Helper: ensure a rail container exists, show/hide ===== */

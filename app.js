@@ -978,7 +978,7 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 
       const targetISO = parseShowDateTimeISO();
 
-      // LUNCH picks (target the selected lunch time on show date)
+// LUNCH picks (target the selected lunch time on show date)
 const lunchTargetISO = (() => {
   const hm = (state.lunch?.time || "12:30");
   const d  = new Date(parseShowDateTimeISO()); 
@@ -998,11 +998,11 @@ if (state.lunch?.want) {
   lunchAuto = await pickRestaurants({ wantOpenNow:true, state:lunchState, slot:"lunch", targetISO:lunchTargetISO }) || [];
   window.__lastLunch = lunchAuto;
 }
-  
-      /// Selected cuisines (for multi-rail dinner UI)
+
+// Selected cuisines (for multi-rail dinner UI)
 const selectedCuisines = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
 
-// EXTRAS (things like coffee/drinks/dessert/sights/shopping/relax)
+// EXTRAS (coffee/drinks/dessert/sights/shopping/relax buckets)
 const extras = await pickExtras({ state });
 
 // DINNER picks (always BEFORE the show now)
@@ -1014,67 +1014,67 @@ if (selectedCuisines.length > 1) {
     const list = await pickRestaurants({
       wantOpenNow: false,
       state: { ...state, foodStyles: [c] },
-      slot: "before",                // <-- only before
+      slot: "before",
       targetISO
     });
     dinnerByCuisine[c] = list || [];
   }));
 } else {
   beforeAuto = await pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO }) || [];
-  }
 }
 
-const [afterAuto, extras] = await Promise.all([afterP, extrasP]);
-
-      const locks = state.customStops || [];
+const locks = state.customStops || [];
 const customDinner = locks.find(p => p.when === 'before' && p.type === 'dinner');
 const dinnerPick = customDinner || (beforeAuto[0] || null);
 
-// normalize so itinerary gets real lat/lng (normalizePlace is defined below)
+// normalize so itinerary gets real lat/lng
 const dinner = normalizePlace(dinnerPick);
 
 const itin = await buildItinerary({
-  show: { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
+  show:  { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
   venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
   hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
-  prefs: { dine: state.eatWhen, arrivalBufferMin: state.arrivalBufferMin },
-  picks: { dinner } // may be null if no valid pick; buildItinerary should handle that
+  prefs: { dine: 'before', arrivalBufferMin: state.arrivalBufferMin }, // <-- force dinner-before
+  picks: { dinner }
 });
 
-      window.__lastItinerary = itin;
+window.__lastItinerary = itin;
 
-      const evtTz = state.showTz || '';
-      const dHeader = new Date(targetISO);
-      const dateStr = `${String(dHeader.getMonth()+1).padStart(2,'0')}/${String(dHeader.getDate()).padStart(2,'0')}/${dHeader.getFullYear()}`;
-      const timeStr = fmtInTz(dHeader, evtTz, { round:false });
+// Header/context UI
+const evtTz = state.showTz || '';
+const dHeader = new Date(targetISO);
+const dateStr = `${String(dHeader.getMonth()+1).padStart(2,'0')}/${String(dHeader.getDate()).padStart(2,'0')}/${dHeader.getFullYear()}`;
+const timeStr = fmtInTz(dHeader, evtTz, { round:false });
 
-      const ctx = $('results-context');
-      ctx.style.display = 'flex';
-      ctx.style.flexDirection = 'column';
-      ctx.style.alignItems = 'center';
-      ctx.style.textAlign = 'center';
-      ctx.style.width = '100%';
+const ctx = $('results-context');
+ctx.style.display = 'flex';
+ctx.style.flexDirection = 'column';
+ctx.style.alignItems = 'center';
+ctx.style.textAlign = 'center';
+ctx.style.width = '100%';
 
-      const ctxParent = $('results-context')?.parentElement;
-      if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'center'; }
+const ctxParent = $('results-context')?.parentElement;
+if (ctxParent){ ctxParent.style.flex = '1 1 0'; ctxParent.style.textAlign = 'center'; }
 
-      ctx.innerHTML = `
-        <div>${esc(state.artist || 'Your Concert')}</div>
-        <div>${esc(state.venue || '')}</div>
-        <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''} ${evtTz ? `<span class="muted" style="font-variant:all-small-caps;letter-spacing:.06em;">(${esc(evtTz)})</span>` : ''}</div>
-      `;
+ctx.innerHTML = `
+  <div>${esc(state.artist || 'Your Concert')}</div>
+  <div>${esc(state.venue || '')}</div>
+  <div>${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''} ${evtTz ? `<span class="muted" style="font-variant:all-small-caps;letter-spacing:.06em;">(${esc(evtTz)})</span>` : ''}</div>
+`;
 
-      const note = $('intro-line');
-      note.style.textAlign = 'center';
-      note.style.fontSize = '0.9rem';
-      note.textContent = 'Distances are from the venue.';
+const note = $('intro-line');
+note.style.textAlign = 'center';
+note.style.fontSize = '0.9rem';
+note.textContent = 'Distances are from the venue.';
 
-      const city = await venueCityName();
-      await renderTourCard(city, itin, dinnerPick, extras);
+const city = await venueCityName();
+await renderTourCard(city, itin, dinnerPick, extras);
 
-      await renderRails({ before: beforeAuto, after: [], extras, dinnerByCuisine, selectedCuisines, lunchList: lunchAuto });
-      show('results');
-      savePlan();
+// No "after" rail needed; extras still power the category rails
+await renderRails({ before: beforeAuto, after: [], extras, dinnerByCuisine, selectedCuisines, lunchList: lunchAuto });
+
+show('results');
+savePlan();
     }catch(e){
       console.error(e);
       alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");

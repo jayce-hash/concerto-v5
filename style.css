@@ -689,3 +689,28 @@ input[type="date"], input[type="time"]{
 }
 
 .tour-card { margin-top: 8px; margin-bottom: 12px; }
+
+.tstep {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.t-time {
+  width: 70px;               /* fixed width column for time */
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.t-arrow {
+  flex: 0 0 18px;             /* fixed width for arrow */
+  text-align: center;
+}
+
+.t-label {
+  flex: 1;                   /* take the rest of the row */
+  text-align: left;          /* keep wording left-aligned */
+  word-break: keep-all;
+  white-space: normal;
+}

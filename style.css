@@ -656,3 +656,36 @@ input[type="date"], input[type="time"]{
 .checks .check { display:flex; align-items:center; gap:10px; line-height:1.2; }
 .checks .check input { margin:0; }
 .checks .check span { flex:1; min-width:0; }
+
+/* --- Tour steps: tidy columns & alignment --- */
+.tour-steps { 
+  max-height: 360px;          /* shorter so users see the venue info + first rail */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;         /* space for scrollbar */
+}
+
+.tstep {
+  display: grid;
+  grid-template-columns: 88px 22px 1fr;  /* time | arrow | text */
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.t-time   { text-align: right; font-variant-numeric: tabular-nums; }
+.t-arrow  { text-align: center; display: inline-block; width: 100%; }
+.t-label  { text-align: left; }          /* left align the sentence */
+
+/* Make the scrollbar visible */
+.tour-steps::-webkit-scrollbar { width: 6px; }
+.tour-steps::-webkit-scrollbar-track { background: rgba(0,0,0,.06); border-radius: 8px; }
+.tour-steps::-webkit-scrollbar-thumb { background: rgba(0,0,0,.22); border-radius: 8px; }
+.tour-steps { scrollbar-color: rgba(0,0,0,.22) rgba(0,0,0,.06); scrollbar-width: thin; }
+
+/* Optional: subtle top/bottom fades to hint scrollability */
+.tour-card .tour-steps {
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.85) 0%, rgba(0,0,0,1) 10%, rgba(0,0,0,1) 90%, rgba(0,0,0,.85) 100%);
+}
+
+.tour-card { margin-top: 8px; margin-bottom: 12px; }

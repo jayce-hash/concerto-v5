@@ -1148,6 +1148,7 @@ savePlan();
   alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
   show('form');
 }
+}    
     
   /* ==================== Tour Card ==================== */
   async function venueCityName(){

@@ -196,7 +196,7 @@ if (resumeBtn) {
 } else if (steps[step] === "travel"){
   w.innerHTML = `
     <h3 class="step-title">Travel</h3>
-    <p class="step-help">Add flights so we can plan the day around them.</p>
+    <p class="step-help">Add your inbound flight and we’ll plan around it.</p>
 
     <article class="card" style="margin-bottom:12px;">
       <div class="qrow">
@@ -220,27 +220,6 @@ if (resumeBtn) {
         </div>
       </div>
     </article>
-
-    <article class="card">
-      <h3 class="step-title" style="margin-bottom:6px;">Flying out after the show?</h3>
-      <div class="form-grid two">
-        <div>
-          <label><input id="outb-taking" type="checkbox" ${state.travel?.outbound?.taking?'checked':''}/> Yes, I’m flying out</label>
-        </div>
-        <div>
-          <label>Departure Airport</label>
-          <input id="out-airport" type="text" placeholder="e.g., JFK" value="${esc(state.travel?.outbound?.airport || '')}">
-        </div>
-        <div>
-          <label>Departure Date</label>
-          <input id="out-date" type="date" value="${esc(state.travel?.outbound?.depDate || state.showDate || '')}">
-        </div>
-        <div>
-          <label>Departure Time</label>
-          <input id="out-time" type="time" value="${esc(state.travel?.outbound?.depTime || '')}">
-        </div>
-      </div>
-    </article>
   `;
 
   // Bind
@@ -251,15 +230,9 @@ if (resumeBtn) {
     inbFields.style.opacity = enableInb.checked ? '' : '.5';
     inbFields.style.pointerEvents = enableInb.checked ? '' : 'none';
   };
-
   $('inb-airport').oninput = e => state.travel.inbound.airport = e.target.value.trim();
   $('inb-date').onchange = e => state.travel.inbound.arrDate = e.target.value;
   $('inb-time').onchange = e => state.travel.inbound.arrTime = e.target.value;
-
-  $('outb-taking').onchange = e => state.travel.outbound.taking = e.target.checked;
-  $('out-airport').oninput = e => state.travel.outbound.airport = e.target.value.trim();
-  $('out-date').onchange = e => state.travel.outbound.depDate = e.target.value;
-  $('out-time').onchange = e => state.travel.outbound.depTime = e.target.value;
 
   $('btn-prev').disabled = false;
   $('btn-next').textContent = "Next";
@@ -426,21 +399,23 @@ if (resumeBtn) {
   $('btn-prev').disabled = false;
   $('btn-next').textContent = "Next";
       
-  } else {
+} else {
   w.innerHTML = `
     <h3 class="step-title">Activities & Interests</h3>
     <p class="step-help">Pick extras to round out your day.</p>
 
-    <div class="form-grid two">
-      <div><label><input type="checkbox" id="int-coffee" ${state.interests.coffee?'checked':''}/> Coffee</label></div>
-      <div><label><input type="checkbox" id="int-drinks" ${state.interests.drinks?'checked':''}/> Drinks &amp; Lounge</label></div>
-      <div><label><input type="checkbox" id="int-dessert" ${state.interests.dessert?'checked':''}/> Dessert</label></div>
-      <div><label><input type="checkbox" id="int-lateNight" ${state.interests.lateNight?'checked':''}/> Late-Night Eats</label></div>
-      <div><label><input type="checkbox" id="int-nightlife" ${state.interests.nightlife?'checked':''}/> Nightlife &amp; Entertainment</label></div>
-      <div><label><input type="checkbox" id="int-shopping" ${state.interests.shopping?'checked':''}/> Shopping</label></div>
-      <div><label><input type="checkbox" id="int-sights" ${state.interests.sights?'checked':''}/> Sights &amp; Landmarks</label></div>
-      <div><label><input type="checkbox" id="int-relax" ${state.interests.relax?'checked':''}/> Relax &amp; Recover</label></div>
-    </div>
+    <article class="card">
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="int-coffee"    ${state.interests.coffee?'checked':''}><span>Coffee</span></label>
+        <label class="check"><input type="checkbox" id="int-drinks"    ${state.interests.drinks?'checked':''}><span>Drinks &amp; Lounge</span></label>
+        <label class="check"><input type="checkbox" id="int-dessert"   ${state.interests.dessert?'checked':''}><span>Dessert</span></label>
+        <label class="check"><input type="checkbox" id="int-lateNight" ${state.interests.lateNight?'checked':''}><span>Late-Night Eats</span></label>
+        <label class="check"><input type="checkbox" id="int-nightlife" ${state.interests.nightlife?'checked':''}><span>Nightlife &amp; Entertainment</span></label>
+        <label class="check"><input type="checkbox" id="int-shopping"  ${state.interests.shopping?'checked':''}><span>Shopping</span></label>
+        <label class="check"><input type="checkbox" id="int-sights"    ${state.interests.sights?'checked':''}><span>Sights &amp; Landmarks</span></label>
+        <label class="check"><input type="checkbox" id="int-relax"     ${state.interests.relax?'checked':''}><span>Relax &amp; Recover</span></label>
+      </div>
+    </article>
 
     <article class="card" style="margin-top:12px;">
       <div class="form-grid two">
@@ -451,8 +426,9 @@ if (resumeBtn) {
       </div>
     </article>
   `;
+
   ["coffee","drinks","dessert","lateNight","nightlife","shopping","sights","relax"].forEach(k=>{
-    const el = $('int-'+k); if (el) el.onchange = ()=>{ state.interests[k] = el.checked; };
+    $('int-'+k)?.addEventListener('change', (e)=>{ state.interests[k] = !!e.target.checked; });
   });
   $('start-at')?.addEventListener('change', e=>{ state.startAt = e.target.value || "09:00"; });
 

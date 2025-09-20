@@ -833,7 +833,7 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 }
 
   async function buildAfterShowParts({ state, extras, items }) {
-  // Post-concert order: dessert → drinks → nightlife
+  // Post-concert order: dessert → drinks → nightlife (max 1 each)
   const show = items.find(i => i.type === 'show') || {};
   const post = items.find(i => i.type === 'post') || {};
 
@@ -844,15 +844,18 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 
   if (!startTs || !(state.venueLat && state.venueLng)) return [];
 
-  const bucket = categorizeExtras(extras || []);
+  const bucket = categorizeExtras(extras || {});
   const wanted = ['dessert','drinks','nightlife'].filter(k => state.interests[k]);
 
   let cur = { lat: state.venueLat, lng: state.venueLng, name: 'the venue' };
   const out = [];
-  const pushLeave = (ts, from, to) => out.push({ ts:+ts, label: `Leave ${from} for ${to}` });
 
   for (const key of wanted) {
-    const list = bucket[key] || [];
+    // pick from extras; if none, try Places fallback
+    let list = bucket[key] || [];
+    if (!list.length) {
+      try { list = await placesFallback(key, 3); } catch {}
+    }
     if (!list.length) continue;
 
     const pick = pickNearest(cur.lat, cur.lng, list);
@@ -864,14 +867,19 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
       ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng))
       : 12;
 
-    pushLeave(startTs, cur.name || 'current stop', pick.name || key);
+    out.push({
+      ts: +startTs,
+      key,                     // << keep the category
+      name: pick.name || key
+    });
+
     startTs = new Date(startTs.getTime() + (mins + dwellByKey(key)) * 60000);
     cur = { lat: Number(lat) || cur.lat, lng: Number(lng) || cur.lng, name: pick.name || key };
   }
 
   return out;
 }
-
+  
   function bindArtistSuggest(){
     const input = $('artist'), list = $('artist-list'); if (!input || !list) return;
     input.addEventListener('input', async ()=>{
@@ -1161,17 +1169,18 @@ async function renderTourCard(city, items, dinnerPick, extras){
     pushAct(leaveForLunch, 'eat lunch at', lunchPick.name);
   }
 
-  // 4) Dinner (always before show)
-  if (dine?.start && dinnerPick?.name) {
-    let leaveForDinner;
-    if (state.staying && state.hotelLat!=null && state.hotelLng!=null && dinnerPick?.lat!=null && dinnerPick?.lng!=null) {
-      const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
-      leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
-    } else {
-      leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
-    }
-    pushAct(leaveForDinner, 'dinner at', dinnerPick.name);
+// 4) Dinner (always before show)
+if (dine?.start) {
+  let leaveForDinner;
+  if (dinnerPick?.lat != null && dinnerPick?.lng != null && state.staying && state.hotelLat!=null && state.hotelLng!=null) {
+    const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
+    leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
+  } else {
+    leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
   }
+  const dinnerLabel = dinnerPick?.name || 'dinner near the venue';
+  pushAct(leaveForDinner, 'dinner at', dinnerLabel);
+}
 
   // 5) Head to venue (arrive >= buffer before show)
   if (show?.start && state.venue) {
@@ -1189,19 +1198,15 @@ async function renderTourCard(city, items, dinnerPick, extras){
     stepsRaw.push({ ts:+new Date(show.start), verb:'concert starts' });
   }
 
-  // 7) After-show (dessert → drinks → nightlife), no outbound flight
-  const afterSteps = await buildAfterShowParts({ state, extras, items });
-  for (const d of (afterSteps || [])) {
-    const low  = (d.label || '').toLowerCase();
-    const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
-    const verb =
-      /(dessert|gelato|ice\s?cream)/.test(low) ? 'dessert at' :
-      /(drink|bar|lounge)/.test(low)           ? 'drinks at' :
-      /(nightlife|club|dj|karaoke)/.test(low)  ? 'nightlife at' :
-      /(late.?night)/.test(low)                ? 'late-night at' :
-      'go to';
-    pushAct(d.ts, verb, dest);
-  }
+// 7) After-show (dessert → drinks → nightlife), keyed and single per category
+const afterSteps = await buildAfterShowParts({ state, extras, items }); // [{ts,key,name}]
+for (const s of afterSteps) {
+  const verb = s.key === 'dessert'   ? 'dessert at'
+             : s.key === 'drinks'    ? 'drinks at'
+             : s.key === 'nightlife' ? 'nightlife at'
+             : 'go to';
+  pushAct(s.ts, verb, s.name);
+}
 
   // ---- De-dupe (keep earliest coffee; collapse same verb+dest) ----
   const steps = (() => {

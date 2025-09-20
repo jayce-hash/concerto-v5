@@ -1123,34 +1123,34 @@ async function renderTourCard(city, items, dinnerPick, extras){
   const show   = items.find(i=>i.type==='show');
   const post   = items.find(i=>i.type==='post');
 
-  // Helpers: arrow-style steps (time → verb + destination)
-  const steps = [];
-  const pushAct = (ts, verb, dest) => { steps.Rawpush({ ts:+ts, verb, dest }); };
+  // Collect → dedupe → render
+  const stepsRaw = [];
+  const pushAct = (ts, verb, dest) => { stepsRaw.push({ ts:+ts, verb, dest }); };
   const tz = state.showTz || '';
 
   // 1) Flight IN (if provided)
-if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {
-  const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
-  pushAct(land, 'land at', state.travel.inbound.airport);
-}
+  if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {
+    const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
+    pushAct(land, 'land at', state.travel.inbound.airport);
+  }
 
-  // 2) Daytime chain (coffee/sights/shopping/relax) built from extras
-  const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // [{ts, label:"Leave A for B"}, ...]
+  // 2) Daytime chain (coffee/sights/shopping/relax)
+  const day = await buildDayItineraryParts({ state, extras, dinnerPick });
   for (const d of (day || [])) {
     const low  = (d.label || '').toLowerCase();
     const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
     const verb =
-      /coffee/.test(low)                   ? 'grab coffee at' :
-      /(dessert|gelato|ice\s?cream)/.test(low) ? 'dessert at' :
-      /(drink|bar|lounge)/.test(low)       ? 'drinks at' :
-      /shop/.test(low)                     ? 'go shopping at' :
+      /coffee/.test(low)                        ? 'grab coffee at' :
+      /(dessert|gelato|ice\s?cream)/.test(low)  ? 'dessert at' :
+      /(drink|bar|lounge)/.test(low)            ? 'drinks at' :
+      /shop/.test(low)                          ? 'go shopping at' :
       /(sight|park|museum|gallery|landmark|view)/.test(low) ? 'explore' :
       /(relax|spa|sauna|wellness|yoga)/.test(low) ? 'relax at' :
       'visit';
     pushAct(d.ts, verb, dest);
   }
 
-  // 3) Lunch (if enabled) – uses picks we already fetched during generate()
+  // 3) Lunch (if enabled)
   const lunchPick = (window.__lastLunch && window.__lastLunch[0]) ? normalizePlace(window.__lastLunch[0]) : null;
   if (state.lunch?.want && lunchPick?.name) {
     const hm = state.lunch.time || "12:30";
@@ -1161,9 +1161,9 @@ if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.tr
     pushAct(leaveForLunch, 'eat lunch at', lunchPick.name);
   }
 
-  // 4) Dinner (before-show flow)
+  // 4) Dinner (always before show)
   if (dine?.start && dinnerPick?.name) {
-    let leaveForDinner = new Date(dine.start);
+    let leaveForDinner;
     if (state.staying && state.hotelLat!=null && state.hotelLng!=null && dinnerPick?.lat!=null && dinnerPick?.lng!=null) {
       const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
       leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
@@ -1173,13 +1173,12 @@ if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.tr
     pushAct(leaveForDinner, 'dinner at', dinnerPick.name);
   }
 
-  // 5) Always add an explicit “go to venue” line (arrive ≥ arrivalBufferMin before show)
+  // 5) Head to venue (arrive >= buffer before show)
   if (show?.start && state.venue) {
     const arriveBy = new Date(new Date(show.start).getTime() - (state.arrivalBufferMin || 45)*60000);
-    const leaveForVenue = new Date(arriveBy.getTime() - 15*60000); // simple default travel buffer
+    const leaveForVenue = new Date(arriveBy.getTime() - 15*60000);
     pushAct(leaveForVenue, 'go to', state.venue);
   } else if (arrive?.start && state.venue) {
-    // Fallback to itinerary "arrive" anchor
     const aStart = new Date(arrive.start);
     const leaveForVenue = new Date(aStart.getTime() - 15*60000);
     pushAct(leaveForVenue, 'go to', state.venue);
@@ -1187,11 +1186,11 @@ if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.tr
 
   // 6) Concert event
   if (show?.start) {
-    steps.push({ ts:+new Date(show.start), verb:'concert starts' });
+    stepsRaw.push({ ts:+new Date(show.start), verb:'concert starts' });
   }
 
-  // 7) After-show chain (dessert/drinks/nightlife/late-night)
-  const afterSteps = await buildAfterShowParts({ state, extras, items }); // [{ts,label:"Leave A for B"}, ...]
+  // 7) After-show (dessert → drinks → nightlife), no outbound flight
+  const afterSteps = await buildAfterShowParts({ state, extras, items });
   for (const d of (afterSteps || [])) {
     const low  = (d.label || '').toLowerCase();
     const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
@@ -1203,63 +1202,49 @@ if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.tr
       'go to';
     pushAct(d.ts, verb, dest);
   }
-  
-// Helpers: arrow-style steps (time → verb + destination)
-const stepsRaw = [];
-const pushAct = (ts, verb, dest) => { stepsRaw.push({ ts:+ts, verb, dest }); };
-const tz = state.showTz || '';
 
-// ---- DEDUPE before rendering ----
-const steps = (() => {
-  // Only keep one coffee entry (earliest)
-  let coffeeAdded = false;
-  const seen = new Set(); // generic (verb|dest) guard
-  const out = [];
-
-  // sort first
-  stepsRaw.sort((a,b)=> a.ts - b.ts);
-
-  for (const s of stepsRaw){
-    const v = (s.verb||'').toLowerCase();
-    const d = (s.dest||'').toLowerCase();
-    const key = `${v}|${d}`;
-
-    // collapse duplicates (same verb+dest)
-    if (seen.has(key)) continue;
-
-    // “coffee” appears once max
-    if (/coffee/.test(v)) {
-      if (coffeeAdded) continue;
-      coffeeAdded = true;
+  // ---- De-dupe (keep earliest coffee; collapse same verb+dest) ----
+  const steps = (() => {
+    let coffeeAdded = false;
+    const seen = new Set();
+    const out = [];
+    stepsRaw.sort((a,b)=> a.ts - b.ts);
+    for (const s of stepsRaw){
+      const v = (s.verb||'').toLowerCase();
+      const d = (s.dest||'').toLowerCase();
+      const key = `${v}|${d}`;
+      if (seen.has(key)) continue;
+      if (/coffee/.test(v)) {
+        if (coffeeAdded) continue;
+        coffeeAdded = true;
+      }
+      seen.add(key);
+      out.push(s);
     }
+    return out;
+  })();
 
-    seen.add(key);
-    out.push(s);
-  }
-  return out;
-})();
-
-// ---- RENDER ----
-el.innerHTML = `
-  <article class="card tour-card">
-    <div class="tour-head">
-      <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-    </div>
-    <div class="tour-steps" style="max-height:460px;overflow:auto;padding-right:6px;">
-      ${steps.map(s => `
-        <div class="tstep">
-          <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
-          <div class="t-label">
-            <span class="t-arrow">→</span>
-            <span class="t-verb">${esc(s.verb || '')}</span>
-            ${s.dest ? ` <strong class="t-dest">${esc(s.dest)}</strong>` : ''}
+  // ---- Render ----
+  el.innerHTML = `
+    <article class="card tour-card">
+      <div class="tour-head">
+        <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+      </div>
+      <div class="tour-steps" style="max-height:460px;overflow:auto;padding-right:6px;">
+        ${steps.map(s => `
+          <div class="tstep">
+            <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
+            <div class="t-label">
+              <span class="t-arrow">→</span>
+              <span class="t-verb">${esc(s.verb || '')}</span>
+              ${s.dest ? ` <strong class="t-dest">${esc(s.dest)}</strong>` : ''}
+            </div>
           </div>
-        </div>
-      `).join('')}
-    </div>
-    ${await venueActionsHtml()}
-  </article>
-`;
+        `).join('')}
+      </div>
+      ${await venueActionsHtml()}
+    </article>
+  `;
 }
   
 /* ===== Helper: ensure a rail container exists, show/hide ===== */

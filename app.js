@@ -703,6 +703,26 @@ function venueInfoLinks(primaryUrl){
   };
 }
 
+  async function venueInfoCtaHtml(){
+  // Try to get the real venue website
+  const website = await getVenueWebsite().catch(()=> '');
+  // Fallback: a Google search for "<venue> website"
+  const fallback = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' website')}`;
+  const href = website || fallback;
+
+  return `
+    <div class="venue-cta"
+         style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted, #e6e6e6);text-align:center;">
+      <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span>
+      <a href="${esc(href)}"
+         target="_blank" rel="noopener noreferrer"
+         style="margin-left:6px;text-decoration:underline;cursor:pointer;">
+         Click here
+      </a>
+    </div>
+  `;
+}
+  
 /* Render a single-wide card rail at the bottom */
 async function renderVenueInfoCard(){
   const wrap = ensureRail('row-venue-info', `${state.venue || 'Venue'} · Information`);
@@ -798,6 +818,9 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 
   let clock = dateOnShowWithHM(state.startAt || "09:00");
   const out = [];
+  const pushLeave = (ts, from, to, payload) => {
+  out.push({ ts:+ts, time:fmtInTz(ts, state.showTz||'', {round:true}), label:`Leave ${from} for ${to}`, payload });
+};
 
   const pushLeave = (ts, from, to) => {
     out.push({ ts:+ts, time:fmtInTz(ts, state.showTz||'', {round:true}), label:`Leave ${from} for ${to}` });
@@ -813,7 +836,8 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
       ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng)) : 12;
 
     // leave current stop for next pick
-    pushLeave(clock, cur?.name || 'current stop', pick.name || key);
+    const normPick = normalizePlace(pick);
+    pushLeave(clock, cur?.name || 'current stop', pick.name || key, normPick);
 
     // advance clock by travel + dwell
     clock = new Date(clock.getTime() + (travel + dwellByKey(key)) * 60000);
@@ -1125,37 +1149,45 @@ savePlan();
 async function renderTourCard(city, items, dinnerPick, extras){
   const el = $('schedule'); if (!el) return;
 
-  // Pull key phases from the itinerary engine
   const arrive = items.find(i=>i.type==='arrive');
   const dine   = items.find(i=>i.type==='dine');
   const show   = items.find(i=>i.type==='show');
-  const post   = items.find(i=>i.type==='post');
 
-  // Collect → dedupe → render
+  // one place to push steps + optional place payload
   const stepsRaw = [];
-  const pushAct = (ts, verb, dest) => { stepsRaw.push({ ts:+ts, verb, dest }); };
+  const pushAct = (ts, verb, destText, payload) => {
+    let mapUrl = '';
+    try { mapUrl = payload ? mapUrlFor(payload) : ''; } catch {}
+    stepsRaw.push({ ts:+ts, verb, dest: destText, mapUrl });
+  };
   const tz = state.showTz || '';
 
-  // 1) Flight IN (if provided)
+  // 1) Flight IN
   if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {
     const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
-    pushAct(land, 'land at', state.travel.inbound.airport);
+    // Airport link (search fallback – name only is fine)
+    const airportPayload = { name: state.travel.inbound.airport };
+    pushAct(land, 'land at', state.travel.inbound.airport, airportPayload);
   }
 
   // 2) Daytime chain (coffee/sights/shopping/relax)
-  const day = await buildDayItineraryParts({ state, extras, dinnerPick });
+  const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // [{ts, label:"Leave A for B"}, ...]
   for (const d of (day || [])) {
     const low  = (d.label || '').toLowerCase();
     const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
+
     const verb =
       /coffee/.test(low)                        ? 'grab coffee at' :
       /(dessert|gelato|ice\s?cream)/.test(low)  ? 'dessert at' :
       /(drink|bar|lounge)/.test(low)            ? 'drinks at' :
       /shop/.test(low)                          ? 'go shopping at' :
       /(sight|park|museum|gallery|landmark|view)/.test(low) ? 'explore' :
-      /(relax|spa|sauna|wellness|yoga)/.test(low) ? 'relax at' :
-      'visit';
-    pushAct(d.ts, verb, dest);
+      /(relax|spa|sauna|wellness|yoga)/.test(low) ? 'relax at' : 'visit';
+
+    // Try to find the actual picked place again by name to build a payload (best-effort)
+    // If you want this 100% exact, modify buildDayItineraryParts to pass the actual pick object back.
+    const placePayload = { name: dest }; // name-only is still a valid search link
+    pushAct(d.ts, verb, dest, placePayload);
   }
 
   // 3) Lunch (if enabled)
@@ -1166,60 +1198,71 @@ async function renderTourCard(city, items, dinnerPick, extras){
     const target = new Date(parseShowDateTimeISO());
     target.setHours(h||12, m||30, 0, 0);
     const leaveForLunch = new Date(target.getTime() - 15*60000);
-    pushAct(leaveForLunch, 'eat lunch at', lunchPick.name);
+    pushAct(leaveForLunch, 'eat lunch at', lunchPick.name, lunchPick);
   }
 
-// 4) Dinner (always before show)
-if (dine?.start) {
-  let leaveForDinner;
-  if (dinnerPick?.lat != null && dinnerPick?.lng != null && state.staying && state.hotelLat!=null && state.hotelLng!=null) {
-    const mins = estimateTravelMin(state.hotelLat, state.hotelLng, dinnerPick.lat, dinnerPick.lng);
-    leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
-  } else {
-    leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
+  // 4) Dinner (before-show)
+  if (dine?.start && dinnerPick?.name) {
+    const normDinner = normalizePlace(dinnerPick);
+    let leaveForDinner = new Date(dine.start);
+    if (state.staying && state.hotelLat!=null && state.hotelLng!=null && normDinner?.lat!=null && normDinner?.lng!=null) {
+      const mins = estimateTravelMin(state.hotelLat, state.hotelLng, normDinner.lat, normDinner.lng);
+      leaveForDinner = new Date(new Date(dine.start).getTime() - mins*60000);
+    } else {
+      leaveForDinner = new Date(new Date(dine.start).getTime() - 15*60000);
+    }
+    pushAct(leaveForDinner, 'dinner at', normDinner?.name || dinnerPick.name, normDinner || dinnerPick);
   }
-  const dinnerLabel = dinnerPick?.name || 'dinner near the venue';
-  pushAct(leaveForDinner, 'dinner at', dinnerLabel);
-}
 
-  // 5) Head to venue (arrive >= buffer before show)
+  // 5) Go to venue (explicit)
+  const venuePayload = {
+    name: state.venue,
+    placeId: state.venuePlaceId,
+    lat: state.venueLat,
+    lng: state.venueLng
+  };
   if (show?.start && state.venue) {
     const arriveBy = new Date(new Date(show.start).getTime() - (state.arrivalBufferMin || 45)*60000);
     const leaveForVenue = new Date(arriveBy.getTime() - 15*60000);
-    pushAct(leaveForVenue, 'go to', state.venue);
+    pushAct(leaveForVenue, 'go to', state.venue, venuePayload);
   } else if (arrive?.start && state.venue) {
     const aStart = new Date(arrive.start);
     const leaveForVenue = new Date(aStart.getTime() - 15*60000);
-    pushAct(leaveForVenue, 'go to', state.venue);
+    pushAct(leaveForVenue, 'go to', state.venue, venuePayload);
   }
 
-  // 6) Concert event
+  // 6) Concert
   if (show?.start) {
-    stepsRaw.push({ ts:+new Date(show.start), verb:'concert starts' });
+    stepsRaw.push({ ts:+new Date(show.start), verb:'concert starts', dest:'', mapUrl:'' });
   }
 
-// 7) After-show (dessert → drinks → nightlife), keyed and single per category
-const afterSteps = await buildAfterShowParts({ state, extras, items }); // [{ts,key,name}]
-for (const s of afterSteps) {
-  const verb = s.key === 'dessert'   ? 'dessert at'
-             : s.key === 'drinks'    ? 'drinks at'
-             : s.key === 'nightlife' ? 'nightlife at'
-             : 'go to';
-  pushAct(s.ts, verb, s.name);
-}
+  // 7) After-show (dessert/drinks/nightlife/late-night)
+  const afterSteps = await buildAfterShowParts({ state, extras, items });
+  for (const d of (afterSteps || [])) {
+    const low  = (d.label || '').toLowerCase();
+    const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
+    const verb =
+      /(dessert|gelato|ice\s?cream)/.test(low) ? 'dessert at' :
+      /(drink|bar|lounge)/.test(low)           ? 'drinks at' :
+      /(nightlife|club|dj|karaoke)/.test(low)  ? 'nightlife at' :
+      /(late.?night)/.test(low)                ? 'late-night at' : 'go to';
 
-  // ---- De-dupe (keep earliest coffee; collapse same verb+dest) ----
+    const payload = { name: dest }; // again, name-only fallbacks to a search link
+    pushAct(d.ts, verb, dest, payload);
+  }
+
+  // ---- DEDUPE (keep earliest coffee, drop duplicate verb+dest) ----
   const steps = (() => {
+    stepsRaw.sort((a,b)=> a.ts - b.ts);
     let coffeeAdded = false;
     const seen = new Set();
     const out = [];
-    stepsRaw.sort((a,b)=> a.ts - b.ts);
     for (const s of stepsRaw){
       const v = (s.verb||'').toLowerCase();
       const d = (s.dest||'').toLowerCase();
       const key = `${v}|${d}`;
       if (seen.has(key)) continue;
-      if (/coffee/.test(v)) {
+      if (/coffee/.test(v)){
         if (coffeeAdded) continue;
         coffeeAdded = true;
       }
@@ -1229,7 +1272,7 @@ for (const s of afterSteps) {
     return out;
   })();
 
-  // ---- Render ----
+  // ---- RENDER (dest becomes a link if mapUrl exists) ----
   el.innerHTML = `
     <article class="card tour-card">
       <div class="tour-head">
@@ -1242,12 +1285,14 @@ for (const s of afterSteps) {
             <div class="t-label">
               <span class="t-arrow">→</span>
               <span class="t-verb">${esc(s.verb || '')}</span>
-              ${s.dest ? ` <strong class="t-dest">${esc(s.dest)}</strong>` : ''}
+              ${s.dest ? ` <strong class="t-dest">${
+                s.mapUrl ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${esc(s.dest)}</a>` : esc(s.dest)
+              }</strong>` : ''}
             </div>
           </div>
         `).join('')}
       </div>
-      ${await venueActionsHtml()}
+      ${await venueInfoCtaHtml()}
     </article>
   `;
 }
@@ -1589,9 +1634,6 @@ if (Array.isArray(selectedCuisines) && selectedCuisines.length > 1) {
       showRail(id);
       fillRail(id, picks, title);
     }
-    // Always show the venue info card at the bottom
-await renderVenueInfoCard();
-  }
 
   /* ==================== Custom picks (helpers kept) ==================== */
   function renderCustomPills(){

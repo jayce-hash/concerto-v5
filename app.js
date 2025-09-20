@@ -822,10 +822,6 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
   out.push({ ts:+ts, time:fmtInTz(ts, state.showTz||'', {round:true}), label:`Leave ${from} for ${to}`, payload });
 };
 
-  const pushLeave = (ts, from, to) => {
-    out.push({ ts:+ts, time:fmtInTz(ts, state.showTz||'', {round:true}), label:`Leave ${from} for ${to}` });
-  };
-
   for (const key of preOrder){
     const list = bucket[key]||[]; if (!list.length) continue;
     const pick = pickNearest(cur.lat, cur.lng, list); if (!pick) continue;
@@ -868,14 +864,14 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 
   if (!startTs || !(state.venueLat && state.venueLng)) return [];
 
-  const bucket = categorizeExtras(extras || {});
+  const bucket = categorizeExtras(extras || []);
   const wanted = ['dessert','drinks','nightlife'].filter(k => state.interests[k]);
 
   let cur = { lat: state.venueLat, lng: state.venueLng, name: 'the venue' };
   const out = [];
 
   for (const key of wanted) {
-    // pick from extras; if none, try Places fallback
+    // prefer curated extras; fallback to Places if empty
     let list = bucket[key] || [];
     if (!list.length) {
       try { list = await placesFallback(key, 3); } catch {}
@@ -885,6 +881,9 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     const pick = pickNearest(cur.lat, cur.lng, list);
     if (!pick) continue;
 
+    const norm = normalizePlace(pick); // may be null if no lat/lng; still ok for mapUrlFor(name-only)
+    const destName = pick.name || key;
+
     const lat = pick.lat ?? pick.geometry?.location?.lat?.();
     const lng = pick.lng ?? pick.geometry?.location?.lng?.();
     const mins = (typeof lat === 'number' && typeof lng === 'number')
@@ -893,12 +892,12 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 
     out.push({
       ts: +startTs,
-      key,                     // << keep the category
-      name: pick.name || key
+      label: `Leave ${cur.name || 'current stop'} for ${destName}`,
+      payload: norm || { name: destName }
     });
 
     startTs = new Date(startTs.getTime() + (mins + dwellByKey(key)) * 60000);
-    cur = { lat: Number(lat) || cur.lat, lng: Number(lng) || cur.lng, name: pick.name || key };
+    cur = { lat: Number(lat) || cur.lat, lng: Number(lng) || cur.lng, name: destName };
   }
 
   return out;
@@ -1634,6 +1633,7 @@ if (Array.isArray(selectedCuisines) && selectedCuisines.length > 1) {
       showRail(id);
       fillRail(id, picks, title);
     }
+}
 
   /* ==================== Custom picks (helpers kept) ==================== */
   function renderCustomPills(){

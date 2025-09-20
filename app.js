@@ -26,39 +26,45 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   let step = 0;
   const steps = ["concert","travel","stay","lunch","dinner","activities"];
 
-  const state = window.__concertoState = {
+const state = window.__concertoState = {
   artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
   showDate: "", showTime: "",
   showTz: "",
   hotel: "", hotelPlaceId:"", hotelLat:null, hotelLng:null, staying:true,
-eatWhen: "both",                       // kept for dinner/after
-foodStyles: [], foodStyleOther: "",    // dinner cuisines
-placeStyle: "sitdown",
-budget: "$$",
-interests: {
-  coffee:false, drinks:false, dessert:false, sights:false,
-  lateNight:false, nightlife:false, shopping:false, relax:false
-},
-arrivalBufferMin: 45, doorsBeforeMin: 90,
-customStops: [],
 
-/* New: itinerary start time (single field) */
-startAt: "09:00",
+  eatWhen: "both",
+  foodStyles: [], foodStyleOther: "",
+  placeStyle: "sitdown",
+  budget: "$$",
 
-/* New: lunch prefs */
-lunch: {
-  want: true,
-  time: "12:30",
-  styles: [],          // cuisines for lunch
-  placeStyle: "fast",  // sitdown | fast | cafe | sandwich
-  budget: "$$"
-},
+  interests: {
+    coffee:false, drinks:false, dessert:false, sights:false,
+    lateNight:false, nightlife:false, shopping:false, relax:false
+  },
 
-/* Travel */
-travel: {
-  inbound:  { airport:"", arrDate:"", arrTime:"" },
-  outbound: { airport:"", depDate:"", depTime:"", taking:false }
-},
+  arrivalBufferMin: 45, doorsBeforeMin: 90,
+  customStops: [],
+
+  /* Itinerary start time */
+  startAt: "09:00",
+
+  /* Lunch prefs */
+  lunch: {
+    want: true,
+    time: "12:30",
+    styles: [],
+    placeStyle: "fast",  // sitdown | fast | cafe | sandwich
+    budget: "$$"
+  },
+
+  /* New: dinner toggle */
+  wantDinner: true,
+
+  /* Travel */
+  travel: {
+    inbound:  { enabled:false, airport:"", arrDate:"", arrTime:"" },
+    outbound: { airport:"", depDate:"", depTime:"", taking:false }
+  },
 };
 
   /* ==================== Nav ==================== */
@@ -190,14 +196,19 @@ if (resumeBtn) {
 } else if (steps[step] === "travel"){
   w.innerHTML = `
     <h3 class="step-title">Travel</h3>
-    <p class="step-help">Optionally add flights so we can plan the day around them.</p>
+    <p class="step-help">Add flights so we can plan the day around them.</p>
 
     <article class="card" style="margin-bottom:12px;">
-      <h3 class="step-title" style="margin-bottom:6px;">Flying in?</h3>
-      <div class="form-grid two">
+      <div class="qrow">
+        <label class="switch"><input id="inb-enabled" type="checkbox" ${state.travel?.inbound?.enabled ? 'checked' : ''}/></label>
+        <h3 class="qtitle">Flying in the day of the show?</h3>
+        <p class="qhelp">We’ll time coffee, lunch, and arrival.</p>
+      </div>
+
+      <div class="form-grid two" id="inb-fields" style="${state.travel?.inbound?.enabled ? '' : 'opacity:.5;pointer-events:none'}">
         <div>
           <label>Arrival Airport</label>
-          <input id="inb-airport" type="text" placeholder="e.g., JFK" value="${esc(state.travel?.inbound?.airport || '')}">
+          <input id="inb-airport" type="text" placeholder="e.g., LGA" value="${esc(state.travel?.inbound?.airport || '')}">
         </div>
         <div>
           <label>Arrival Date</label>
@@ -218,7 +229,7 @@ if (resumeBtn) {
         </div>
         <div>
           <label>Departure Airport</label>
-          <input id="out-airport" type="text" placeholder="e.g., LAX" value="${esc(state.travel?.outbound?.airport || '')}">
+          <input id="out-airport" type="text" placeholder="e.g., JFK" value="${esc(state.travel?.outbound?.airport || '')}">
         </div>
         <div>
           <label>Departure Date</label>
@@ -232,7 +243,15 @@ if (resumeBtn) {
     </article>
   `;
 
-  // Bind values back to state
+  // Bind
+  const enableInb = $('inb-enabled');
+  const inbFields  = $('inb-fields');
+  enableInb.onchange = () => {
+    state.travel.inbound.enabled = enableInb.checked;
+    inbFields.style.opacity = enableInb.checked ? '' : '.5';
+    inbFields.style.pointerEvents = enableInb.checked ? '' : 'none';
+  };
+
   $('inb-airport').oninput = e => state.travel.inbound.airport = e.target.value.trim();
   $('inb-date').onchange = e => state.travel.inbound.arrDate = e.target.value;
   $('inb-time').onchange = e => state.travel.inbound.arrTime = e.target.value;
@@ -245,25 +264,36 @@ if (resumeBtn) {
   $('btn-prev').disabled = false;
   $('btn-next').textContent = "Next";
 
-  } else if (steps[step] === "stay"){
-      w.innerHTML = `
-        <h3 class="step-title">Accommodation</h3>
-        <p class="step-help">Let us plan around your hotel.</p>
-        <div class="form-grid two">
-          <div>
-            <label><input id="staying" type="checkbox" ${state.staying?'checked':''}/> I'm staying overnight</label>
-          </div>
-          <div>
-            <label>Hotel (if staying)</label>
-            <input id="hotel" type="text" placeholder="Name or address" value="${esc(state.hotel)}" ${state.staying?'':'disabled'}/>
-          </div>
+} else if (steps[step] === "stay"){
+  w.innerHTML = `
+    <h3 class="step-title">Accommodation</h3>
+    <p class="step-help">Let us plan around your hotel.</p>
+
+    <article class="card">
+      <div class="qrow">
+        <label class="switch"><input id="staying" type="checkbox" ${state.staying?'checked':''}/></label>
+        <h3 class="qtitle">Staying at a hotel?</h3>
+        <p class="qhelp">We’ll start from there and route back after.</p>
+      </div>
+
+      <div class="form-grid two" id="hotel-fields" style="${state.staying ? '' : 'opacity:.5;pointer-events:none'}">
+        <div class="full">
+          <label>Hotel</label>
+          <input id="hotel" type="text" placeholder="Name or address" value="${esc(state.hotel)}"/>
         </div>
-      `;
-      const cb = $('staying'); const hotelInput = $('hotel');
-      cb.onchange = ()=>{ state.staying = cb.checked; hotelInput.disabled = !cb.checked; };
-      bindHotelAutocomplete();
-      $('btn-prev').disabled = false;
-      $('btn-next').textContent = "Next";
+      </div>
+    </article>
+  `;
+  const cb = $('staying'), fields = $('hotel-fields');
+  cb.onchange = () => {
+    state.staying = cb.checked;
+    fields.style.opacity = cb.checked ? '' : '.5';
+    fields.style.pointerEvents = cb.checked ? '' : 'none';
+  };
+  bindHotelAutocomplete();
+
+  $('btn-prev').disabled = false;
+  $('btn-next').textContent = "Next";
 
     } else if (steps[step] === "lunch"){
   const lunchCuisines = ["Sandwiches","Burgers","Pizza","Mexican/Tacos","Mediterranean","Japanese/Sushi","Salads","Soup","BBQ","Cafe"];
@@ -271,11 +301,15 @@ if (resumeBtn) {
   w.innerHTML = `
     <h3 class="step-title">Lunch</h3>
     <p class="step-help">We’ll slot lunch before dinner and the show.</p>
+
     <article class="card">
-      <div class="form-grid two">
-        <div>
-          <label><input id="l-want" type="checkbox" ${L.want?'checked':''}/> Include lunch</label>
-        </div>
+      <div class="qrow">
+        <label class="switch"><input id="l-want" type="checkbox" ${L.want?'checked':''}/></label>
+        <h3 class="qtitle">Should we plan lunch?</h3>
+        <p class="qhelp">We’ll aim for ~12:30 near the venue (you can change it).</p>
+      </div>
+
+      <div class="form-grid two" id="l-fields" style="${L.want ? '' : 'opacity:.5;pointer-events:none'}">
         <div>
           <label>Target time</label>
           <input id="l-time" type="time" value="${esc(L.time||'12:30')}" ${L.want?'':'disabled'} />
@@ -291,21 +325,29 @@ if (resumeBtn) {
         </div>
         <div>
           <label>Budget</label>
-          <div class="radio-group segmented" id="l-budget" ${L.want?'':'style="opacity:.5;pointer-events:none"'}>
+          <div class="radio-group segmented" id="l-budget">
             ${["$","$$","$$$"].map(b => `<div class="pill${b===L.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
           </div>
         </div>
         <div class="full">
           <label>Cuisines (choose any)</label>
-          <div class="radio-group" id="l-cuisines" ${L.want?'':'style="opacity:.5;pointer-events:none"'}>
+          <div class="radio-group" id="l-cuisines">
             ${lunchCuisines.map(c => `<div class="pill${(L.styles||[]).includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
           </div>
         </div>
       </div>
     </article>
   `;
-  const cb=$('l-want'), tm=$('l-time'), st=$('l-style');
-  cb.onchange=()=>{ L.want=cb.checked; tm.disabled=st.disabled=!L.want; $('l-cuisines').style.pointerEvents=$('l-budget').style.pointerEvents=L.want?'':'none'; $('l-cuisines').style.opacity=$('l-budget').style.opacity=L.want?'1':'.5'; };
+
+  const cb=$('l-want'), tm=$('l-time'), st=$('l-style'), lFields=$('l-fields');
+  const setDisabled = on => {
+    lFields.style.opacity = on ? '' : '.5';
+    lFields.style.pointerEvents = on ? '' : 'none';
+    tm.disabled = st.disabled = !on;
+  };
+  cb.onchange=()=>{ L.want=cb.checked; setDisabled(cb.checked); };
+  setDisabled(L.want);
+
   tm.onchange=e=>{ L.time=e.target.value||"12:30"; };
   st.onchange=e=>{ L.placeStyle=e.target.value; };
 
@@ -322,39 +364,56 @@ if (resumeBtn) {
   $('btn-prev').disabled=false;
   $('btn-next').textContent="Next";
 
-    } else if (steps[step] === "dinner"){
+   } else if (steps[step] === "dinner"){
   const cuisines = ["American","Italian","Japanese/Sushi","Mexican/Tacos","Steakhouse","Seafood","Mediterranean","Vegan/Vegetarian","Pizza","BBQ"];
   w.innerHTML = `
     <h3 class="step-title">Dinner</h3>
     <p class="step-help">We’ll pick dinner near your venue (before the show).</p>
-    <div class="form-grid two">
-      <div>
-        <label>Restaurant type</label>
-        <select id="placeStyle">
-          <option value="sitdown"${state.placeStyle==="sitdown" ? " selected" : ""}>Sit-down</option>
-          <option value="fast"${state.placeStyle==="fast" ? " selected" : ""}>Fast-casual / Quick</option>
-          <option value="bar"${state.placeStyle==="bar" ? " selected" : ""}>Bar / Lounge</option>
-          <option value="dessert"${state.placeStyle==="dessert" ? " selected" : ""}>Dessert / Cafe</option>
-        </select>
+
+    <article class="card">
+      <div class="qrow">
+        <label class="switch"><input id="dinner-on" type="checkbox" ${state.wantDinner?'checked':''}/></label>
+        <h3 class="qtitle">Want dinner before the show?</h3>
+        <p class="qhelp">We’ll save time to eat and still arrive early.</p>
       </div>
-      <div class="full">
-        <label>Cuisines (choose any)</label>
-        <div class="radio-group" id="cuisine-pills">
-          ${cuisines.map(c => `<div class="pill${state.foodStyles.includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+
+      <div class="form-grid two" id="dinner-fields" style="${state.wantDinner ? '' : 'opacity:.5;pointer-events:none'}">
+        <div>
+          <label>Restaurant type</label>
+          <select id="placeStyle">
+            <option value="sitdown"${state.placeStyle==="sitdown" ? " selected" : ""}>Sit-down</option>
+            <option value="fast"${state.placeStyle==="fast" ? " selected" : ""}>Fast-casual / Quick</option>
+            <option value="bar"${state.placeStyle==="bar" ? " selected" : ""}>Bar / Lounge</option>
+            <option value="dessert"${state.placeStyle==="dessert" ? " selected" : ""}>Dessert / Cafe</option>
+          </select>
+        </div>
+        <div class="full">
+          <label>Cuisines (choose any)</label>
+          <div class="radio-group" id="cuisine-pills">
+            ${cuisines.map(c => `<div class="pill${state.foodStyles.includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+          </div>
+        </div>
+        <div>
+          <label>Other cuisine (optional)</label>
+          <input id="foodStyleOther" type="text" placeholder="e.g., ramen, tapas, Ethiopian" value="${esc(state.foodStyleOther)}" />
+        </div>
+        <div>
+          <label>Budget</label>
+          <div class="radio-group segmented" id="budget-pills">
+            ${["$","$$","$$$","$$$$"].map(b => `<div class="pill${b===state.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
+          </div>
         </div>
       </div>
-      <div>
-        <label>Other cuisine (optional)</label>
-        <input id="foodStyleOther" type="text" placeholder="e.g., ramen, tapas, Ethiopian" value="${esc(state.foodStyleOther)}" />
-      </div>
-      <div>
-        <label>Budget</label>
-        <div class="radio-group segmented" id="budget-pills">
-          ${["$","$$","$$$","$$$$"].map(b => `<div class="pill${b===state.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
-        </div>
-      </div>
-    </div>
+    </article>
   `;
+  const dOn = $('dinner-on'), dFields = $('dinner-fields');
+  const setDinner = on => {
+    dFields.style.opacity = on ? '' : '.5';
+    dFields.style.pointerEvents = on ? '' : 'none';
+  };
+  dOn.onchange = () => { state.wantDinner = dOn.checked; setDinner(dOn.checked); };
+  setDinner(state.wantDinner);
+
   $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
   $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
   qsa('#cuisine-pills .pill').forEach(p=>{
@@ -363,6 +422,7 @@ if (resumeBtn) {
   qsa('#budget-pills .pill').forEach(p=>{
     p.onclick=()=>{ state.budget = p.dataset.val; qsa('#budget-pills .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
   });
+
   $('btn-prev').disabled = false;
   $('btn-next').textContent = "Next";
       
@@ -1032,31 +1092,35 @@ if (state.lunch?.want) {
 
 // Selected cuisines (for multi-rail dinner UI)
 const selectedCuisines = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
+await renderRails({ before: beforeAuto, after: [], extras, dinnerByCuisine, selectedCuisines, lunchList: lunchAuto });
 
 // EXTRAS (coffee/drinks/dessert/sights/shopping/relax buckets)
 const extras = await pickExtras({ state });
 
-// DINNER picks (always BEFORE the show now)
-let dinnerByCuisine = {};   // { "Italian": [...], "Japanese/Sushi": [...] }
-let beforeAuto = [];        // legacy single list when 0 or 1 cuisine selected
+// DINNER picks (always BEFORE the show now, but only if enabled)
+let dinnerByCuisine = {};
+let beforeAuto = [];
+let dinnerPick = null;
 
-if (selectedCuisines.length > 1) {
-  await Promise.all(selectedCuisines.map(async (c) => {
-    const list = await pickRestaurants({
-      wantOpenNow: false,
-      state: { ...state, foodStyles: [c] },
-      slot: "before",
-      targetISO
-    });
-    dinnerByCuisine[c] = list || [];
-  }));
-} else {
-  beforeAuto = await pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO }) || [];
+if (state.wantDinner) {
+  if ((Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : []).length > 1) {
+    const selectedCuisines = state.foodStyles.filter(Boolean);
+    await Promise.all(selectedCuisines.map(async (c) => {
+      const list = await pickRestaurants({
+        wantOpenNow: false,
+        state: { ...state, foodStyles: [c] },
+        slot: "before",
+        targetISO
+      });
+      dinnerByCuisine[c] = list || [];
+    }));
+  } else {
+    beforeAuto = await pickRestaurants({ wantOpenNow:false, state, slot:"before", targetISO }) || [];
+  }
+  const locks = state.customStops || [];
+  const customDinner = locks.find(p => p.when === 'before' && p.type === 'dinner');
+  dinnerPick = customDinner || (beforeAuto[0] || null);
 }
-
-const locks = state.customStops || [];
-const customDinner = locks.find(p => p.when === 'before' && p.type === 'dinner');
-const dinnerPick = customDinner || (beforeAuto[0] || null);
 
 // normalize so itinerary gets real lat/lng
 const dinner = normalizePlace(dinnerPick);
@@ -1066,7 +1130,7 @@ const itin = await buildItinerary({
   venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
   hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
   prefs: { dine: 'before', arrivalBufferMin: state.arrivalBufferMin }, // <-- force dinner-before
-  picks: { dinner }
+  picks: { dinner: state.wantDinner ? normalizePlace(dinnerPick) : null }
 });
 
 window.__lastItinerary = itin;
@@ -1161,13 +1225,15 @@ async function renderTourCard(city, items, dinnerPick, extras){
   };
   const tz = state.showTz || '';
 
-  // 1) Flight IN
-  if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {
-    const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
-    // Airport link (search fallback – name only is fine)
-    const airportPayload = { name: state.travel.inbound.airport };
-    pushAct(land, 'land at', state.travel.inbound.airport, airportPayload);
-  }
+ // 1) Flight IN (only if enabled and fully specified)
+if (state.travel?.inbound?.enabled &&
+    state.travel?.inbound?.airport &&
+    state.travel?.inbound?.arrDate &&
+    state.travel?.inbound?.arrTime) {
+  const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
+  const airportPayload = { name: state.travel.inbound.airport };
+  pushAct(land, 'land at', state.travel.inbound.airport, airportPayload);
+}
 
   // 2) Daytime chain (coffee/sights/shopping/relax)
   const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // [{ts, label:"Leave A for B"}, ...]
@@ -1201,7 +1267,7 @@ async function renderTourCard(city, items, dinnerPick, extras){
   }
 
   // 4) Dinner (before-show)
-  if (dine?.start && dinnerPick?.name) {
+if (state.wantDinner && dine?.start && dinnerPick?.name) {
     const normDinner = normalizePlace(dinnerPick);
     let leaveForDinner = new Date(dine.start);
     if (state.staying && state.hotelLat!=null && state.hotelLng!=null && normDinner?.lat!=null && normDinner?.lng!=null) {

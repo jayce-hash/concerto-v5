@@ -1048,7 +1048,7 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
 // LUNCH picks (target the selected lunch time on show date)
 const lunchTargetISO = (() => {
   const hm = (state.lunch?.time || "12:30");
-  const d  = new Date(parseShowDateTimeISO()); 
+  const d  = new Date(parseShowDateTimeISO());
   const [h,m] = (hm || "12:30").split(':').map(n=>parseInt(n,10));
   d.setHours(h||12, m||30, 0, 0);
   return d.toISOString();
@@ -1066,22 +1066,18 @@ if (state.lunch?.want) {
   window.__lastLunch = lunchAuto;
 }
 
-// Selected cuisines (for multi-rail dinner UI)
-const selectedCuisines = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
-await renderRails({ before: beforeAuto, after: [], extras, dinnerByCuisine, selectedCuisines, lunchList: lunchAuto });
-
 // EXTRAS (coffee/drinks/dessert/sights/shopping/relax buckets)
 const extras = await pickExtras({ state });
 
-// DINNER picks (always BEFORE the show now, but only if enabled)
+// DINNER picks (before the show, only if enabled)
 let dinnerByCuisine = {};
 let beforeAuto = [];
 let dinnerPick = null;
 
 if (state.wantDinner) {
-  if ((Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : []).length > 1) {
-    const selectedCuisines = state.foodStyles.filter(Boolean);
-    await Promise.all(selectedCuisines.map(async (c) => {
+  const sel = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
+  if (sel.length > 1) {
+    await Promise.all(sel.map(async (c) => {
       const list = await pickRestaurants({
         wantOpenNow: false,
         state: { ...state, foodStyles: [c] },
@@ -1098,15 +1094,15 @@ if (state.wantDinner) {
   dinnerPick = customDinner || (beforeAuto[0] || null);
 }
 
-// normalize so itinerary gets real lat/lng
-const dinner = normalizePlace(dinnerPick);
+// normalize so itinerary gets real lat/lng (or null if dinner off)
+const dinner = state.wantDinner ? normalizePlace(dinnerPick) : null;
 
 const itin = await buildItinerary({
   show:  { startISO: targetISO, durationMin: 150, doorsBeforeMin: state.doorsBeforeMin, title: state.artist ? `${state.artist} — Live` : "Your Concert" },
   venue: { name: state.venue, lat: state.venueLat, lng: state.venueLng },
   hotel: state.staying && state.hotelLat && state.hotelLng ? { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng } : null,
-  prefs: { dine: 'before', arrivalBufferMin: state.arrivalBufferMin }, // <-- force dinner-before
-  picks: { dinner: state.wantDinner ? normalizePlace(dinnerPick) : null }
+  prefs: { dine: 'before', arrivalBufferMin: state.arrivalBufferMin },
+  picks: { dinner }
 });
 
 window.__lastItinerary = itin;
@@ -1141,18 +1137,18 @@ note.textContent = 'Distances are from the venue.';
 const city = await venueCityName();
 await renderTourCard(city, itin, dinnerPick, extras);
 
-// No "after" rail needed; extras still power the category rails
+// Rails (lunch first; dinner rails respect the dinner toggle inside renderRails)
+const selectedCuisines = Array.isArray(state.foodStyles) ? state.foodStyles.filter(Boolean) : [];
 await renderRails({ before: beforeAuto, after: [], extras, dinnerByCuisine, selectedCuisines, lunchList: lunchAuto });
 
 show('results');
 savePlan();
-    }catch(e){
-      console.error(e);
-      alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
-      show('form');
-    }
-  }
-
+} catch(e){
+  console.error(e);
+  alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
+  show('form');
+}
+    
   /* ==================== Tour Card ==================== */
   async function venueCityName(){
     try{
@@ -1644,6 +1640,11 @@ if (Array.isArray(selectedCuisines) && selectedCuisines.length > 1) {
   // Original single dinner rail
   const dinnerRow = pickRange(before, 5, 10, after);
   fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
+}
+  // If dinner toggle is off, hide dinner rails entirely
+if (!state.wantDinner) {
+  hideRail('row-dinner');
+  document.querySelectorAll('[id^="row-dinner-"]').forEach(el => el.closest('.rail')?.remove());
 }
 
     const allRails = ['row-dessert','row-drinks','row-sights','row-coffee','row-nightlife','row-shopping','row-late','row-relax'];

@@ -630,3 +630,18 @@ input[type="date"], input[type="time"]{
 .t-arrow{opacity:.6; margin-right:.25rem}
 .t-verb{color:var(--ink)}
 .t-dest{font-weight:600}
+
+/* one-line question row with a left toggle */
+.qrow {
+  display:flex; align-items:center; gap:10px;
+  margin-bottom:10px;
+}
+.qrow .switch { display:inline-flex; align-items:center; }
+.qrow .qtitle { margin:0; font-size:1.05rem; font-weight:600; }
+.qrow .qhelp  { margin:0 0 0 auto; color:var(--muted,#666); font-size:.9rem; }
+
+/* keep checkbox + label copy on ONE line in Activities & Interests */
+.form-grid.two > div > label {
+  display:flex; align-items:center; gap:8px; line-height:1.2;
+}
+.form-grid.two > div > label input[type="checkbox"] { margin:0; }

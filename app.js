@@ -1125,14 +1125,14 @@ async function renderTourCard(city, items, dinnerPick, extras){
 
   // Helpers: arrow-style steps (time → verb + destination)
   const steps = [];
-  const pushAct = (ts, verb, dest) => { steps.push({ ts:+ts, verb, dest }); };
+  const pushAct = (ts, verb, dest) => { steps.Rawpush({ ts:+ts, verb, dest }); };
   const tz = state.showTz || '';
 
   // 1) Flight IN (if provided)
-  if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {
-    const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
-    pushAct(land, 'land at', state.travel.inbound.airport);
-  }
+if (state.travel?.inbound?.airport && state.travel?.inbound?.arrDate && state.travel?.inbound?.arrTime) {
+  const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
+  pushAct(land, 'land at', state.travel.inbound.airport);
+}
 
   // 2) Daytime chain (coffee/sights/shopping/relax) built from extras
   const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // [{ts, label:"Leave A for B"}, ...]
@@ -1203,35 +1203,63 @@ async function renderTourCard(city, items, dinnerPick, extras){
       'go to';
     pushAct(d.ts, verb, dest);
   }
+  
+// Helpers: arrow-style steps (time → verb + destination)
+const stepsRaw = [];
+const pushAct = (ts, verb, dest) => { stepsRaw.push({ ts:+ts, verb, dest }); };
+const tz = state.showTz || '';
 
-  // 8) Flight OUT
-  if (state.travel?.outbound?.taking && state.travel?.outbound?.airport && state.travel?.outbound?.depDate && state.travel?.outbound?.depTime) {
-    const dep = new Date(`${state.travel.outbound.depDate}T${state.travel.outbound.depTime}`);
-    pushAct(dep, 'depart from', state.travel.outbound.airport);
+// ---- DEDUPE before rendering ----
+const steps = (() => {
+  // Only keep one coffee entry (earliest)
+  let coffeeAdded = false;
+  const seen = new Set(); // generic (verb|dest) guard
+  const out = [];
+
+  // sort first
+  stepsRaw.sort((a,b)=> a.ts - b.ts);
+
+  for (const s of stepsRaw){
+    const v = (s.verb||'').toLowerCase();
+    const d = (s.dest||'').toLowerCase();
+    const key = `${v}|${d}`;
+
+    // collapse duplicates (same verb+dest)
+    if (seen.has(key)) continue;
+
+    // “coffee” appears once max
+    if (/coffee/.test(v)) {
+      if (coffeeAdded) continue;
+      coffeeAdded = true;
+    }
+
+    seen.add(key);
+    out.push(s);
   }
+  return out;
+})();
 
-  // Render
-  steps.sort((a,b)=> a.ts - b.ts);
-  el.innerHTML = `
-    <article class="card tour-card">
-      <div class="tour-head">
-        <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-      </div>
-      <div class="tour-steps" style="max-height:460px;overflow:auto;padding-right:6px;">
-        ${steps.map(s => `
-          <div class="tstep">
-            <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
-            <div class="t-label">
-              <span class="t-arrow">→</span>
-              <span class="t-verb">${esc(s.verb || '')}</span>
-              ${s.dest ? ` <strong class="t-dest">${esc(s.dest)}</strong>` : ''}
-            </div>
+// ---- RENDER ----
+el.innerHTML = `
+  <article class="card tour-card">
+    <div class="tour-head">
+      <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+    </div>
+    <div class="tour-steps" style="max-height:460px;overflow:auto;padding-right:6px;">
+      ${steps.map(s => `
+        <div class="tstep">
+          <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
+          <div class="t-label">
+            <span class="t-arrow">→</span>
+            <span class="t-verb">${esc(s.verb || '')}</span>
+            ${s.dest ? ` <strong class="t-dest">${esc(s.dest)}</strong>` : ''}
           </div>
-        `).join('')}
-      </div>
-      ${await venueActionsHtml()}
-    </article>
-  `;
+        </div>
+      `).join('')}
+    </div>
+    ${await venueActionsHtml()}
+  </article>
+`;
 }
   
 /* ===== Helper: ensure a rail container exists, show/hide ===== */
@@ -1329,8 +1357,11 @@ function slug(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').
 /* ---------- CARDS: full-card click to Maps + Reserve button ---------- */
 /* ---------- CARDS: full-card link to Google Maps (no reserve pill) ---------- */
 function fillRail(id, list, title){
+  const isLunch  = id === 'row-lunch';
   const isDinner = id === 'row-dinner' || id.startsWith('row-dinner-');
-  const row = ensureRail(id, title || '', { prepend: isDinner }); // dinner rails appear as the first rails (but below the tour card)
+
+  // Prepend only lunch so it sits immediately under the tour card
+  const row = ensureRail(id, title || '', { prepend: isLunch });
   if (!row) return;
 
   if (!Array.isArray(list) || !list.length){

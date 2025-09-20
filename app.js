@@ -843,7 +843,7 @@ function pickNearest(fromLat, fromLng, list=[]){
 function dwellByKey(k){ return k==='coffee'?35 : k==='sights'?75 : k==='shopping'?60 : k==='relax'?45 : 45; }
 
 async function buildDayItineraryParts({ state, extras, dinnerPick }){
-  // Pre-concert order: coffee → shopping → (lunch handled in renderTourCard) → sights → relax
+  // Pre-concert order: coffee → shopping → sights → relax  (lunch handled separately)
   const bucket = categorizeExtras(extras||[]);
   const preOrder = ['coffee','shopping','sights','relax'];
 
@@ -855,11 +855,17 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
   let clock = dateOnShowWithHM(state.startAt || "09:00");
   const out = [];
   const pushLeave = (ts, from, to, payload) => {
-  out.push({ ts:+ts, time:fmtInTz(ts, state.showTz||'', {round:true}), label:`Leave ${from} for ${to}`, payload });
-};
+    out.push({ ts:+ts, time:fmtInTz(ts, state.showTz||'', {round:true}), label:`Leave ${from} for ${to}`, payload });
+  };
 
   for (const key of preOrder){
-    const list = bucket[key]||[]; if (!list.length) continue;
+    // prefer curated extras; fallback to Places if the bucket is empty
+    let list = bucket[key] || [];
+    if (!list.length) {
+      try { list = await placesFallback(key, 3); } catch {}
+    }
+    if (!list.length) continue;
+
     const pick = pickNearest(cur.lat, cur.lng, list); if (!pick) continue;
 
     const lat = pick.lat ?? pick.geometry?.location?.lat?.();
@@ -867,7 +873,6 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     const travel = (typeof lat==='number' && typeof lng==='number')
       ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng)) : 12;
 
-    // leave current stop for next pick
     const normPick = normalizePlace(pick);
     pushLeave(clock, cur?.name || 'current stop', pick.name || key, normPick);
 
@@ -907,7 +912,6 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
   const out = [];
 
   for (const key of wanted) {
-    // prefer curated extras; fallback to Places if empty
     let list = bucket[key] || [];
     if (!list.length) {
       try { list = await placesFallback(key, 3); } catch {}
@@ -917,7 +921,7 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     const pick = pickNearest(cur.lat, cur.lng, list);
     if (!pick) continue;
 
-    const norm = normalizePlace(pick); // may be null if no lat/lng; still ok for mapUrlFor(name-only)
+    const norm = normalizePlace(pick);
     const destName = pick.name || key;
 
     const lat = pick.lat ?? pick.geometry?.location?.lat?.();
@@ -929,7 +933,8 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     out.push({
       ts: +startTs,
       label: `Leave ${cur.name || 'current stop'} for ${destName}`,
-      payload: norm || { name: destName }
+      payload: norm || { name: destName },
+      cat: key          // <- keep the category
     });
 
     startTs = new Date(startTs.getTime() + (mins + dwellByKey(key)) * 60000);
@@ -1274,20 +1279,18 @@ if (state.wantDinner && dine?.start && dinnerPick?.name) {
     stepsRaw.push({ ts:+new Date(show.start), verb:'concert starts', dest:'', mapUrl:'' });
   }
 
-  // 7) After-show (dessert/drinks/nightlife/late-night)
-  const afterSteps = await buildAfterShowParts({ state, extras, items });
-  for (const d of (afterSteps || [])) {
-    const low  = (d.label || '').toLowerCase();
-    const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
-    const verb =
-      /(dessert|gelato|ice\s?cream)/.test(low) ? 'dessert at' :
-      /(drink|bar|lounge)/.test(low)           ? 'drinks at' :
-      /(nightlife|club|dj|karaoke)/.test(low)  ? 'nightlife at' :
-      /(late.?night)/.test(low)                ? 'late-night at' : 'go to';
-
-    const payload = { name: dest }; // again, name-only fallbacks to a search link
-    pushAct(d.ts, verb, dest, payload);
-  }
+// 7) After-show (dessert/drinks/nightlife) — use explicit category to pick the verb
+const afterSteps = await buildAfterShowParts({ state, extras, items });
+for (const d of (afterSteps || [])) {
+  const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
+  const cat  = String(d.cat || '').toLowerCase();
+  const verb = (cat === 'dessert')   ? 'dessert at'
+             : (cat === 'drinks')    ? 'drinks at'
+             : (cat === 'nightlife') ? 'nightlife at'
+             : 'go to';
+  const payload = d.payload || { name: dest };
+  pushAct(d.ts, verb, dest, payload);
+}
 
   // ---- DEDUPE (keep earliest coffee, drop duplicate verb+dest) ----
   const steps = (() => {

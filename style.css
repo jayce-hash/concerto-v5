@@ -645,3 +645,14 @@ input[type="date"], input[type="time"]{
   display:flex; align-items:center; gap:8px; line-height:1.2;
 }
 .form-grid.two > div > label input[type="checkbox"] { margin:0; }
+
+/* question row with left toggle (used earlier) */
+.qrow { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.qrow .qtitle { margin:0; font-size:1.05rem; font-weight:600; }
+.qrow .qhelp  { margin:0 0 0 auto; color:var(--muted,#666); font-size:.9rem; }
+
+/* clean checkbox list */
+.checks { display:flex; flex-direction:column; gap:10px; }
+.checks .check { display:flex; align-items:center; gap:10px; line-height:1.2; }
+.checks .check input { margin:0; }
+.checks .check span { flex:1; min-width:0; }

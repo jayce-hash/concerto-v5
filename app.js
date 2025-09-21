@@ -1207,59 +1207,57 @@ async function renderTourCard(city, items, dinnerPick, extras){
   const dine   = items.find(i=>i.type==='dine');
   const show   = items.find(i=>i.type==='show');
 
-  // one place to push steps + optional place payload
+  // one place to push steps + optional place payload (+ optional suffix)
   const stepsRaw = [];
-  const pushAct = (ts, verb, destText, payload) => {
+  const pushAct = (ts, verb, destText, payload, suffix = "") => {
     let mapUrl = '';
     try { mapUrl = payload ? mapUrlFor(payload) : ''; } catch {}
-    stepsRaw.push({ ts:+ts, verb, dest: destText, mapUrl });
+    stepsRaw.push({ ts:+ts, verb, dest: destText, mapUrl, suffix });
   };
   const tz = state.showTz || '';
 
- // 1) Flight IN (only if enabled and fully specified)
-if (state.travel?.inbound?.enabled &&
-    state.travel?.inbound?.airport &&
-    state.travel?.inbound?.arrDate &&
-    state.travel?.inbound?.arrTime) {
-  const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
-  const airportPayload = { name: state.travel.inbound.airport };
-  pushAct(land, 'land at', state.travel.inbound.airport, airportPayload);
-}
+  // 1) Flight IN (only if enabled and fully specified)
+  if (state.travel?.inbound?.enabled &&
+      state.travel?.inbound?.airport &&
+      state.travel?.inbound?.arrDate &&
+      state.travel?.inbound?.arrTime) {
+    const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
+    const airportPayload = { name: state.travel.inbound.airport };
+    pushAct(land, 'land at', state.travel.inbound.airport, airportPayload);
+  }
 
   // 2) Daytime chain (coffee/sights/shopping/relax)
   const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // [{ts, label:"Leave A for B"}, ...]
-for (const d of (day || [])) {
-  let rawDest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
-  let verb = 'visit';
+  for (const d of (day || [])) {
+    // Extract destination from "Leave X for Y"
+    let raw = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
 
-  // Updated mapping
-  if (/coffee/i.test(rawDest)) {
-    verb = 'get coffee at';
-  } else if (/dessert|gelato|ice.?cream/i.test(rawDest)) {
-    verb = 'dessert at';
-  } else if (/drink|bar|lounge/i.test(rawDest)) {
-    verb = 'drinks at';
-  } else if (/shop/i.test(rawDest)) {
-    verb = 'shop at';
-  } else if (/sight|park|museum|gallery|landmark|view/i.test(rawDest)) {
-    verb = 'explore';
-  } else if (/relax|spa|sauna|wellness|yoga/i.test(rawDest)) {
-    verb = 'relax at';
-  } else if (/^head back to/i.test(rawDest)) {
-    verb = 'head back to';
-  } else if (/concert/i.test(rawDest)) {
-    verb = 'concert starts';
-  } else if (/Madison Square Garden/i.test(rawDest)) {
-    verb = 'arrive at';
-  } else if (/dinner/i.test(rawDest)) {
-    verb = 'dinner at';
-  } else if (/lunch/i.test(rawDest)) {
-    verb = 'eat lunch at';
+    // Defaults; we may split into dest + suffix
+    let verb = 'visit';
+    let dest = raw;
+    let suffix = '';
+
+    // Special case: hotel return — "head back to <Hotel> to get ready"
+    const m = /^head back to\s+(.+?)(\s+to get ready)?$/i.exec(raw);
+    if (m) {
+      verb = 'head back to';
+      dest = m[1].trim();            // only the place name is linked
+      suffix = (m[2] || '').trim();  // e.g., "to get ready"
+    } else {
+      // Category-based verbs
+      if (/coffee/i.test(raw))                                      verb = 'get coffee at';
+      else if (/dessert|gelato|ice.?cream/i.test(raw))              verb = 'dessert at';
+      else if (/drink|bar|lounge|wine|cocktail/i.test(raw))         verb = 'drinks at';
+      else if (/shop/i.test(raw))                                   verb = 'shop at';
+      else if (/sight|park|museum|gallery|landmark|view/i.test(raw))verb = 'explore';
+      else if (/relax|spa|sauna|wellness|yoga/i.test(raw))          verb = 'relax at';
+      else if (/Madison Square Garden|MSG/i.test(raw))              verb = 'arrive at';
+      else if (/dinner/i.test(raw))                                 verb = 'dinner at';
+      else if (/lunch/i.test(raw))                                  verb = 'eat lunch at';
+    }
+
+    pushAct(d.ts, verb, dest, { name: dest }, suffix);
   }
-
-  const placePayload = { name: rawDest };
-  pushAct(d.ts, verb, rawDest, placePayload);
-}
 
   // 3) Lunch (if enabled)
   const lunchPick = (window.__lastLunch && window.__lastLunch[0]) ? normalizePlace(window.__lastLunch[0]) : null;
@@ -1273,7 +1271,7 @@ for (const d of (day || [])) {
   }
 
   // 4) Dinner (before-show)
-if (state.wantDinner && dine?.start && dinnerPick?.name) {
+  if (state.wantDinner && dine?.start && dinnerPick?.name) {
     const normDinner = normalizePlace(dinnerPick);
     let leaveForDinner = new Date(dine.start);
     if (state.staying && state.hotelLat!=null && state.hotelLng!=null && normDinner?.lat!=null && normDinner?.lng!=null) {
@@ -1304,21 +1302,21 @@ if (state.wantDinner && dine?.start && dinnerPick?.name) {
 
   // 6) Concert
   if (show?.start) {
-    stepsRaw.push({ ts:+new Date(show.start), verb:'concert starts', dest:'', mapUrl:'' });
+    stepsRaw.push({ ts:+new Date(show.start), verb:'concert starts', dest:'', mapUrl:'', suffix:'' });
   }
 
-// 7) After-show (dessert/drinks/nightlife) — use explicit category to pick the verb
-const afterSteps = await buildAfterShowParts({ state, extras, items });
-for (const d of (afterSteps || [])) {
-  const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
-  const cat  = String(d.cat || '').toLowerCase();
-  const verb = (cat === 'dessert')   ? 'dessert at'
-             : (cat === 'drinks')    ? 'drinks at'
-             : (cat === 'nightlife') ? 'nightlife at'
-             : 'go to';
-  const payload = d.payload || { name: dest };
-  pushAct(d.ts, verb, dest, payload);
-}
+  // 7) After-show (dessert/drinks/nightlife) — use explicit category to pick the verb
+  const afterSteps = await buildAfterShowParts({ state, extras, items });
+  for (const d of (afterSteps || [])) {
+    const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
+    const cat  = String(d.cat || '').toLowerCase();
+    const verb = (cat === 'dessert')   ? 'dessert at'
+               : (cat === 'drinks')    ? 'drinks at'
+               : (cat === 'nightlife') ? 'nightlife at'
+               : 'go to';
+    const payload = d.payload || { name: dest };
+    pushAct(d.ts, verb, dest, payload);
+  }
 
   // ---- DEDUPE (keep earliest coffee, drop duplicate verb+dest) ----
   const steps = (() => {
@@ -1341,29 +1339,35 @@ for (const d of (afterSteps || [])) {
     return out;
   })();
 
-  // ---- RENDER (dest becomes a link if mapUrl exists) ----
-el.innerHTML = `
-  <article class="card tour-card">
-    <div class="tour-head">
-      <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-    </div>
-    <div class="tour-steps">
-      ${steps.map(s => `
-        <div class="tstep">
-          <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
-          <div class="t-arrow">→</div>
-          <div class="t-label">
-            <span class="t-verb">${esc(s.verb || '')}</span>
-            ${s.dest ? ` <strong class="t-dest">${
-              s.mapUrl ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${esc(s.dest)}</a>` : esc(s.dest)
-            }</strong>` : ''}
+  // ---- RENDER (dest becomes a link if mapUrl exists; suffix printed after) ----
+  el.innerHTML = `
+    <article class="card tour-card">
+      <div class="tour-head">
+        <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+      </div>
+      <div class="tour-steps" style="
+        max-height:420px;
+        overflow-y:scroll;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-gutter:stable;
+        padding-right:4px;">
+        ${steps.map(s => `
+          <div class="tstep">
+            <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
+            <div class="t-arrow">→</div>
+            <div class="t-label">
+              <span class="t-verb">${esc(s.verb || '')}</span>
+              ${s.dest ? ` <strong class="t-dest">${
+                s.mapUrl ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${esc(s.dest)}</a>` : esc(s.dest)
+              }</strong>` : ''}
+              ${s.suffix ? ` <span class="t-suffix">${esc(s.suffix)}</span>` : ''}
+            </div>
           </div>
-        </div>
-      `).join('')}
-    </div>
-    ${await venueInfoCtaHtml()}
-  </article>
-`;
+        `).join('')}
+      </div>
+      ${await venueInfoCtaHtml()}
+    </article>
+  `;
 }
   
 /* ===== Helper: ensure a rail container exists, show/hide ===== */

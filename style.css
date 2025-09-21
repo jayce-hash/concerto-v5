@@ -772,3 +772,18 @@ input[type="date"], input[type="time"]{
   background-color: #ccc;
   border-radius: 3px;
 }
+
+.venue-cta a {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #f8f9f9;
+  text-decoration: none;
+  font-size: 0.9rem;
+  color: #121e36;
+}
+.venue-cta a:hover {
+  background: #eee;
+}

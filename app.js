@@ -739,20 +739,26 @@ function venueInfoLinks(primaryUrl){
   };
 }
 
-  async function venueInfoCtaHtml(){
+async function venueInfoCtaHtml(){
   // Try to get the real venue website
   const website = await getVenueWebsite().catch(()=> '');
   // Fallback: a Google search for "<venue> website"
   const fallback = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' website')}`;
   const href = website || fallback;
 
- return `
-  <div class="venue-cta"
-       style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted, #e6e6e6);text-align:center;">
-    <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span><br/>
-    <a href="${esc(href)}" target="_blank" rel="noopener noreferrer">Click here</a>
-  </div>
-`;
+  return `
+    <div class="venue-cta"
+         style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted,#e6e6e6);text-align:center;">
+      <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span><br/>
+      <a href="${esc(href)}"
+         target="_blank" rel="noopener noreferrer"
+         style="display:inline-block;margin-top:8px;padding:10px 16px;
+                border:1px solid rgba(0,0,0,.15);border-radius:10px;
+                text-decoration:none;cursor:pointer;touch-action:manipulation;">
+         Click here
+      </a>
+    </div>
+  `;
 }
   
 /* Render a single-wide card rail at the bottom */

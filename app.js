@@ -901,6 +901,10 @@ if (state.staying && state.hotelLat!=null && state.hotelLng!=null && state.showD
     cur   = { lat: state.hotelLat, lng: state.hotelLng, name: state.hotel };
   }
 }
+
+  return out;
+}
+
   
   async function buildAfterShowParts({ state, extras, items }) {
   // Post-concert order: dessert → drinks → nightlife (max 1 each)
@@ -1157,12 +1161,12 @@ await renderRails({ before: beforeAuto, after: [], extras, dinnerByCuisine, sele
 
 show('results');
 savePlan();
-} catch(e){
+} catch (e) {
   console.error(e);
   alert(e.message || "Couldn’t build the schedule. Check your Google key and try again.");
   show('form');
 }
-}    
+} // <- closes async function generate() exactly once
     
   /* ==================== Tour Card ==================== */
   async function venueCityName(){

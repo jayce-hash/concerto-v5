@@ -1351,9 +1351,24 @@ el.innerHTML = `
     <div class="tour-head">
       <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
     </div>
-    <div class="tour-steps">
-      ${steps.map(/* …existing step rows… */).join('')}
+
+    <div class="tour-steps"
+         style="max-height:420px;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding-right:4px;position:relative;">
+      ${steps.map(s => `
+        <div class="tstep">
+          <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
+          <div class="t-arrow">→</div>
+          <div class="t-label">
+            <span class="t-verb">${esc(s.verb || '')}</span>
+            ${s.dest ? ` <strong class="t-dest">${
+              s.mapUrl ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${esc(s.dest)}</a>` : esc(s.dest)
+            }</strong>` : ''}
+            ${s.suffix ? ` <span class="t-suffix">${esc(s.suffix)}</span>` : ''}
+          </div>
+        </div>
+      `).join('')}
     </div>
+
     ${await venueInfoCtaHtml()}
   </article>
 `;

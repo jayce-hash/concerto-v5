@@ -1314,28 +1314,28 @@ for (const d of (afterSteps || [])) {
   })();
 
   // ---- RENDER (dest becomes a link if mapUrl exists) ----
-  el.innerHTML = `
-    <article class="card tour-card">
-      <div class="tour-head">
-        <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-      </div>
-      <div class="tour-steps" style="max-height:460px;overflow:auto;padding-right:6px;">
-        ${steps.map(s => `
-          <div class="tstep">
-            <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
-            <div class="t-label">
-              <span class="t-arrow">→</span>
-              <span class="t-verb">${esc(s.verb || '')}</span>
-              ${s.dest ? ` <strong class="t-dest">${
-                s.mapUrl ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${esc(s.dest)}</a>` : esc(s.dest)
-              }</strong>` : ''}
-            </div>
+el.innerHTML = `
+  <article class="card tour-card">
+    <div class="tour-head">
+      <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+    </div>
+    <div class="tour-steps">
+      ${steps.map(s => `
+        <div class="tstep">
+          <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
+          <div class="t-arrow">→</div>
+          <div class="t-label">
+            <span class="t-verb">${esc(s.verb || '')}</span>
+            ${s.dest ? ` <strong class="t-dest">${
+              s.mapUrl ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${esc(s.dest)}</a>` : esc(s.dest)
+            }</strong>` : ''}
           </div>
-        `).join('')}
-      </div>
-      ${await venueInfoCtaHtml()}
-    </article>
-  `;
+        </div>
+      `).join('')}
+    </div>
+    ${await venueInfoCtaHtml()}
+  </article>
+`;
 }
   
 /* ===== Helper: ensure a rail container exists, show/hide ===== */

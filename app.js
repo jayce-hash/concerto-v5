@@ -1346,34 +1346,27 @@ async function renderTourCard(city, items, dinnerPick, extras){
   })();
 
   // ---- RENDER (dest becomes a link if mapUrl exists; suffix printed after) ----
-  el.innerHTML = `
-    <article class="card tour-card">
-      <div class="tour-head">
-        <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
-      </div>
-      <div class="tour-steps" style="
-        max-height:420px;
-        overflow-y:scroll;
-        -webkit-overflow-scrolling:touch;
-        scrollbar-gutter:stable;
-        padding-right:4px;">
-        ${steps.map(s => `
-          <div class="tstep">
-            <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
-            <div class="t-arrow">→</div>
-            <div class="t-label">
-              <span class="t-verb">${esc(s.verb || '')}</span>
-              ${s.dest ? ` <strong class="t-dest">${
-                s.mapUrl ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${esc(s.dest)}</a>` : esc(s.dest)
-              }</strong>` : ''}
-              ${s.suffix ? ` <span class="t-suffix">${esc(s.suffix)}</span>` : ''}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-      ${await venueInfoCtaHtml()}
-    </article>
-  `;
+el.innerHTML = `
+  <article class="card tour-card">
+    <div class="tour-head">
+      <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+    </div>
+    <div class="tour-steps">
+      ${steps.map(/* …existing step rows… */).join('')}
+    </div>
+    ${await venueInfoCtaHtml()}
+  </article>
+`;
+  const stepsEl = el.querySelector('.tour-steps');
+if (stepsEl) {
+  const onScroll = () => {
+    if (stepsEl.scrollTop > 2) stepsEl.classList.add('scrolled');
+    else stepsEl.classList.remove('scrolled');
+  };
+  stepsEl.addEventListener('scroll', onScroll, { passive: true });
+  // Run once to set initial state (in case it’s pre-scrolled due to content height)
+  onScroll();
+}
 }
   
 /* ===== Helper: ensure a rail container exists, show/hide ===== */

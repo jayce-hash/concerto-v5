@@ -746,17 +746,13 @@ function venueInfoLinks(primaryUrl){
   const fallback = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' website')}`;
   const href = website || fallback;
 
-  return `
-    <div class="venue-cta"
-         style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted, #e6e6e6);text-align:center;">
-      <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span>
-      <a href="${esc(href)}"
-         target="_blank" rel="noopener noreferrer"
-         style="margin-left:6px;text-decoration:underline;cursor:pointer;">
-         Click here
-      </a>
-    </div>
-  `;
+ return `
+  <div class="venue-cta"
+       style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted, #e6e6e6);text-align:center;">
+    <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span><br/>
+    <a href="${esc(href)}" target="_blank" rel="noopener noreferrer">Click here</a>
+  </div>
+`;
 }
   
 /* Render a single-wide card rail at the bottom */
@@ -883,16 +879,29 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     cur = { lat:Number(lat)||cur.lat, lng:Number(lng)||cur.lng, name: pick.name||key };
   }
 
-  // Optional: hop back to hotel before dinner
-  if (out.length && state.staying && state.hotelLat!=null && state.hotelLng!=null){
+// Optional: head back to hotel 2h before show
+if (state.staying && state.hotelLat!=null && state.hotelLng!=null && state.showDate && state.showTime) {
+  const showStart  = new Date(parseShowDateTimeISO());
+  const bufferMs   = 2 * 60 * 60000; // 2 hours
+  const hotelLeave = new Date(showStart.getTime() - bufferMs);
+
+  if (clock < hotelLeave) {
     const mins = estimateTravelMin(cur.lat, cur.lng, state.hotelLat, state.hotelLng);
-    pushLeave(clock, cur.name || 'current stop', state.hotel || 'hotel');
-    clock = new Date(clock.getTime() + mins*60000);
+
+    // leave current stop at hotelLeave
+    pushLeave(
+      hotelLeave,
+      cur.name || 'current stop',
+      `head back to ${state.hotel} to get ready`,
+      { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng }
+    );
+
+    // advance clock and set current point to hotel
+    clock = new Date(hotelLeave.getTime() + mins*60000);
+    cur   = { lat: state.hotelLat, lng: state.hotelLng, name: state.hotel };
   }
-
-  return out;
 }
-
+  
   async function buildAfterShowParts({ state, extras, items }) {
   // Post-concert order: dessert → drinks → nightlife (max 1 each)
   const show = items.find(i => i.type === 'show') || {};

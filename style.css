@@ -787,3 +787,65 @@ input[type="date"], input[type="time"]{
 .venue-cta a:hover {
   background: #eee;
 }
+
+/* Your Night: mobile-friendly scroll affordance */
+.tour-card .tour-steps{
+  position: relative;
+  max-height: 420px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* iOS momentum */
+  scrollbar-gutter: stable;
+  padding-right: 10px;               /* room for the faux bar */
+}
+
+/* Bottom fade = “there’s more below” */
+.tour-card .tour-steps::before{
+  content: "";
+  position: sticky;
+  display: block;
+  bottom: -1px;
+  width: 100%;
+  height: 24px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(0,0,0,.06));
+}
+
+/* Faux right-side “scroll bar” that’s always visible on mobile */
+.tour-card .tour-steps::after{
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 2px;
+  width: 4px;
+  height: calc(100% - 16px);
+  border-radius: 3px;
+  background: rgba(0,0,0,.18);  /* visible track */
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+
+/* Hide affordance once user has scrolled */
+.tour-card .tour-steps.scrolled::after{
+  opacity: 0;
+}
+
+/* Desktop/Chromium/Safari: keep the native scrollbar visible & styled */
+.tour-card .tour-steps::-webkit-scrollbar{ width: 10px; }
+.tour-card .tour-steps::-webkit-scrollbar-track{
+  background: rgba(0,0,0,.08);
+  border-radius: 8px;
+}
+.tour-card .tour-steps::-webkit-scrollbar-thumb{
+  background: rgba(0,0,0,.35);
+  border-radius: 8px;
+  border: 2px solid rgba(255,255,255,.6);
+}
+.tour-card .tour-steps::-webkit-scrollbar-thumb:hover{ background: rgba(0,0,0,.5); }
+
+/* Firefox */
+@supports (scrollbar-color: auto) {
+  .tour-card .tour-steps{
+    scrollbar-color: rgba(0,0,0,.45) rgba(0,0,0,.12);
+    scrollbar-width: thin;
+  }
+}

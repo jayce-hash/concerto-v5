@@ -1224,23 +1224,38 @@ if (state.travel?.inbound?.enabled &&
 
   // 2) Daytime chain (coffee/sights/shopping/relax)
   const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // [{ts, label:"Leave A for B"}, ...]
-  for (const d of (day || [])) {
-    const low  = (d.label || '').toLowerCase();
-    const dest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
+for (const d of (day || [])) {
+  let rawDest = d.label?.replace(/^leave\s.+?\sfor\s(.+)$/i, '$1') || 'next stop';
+  let verb = 'visit';
 
-    const verb =
-      /coffee/.test(low)                        ? 'grab coffee at' :
-      /(dessert|gelato|ice\s?cream)/.test(low)  ? 'dessert at' :
-      /(drink|bar|lounge)/.test(low)            ? 'drinks at' :
-      /shop/.test(low)                          ? 'go shopping at' :
-      /(sight|park|museum|gallery|landmark|view)/.test(low) ? 'explore' :
-      /(relax|spa|sauna|wellness|yoga)/.test(low) ? 'relax at' : 'visit';
-
-    // Try to find the actual picked place again by name to build a payload (best-effort)
-    // If you want this 100% exact, modify buildDayItineraryParts to pass the actual pick object back.
-    const placePayload = { name: dest }; // name-only is still a valid search link
-    pushAct(d.ts, verb, dest, placePayload);
+  // Updated mapping
+  if (/coffee/i.test(rawDest)) {
+    verb = 'get coffee at';
+  } else if (/dessert|gelato|ice.?cream/i.test(rawDest)) {
+    verb = 'dessert at';
+  } else if (/drink|bar|lounge/i.test(rawDest)) {
+    verb = 'drinks at';
+  } else if (/shop/i.test(rawDest)) {
+    verb = 'shop at';
+  } else if (/sight|park|museum|gallery|landmark|view/i.test(rawDest)) {
+    verb = 'explore';
+  } else if (/relax|spa|sauna|wellness|yoga/i.test(rawDest)) {
+    verb = 'relax at';
+  } else if (/^head back to/i.test(rawDest)) {
+    verb = 'head back to';
+  } else if (/concert/i.test(rawDest)) {
+    verb = 'concert starts';
+  } else if (/Madison Square Garden/i.test(rawDest)) {
+    verb = 'arrive at';
+  } else if (/dinner/i.test(rawDest)) {
+    verb = 'dinner at';
+  } else if (/lunch/i.test(rawDest)) {
+    verb = 'eat lunch at';
   }
+
+  const placePayload = { name: rawDest };
+  pushAct(d.ts, verb, rawDest, placePayload);
+}
 
   // 3) Lunch (if enabled)
   const lunchPick = (window.__lastLunch && window.__lastLunch[0]) ? normalizePlace(window.__lastLunch[0]) : null;

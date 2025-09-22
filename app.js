@@ -193,50 +193,6 @@ if (resumeBtn) {
       $('btn-prev').disabled = true;
       $('btn-next').textContent = "Next";
 
-} else if (steps[step] === "travel"){
-  w.innerHTML = `
-    <h3 class="step-title">Travel</h3>
-    <p class="step-help">Add your inbound flight and we’ll plan around it.</p>
-
-    <article class="card" style="margin-bottom:12px;">
-      <div class="qrow">
-        <label class="switch"><input id="inb-enabled" type="checkbox" ${state.travel?.inbound?.enabled ? 'checked' : ''}/></label>
-        <h3 class="qtitle">Flying in the day of the show?</h3>
-        <p class="qhelp">We’ll time coffee, lunch, and arrival.</p>
-      </div>
-
-      <div class="form-grid two" id="inb-fields" style="${state.travel?.inbound?.enabled ? '' : 'opacity:.5;pointer-events:none'}">
-        <div>
-          <label>Arrival Airport</label>
-          <input id="inb-airport" type="text" placeholder="e.g., LGA" value="${esc(state.travel?.inbound?.airport || '')}">
-        </div>
-        <div>
-          <label>Arrival Date</label>
-          <input id="inb-date" type="date" value="${esc(state.travel?.inbound?.arrDate || state.showDate || '')}">
-        </div>
-        <div>
-          <label>Arrival Time</label>
-          <input id="inb-time" type="time" value="${esc(state.travel?.inbound?.arrTime || '')}">
-        </div>
-      </div>
-    </article>
-  `;
-
-  // Bind
-  const enableInb = $('inb-enabled');
-  const inbFields  = $('inb-fields');
-  enableInb.onchange = () => {
-    state.travel.inbound.enabled = enableInb.checked;
-    inbFields.style.opacity = enableInb.checked ? '' : '.5';
-    inbFields.style.pointerEvents = enableInb.checked ? '' : 'none';
-  };
-  $('inb-airport').oninput = e => state.travel.inbound.airport = e.target.value.trim();
-  $('inb-date').onchange = e => state.travel.inbound.arrDate = e.target.value;
-  $('inb-time').onchange = e => state.travel.inbound.arrTime = e.target.value;
-
-  $('btn-prev').disabled = false;
-  $('btn-next').textContent = "Next";
-
 } else if (steps[step] === "stay"){
   w.innerHTML = `
     <h3 class="step-title">Accommodation</h3>
@@ -244,10 +200,12 @@ if (resumeBtn) {
 
     <article class="card">
       <div class="qrow">
-        <label class="switch"><input id="staying" type="checkbox" ${state.staying?'checked':''}/></label>
-        <h3 class="qtitle">Staying at a hotel?</h3>
-        <p class="qhelp">We’ll start from there and route back after.</p>
-      </div>
+  <label class="qtoggle">
+    <input type="checkbox" id="stay-hotel">
+    <span class="slider"></span>
+  </label>
+  <h3 class="qtitle" style="margin:0; padding-left:10px;">Staying at a hotel?</h3>
+</div>
 
       <div class="form-grid two" id="hotel-fields" style="${state.staying ? '' : 'opacity:.5;pointer-events:none'}">
         <div class="full">

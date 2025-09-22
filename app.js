@@ -1358,14 +1358,16 @@ el.innerHTML = `
         Your Night${city ? ` in ${esc(city)}` : ""}
       </h3>
     </div>
-
-    <div class="tour-steps"
-         style="max-height:420px;
-                overflow-y:auto;
-                -webkit-overflow-scrolling:touch;
-                scrollbar-gutter:stable;
-                padding-right:4px;
-                position:relative;">
+<div class="tour-steps"
+     style="
+       max-height: min(36vh, 360px);   /* shorter on phones */
+       overflow-y: auto;
+       -webkit-overflow-scrolling: touch;
+       scrollbar-gutter: stable;
+       padding-right: 4px;
+       margin-bottom: 10px;            /* breathing room above the CTA */
+       position: relative;             /* prevents overlay on CTA */
+     ">
       ${steps.map(s => `
         <div class="tstep">
           <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>

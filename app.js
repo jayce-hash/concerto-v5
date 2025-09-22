@@ -746,19 +746,25 @@ async function venueInfoCtaHtml(){
   const fallback = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' website')}`;
   const href = website || fallback;
 
-  return `
-    <div class="venue-cta"
-         style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted,#e6e6e6);text-align:center;">
-      <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span><br/>
-      <a href="${esc(href)}"
-         target="_blank" rel="noopener noreferrer"
-         style="display:inline-block;margin-top:8px;padding:10px 16px;
-                border:1px solid rgba(0,0,0,.15);border-radius:10px;
-                text-decoration:none;cursor:pointer;touch-action:manipulation;">
-         Click here
-      </a>
-    </div>
-  `;
+return `
+  <div class="venue-cta"
+       style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted,#e6e6e6);text-align:center;">
+    <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span>
+    <a href="${esc(href)}"
+       target="_blank" rel="noopener noreferrer"
+       style="display:block;margin:12px auto 0 auto;
+              padding:12px 16px;
+              border:1px solid rgba(0,0,0,.15);
+              border-radius:10px;
+              text-decoration:none;
+              background:#f8f9f9;
+              color:#121e36;
+              font-weight:500;
+              cursor:pointer;">
+       Click here
+    </a>
+  </div>
+`;
 }
   
 /* Render a single-wide card rail at the bottom */
@@ -1344,16 +1350,22 @@ async function renderTourCard(city, items, dinnerPick, extras){
     }
     return out;
   })();
-
-  // ---- RENDER (dest becomes a link if mapUrl exists; suffix printed after) ----
+  
 el.innerHTML = `
-  <article class="card tour-card">
+  <article class="card tour-card" style="margin-bottom:32px;">
     <div class="tour-head">
-      <h3 class="tour-title" style="text-align:center">Your Night${city ? ` in ${esc(city)}` : ""}</h3>
+      <h3 class="tour-title" style="text-align:center">
+        Your Night${city ? ` in ${esc(city)}` : ""}
+      </h3>
     </div>
 
     <div class="tour-steps"
-         style="max-height:420px;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding-right:4px;position:relative;">
+         style="max-height:420px;
+                overflow-y:auto;
+                -webkit-overflow-scrolling:touch;
+                scrollbar-gutter:stable;
+                padding-right:4px;
+                position:relative;">
       ${steps.map(s => `
         <div class="tstep">
           <div class="t-time">${fmtInTz(s.ts, tz, { round:true })}</div>
@@ -1361,17 +1373,19 @@ el.innerHTML = `
           <div class="t-label">
             <span class="t-verb">${esc(s.verb || '')}</span>
             ${s.dest ? ` <strong class="t-dest">${
-              s.mapUrl ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${esc(s.dest)}</a>` : esc(s.dest)
+              s.mapUrl
+                ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${esc(s.dest)}</a>`
+                : esc(s.dest)
             }</strong>` : ''}
             ${s.suffix ? ` <span class="t-suffix">${esc(s.suffix)}</span>` : ''}
           </div>
         </div>
       `).join('')}
     </div>
-
     ${await venueInfoCtaHtml()}
   </article>
 `;
+  
   const stepsEl = el.querySelector('.tour-steps');
 if (stepsEl) {
   const onScroll = () => {

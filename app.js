@@ -128,272 +128,314 @@ if (resumeBtn) {
 }
 
   /* ==================== Steps UI ==================== */
-  function renderStep(){
-    setProgress();
-    const w = $('step-wrapper'); if (!w) return;
+function renderStep(){
+  setProgress();
+  const w = $('step-wrapper'); if (!w) return;
 
-    if (steps[step] === "concert"){
-      w.innerHTML = `
-        <h3 class="step-title">Concert Details</h3>
-        <p class="step-help">Choose your event via Ticketmaster or add details manually.</p>
+  if (steps[step] === "concert"){
+    w.innerHTML = `
+      <h3 class="step-title">Concert Details</h3>
+      <p class="step-help">Choose your event via Ticketmaster or add details manually.</p>
 
-        <!-- Ticketmaster card -->
-        <article class="card" style="margin-bottom:12px;">
-          <h3 class="step-title" style="margin-bottom:6px;">Find your show (Ticketmaster)</h3>
-          <div class="form-grid two">
-            <div class="full">
-              <label>Artist or Venue</label>
-              <input id="tm-q" type="text" placeholder="e.g., Olivia Rodrigo or Madison Square Garden" autocomplete="off"/>
-            </div>
-            <div>
-              <label>City (optional)</label>
-              <input id="tm-city" type="text" placeholder="e.g., New York"/>
-            </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="tm-search" class="btn btn-primary" type="button">Search Ticketmaster</button>
-            </div>
+      <!-- Ticketmaster card -->
+      <article class="card" style="margin-bottom:12px;">
+        <h3 class="step-title" style="margin-bottom:6px;">Find your show (Ticketmaster)</h3>
+        <div class="form-grid two">
+          <div class="full">
+            <label>Artist or Venue</label>
+            <input id="tm-q" type="text" placeholder="e.g., Olivia Rodrigo or Madison Square Garden" autocomplete="off"/>
           </div>
-          <div id="tm-results" class="suggest-list" style="display:none; position:relative; margin-top:12px;"></div>
-        </article>
-
-        <!-- Manual card -->
-        <article class="card">
-          <h3 class="step-title" style="margin-bottom:6px;">Or enter it manually</h3>
-          <div class="form-grid">
-            <div>
-              <label>Artist (optional)</label>
-              <div class="suggest">
-                <input id="artist" type="text" placeholder="e.g., Taylor Swift" value="${esc(state.artist)}" autocomplete="off"/>
-                <div id="artist-list" class="suggest-list" style="display:none;"></div>
-              </div>
-            </div>
-            <div>
-              <label>Venue</label>
-              <input id="venue" type="text" placeholder="Type a venue name" value="${esc(state.venue)}" autocomplete="off"/>
-            </div>
-            <div>
-              <label>Show date</label>
-              <input id="showDate" type="date" value="${esc(state.showDate)}"/>
-            </div>
-            <div>
-              <label>Show start time</label>
-              <input id="showTime" type="time" value="${esc(state.showTime)}"/>
-            </div>
+          <div>
+            <label>City (optional)</label>
+            <input id="tm-city" type="text" placeholder="e.g., New York"/>
           </div>
-        </article>
-      `;
-
-      bindTmSearch();
-      bindArtistSuggest();
-      bindVenueAutocomplete();
-      $('showTime').onchange = (e)=> state.showTime = e.target.value;
-      $('showDate').onchange = (e)=> state.showDate = e.target.value;
-
-      $('btn-prev').disabled = true;
-      $('btn-next').textContent = "Next";
-
-} else if (steps[step] === "stay"){
-  w.innerHTML = `
-    <h3 class="step-title">Accommodation</h3>
-    <p class="step-help">Let us plan around your hotel.</p>
-
-    <article class="card">
-      <div class="qrow">
-  <label class="qtoggle">
-    <input type="checkbox" id="stay-hotel">
-    <span class="slider"></span>
-  </label>
-  <h3 class="qtitle" style="margin:0; padding-left:10px;">Staying at a hotel?</h3>
-</div>
-
-      <div class="form-grid two" id="hotel-fields" style="${state.staying ? '' : 'opacity:.5;pointer-events:none'}">
-        <div class="full">
-          <label>Hotel</label>
-          <input id="hotel" type="text" placeholder="Name or address" value="${esc(state.hotel)}"/>
-        </div>
-      </div>
-    </article>
-  `;
-  const cb = $('staying'), fields = $('hotel-fields');
-  cb.onchange = () => {
-    state.staying = cb.checked;
-    fields.style.opacity = cb.checked ? '' : '.5';
-    fields.style.pointerEvents = cb.checked ? '' : 'none';
-  };
-  bindHotelAutocomplete();
-
-  $('btn-prev').disabled = false;
-  $('btn-next').textContent = "Next";
-
-    } else if (steps[step] === "lunch"){
-  const lunchCuisines = ["Sandwiches","Burgers","Pizza","Mexican/Tacos","Mediterranean","Japanese/Sushi","Salads","Soup","BBQ","Cafe"];
-  const L = state.lunch || (state.lunch = { want:true, time:"12:30", styles:[], placeStyle:"fast", budget:"$$" });
-  w.innerHTML = `
-    <h3 class="step-title">Lunch</h3>
-    <p class="step-help">We’ll slot lunch before dinner and the show.</p>
-
-    <article class="card">
-      <div class="qrow">
-        <label class="switch"><input id="l-want" type="checkbox" ${L.want?'checked':''}/></label>
-        <h3 class="qtitle">Should we plan lunch?</h3>
-        <p class="qhelp">We’ll aim for ~12:30 near the venue (you can change it).</p>
-      </div>
-
-      <div class="form-grid two" id="l-fields" style="${L.want ? '' : 'opacity:.5;pointer-events:none'}">
-        <div>
-          <label>Target time</label>
-          <input id="l-time" type="time" value="${esc(L.time||'12:30')}" ${L.want?'':'disabled'} />
-        </div>
-        <div>
-          <label>Restaurant type</label>
-          <select id="l-style" ${L.want?'':'disabled'}>
-            <option value="sitdown"${L.placeStyle==="sitdown"?" selected":""}>Sit-down</option>
-            <option value="fast"${L.placeStyle==="fast"?" selected":""}>Fast-casual / Quick</option>
-            <option value="sandwich"${L.placeStyle==="sandwich"?" selected":""}>Sandwich shop</option>
-            <option value="cafe"${L.placeStyle==="cafe"?" selected":""}>Cafe</option>
-          </select>
-        </div>
-        <div>
-          <label>Budget</label>
-          <div class="radio-group segmented" id="l-budget">
-            ${["$","$$","$$$"].map(b => `<div class="pill${b===L.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
+          <div>
+            <label>&nbsp;</label>
+            <button id="tm-search" class="btn btn-primary" type="button">Search Ticketmaster</button>
           </div>
         </div>
-        <div class="full">
-          <label>Cuisines (choose any)</label>
-          <div class="radio-group" id="l-cuisines">
-            ${lunchCuisines.map(c => `<div class="pill${(L.styles||[]).includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+        <div id="tm-results" class="suggest-list" style="display:none; position:relative; margin-top:12px;"></div>
+      </article>
+
+      <!-- Manual card -->
+      <article class="card">
+        <h3 class="step-title" style="margin-bottom:6px;">Or enter it manually</h3>
+        <div class="form-grid">
+          <div>
+            <label>Artist (optional)</label>
+            <div class="suggest">
+              <input id="artist" type="text" placeholder="e.g., Taylor Swift" value="${esc(state.artist)}" autocomplete="off"/>
+              <div id="artist-list" class="suggest-list" style="display:none;"></div>
+            </div>
+          </div>
+          <div>
+            <label>Venue</label>
+            <input id="venue" type="text" placeholder="Type a venue name" value="${esc(state.venue)}" autocomplete="off"/>
+          </div>
+          <div>
+            <label>Show date</label>
+            <input id="showDate" type="date" value="${esc(state.showDate)}"/>
+          </div>
+          <div>
+            <label>Show start time</label>
+            <input id="showTime" type="time" value="${esc(state.showTime)}"/>
           </div>
         </div>
-      </div>
-    </article>
-  `;
+      </article>
+    `;
 
-  const cb=$('l-want'), tm=$('l-time'), st=$('l-style'), lFields=$('l-fields');
-  const setDisabled = on => {
-    lFields.style.opacity = on ? '' : '.5';
-    lFields.style.pointerEvents = on ? '' : 'none';
-    tm.disabled = st.disabled = !on;
-  };
-  cb.onchange=()=>{ L.want=cb.checked; setDisabled(cb.checked); };
-  setDisabled(L.want);
+    bindTmSearch();
+    bindArtistSuggest();
+    bindVenueAutocomplete();
+    $('showTime').onchange = (e)=> state.showTime = e.target.value;
+    $('showDate').onchange = (e)=> state.showDate = e.target.value;
 
-  tm.onchange=e=>{ L.time=e.target.value||"12:30"; };
-  st.onchange=e=>{ L.placeStyle=e.target.value; };
+    $('btn-prev').disabled = true;
+    $('btn-next').textContent = "Next";
 
-  qsa('#l-cuisines .pill').forEach(p=>{
-    p.onclick=()=>{ const v=p.dataset.val; const i=(L.styles||[]).indexOf(v);
-      if(i>=0){ L.styles.splice(i,1); } else { (L.styles||(L.styles=[])).push(v); }
-      p.classList.toggle('active');
+  } else if (steps[step] === "travel"){
+    w.innerHTML = `
+      <h3 class="step-title">Travel</h3>
+      <p class="step-help">Add your inbound flight and we’ll plan around it.</p>
+
+      <article class="card" style="margin-bottom:12px;">
+        <div class="qrow">
+          <label class="switch"><input id="inb-enabled" type="checkbox" ${state.travel?.inbound?.enabled ? 'checked' : ''}/></label>
+          <h3 class="qtitle">Flying in the day of the show?</h3>
+          <p class="qhelp">We’ll time coffee, lunch, and arrival.</p>
+        </div>
+
+        <div class="form-grid two" id="inb-fields" style="${state.travel?.inbound?.enabled ? '' : 'opacity:.5;pointer-events:none'}">
+          <div>
+            <label>Arrival Airport</label>
+            <input id="inb-airport" type="text" placeholder="e.g., LGA" value="${esc(state.travel?.inbound?.airport || '')}">
+          </div>
+          <div>
+            <label>Arrival Date</label>
+            <input id="inb-date" type="date" value="${esc(state.travel?.inbound?.arrDate || state.showDate || '')}">
+          </div>
+          <div>
+            <label>Arrival Time</label>
+            <input id="inb-time" type="time" value="${esc(state.travel?.inbound?.arrTime || '')}">
+          </div>
+        </div>
+      </article>
+    `;
+
+    // Bind
+    const enableInb = $('inb-enabled');
+    const inbFields  = $('inb-fields');
+    enableInb.onchange = () => {
+      state.travel.inbound.enabled = enableInb.checked;
+      inbFields.style.opacity = enableInb.checked ? '' : '.5';
+      inbFields.style.pointerEvents = enableInb.checked ? '' : 'none';
     };
-  });
-  qsa('#l-budget .pill').forEach(p=>{
-    p.onclick=()=>{ L.budget=p.dataset.val; qsa('#l-budget .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
-  });
+    $('inb-airport').oninput = e => state.travel.inbound.airport = e.target.value.trim();
+    $('inb-date').onchange = e => state.travel.inbound.arrDate = e.target.value;
+    $('inb-time').onchange = e => state.travel.inbound.arrTime = e.target.value;
 
-  $('btn-prev').disabled=false;
-  $('btn-next').textContent="Next";
+    $('btn-prev').disabled = false;
+    $('btn-next').textContent = "Next";
 
-   } else if (steps[step] === "dinner"){
-  const cuisines = ["American","Italian","Japanese/Sushi","Mexican/Tacos","Steakhouse","Seafood","Mediterranean","Vegan/Vegetarian","Pizza","BBQ"];
-  w.innerHTML = `
-    <h3 class="step-title">Dinner</h3>
-    <p class="step-help">We’ll pick dinner near your venue (before the show).</p>
+  } else if (steps[step] === "stay"){
+    w.innerHTML = `
+      <h3 class="step-title">Accommodation</h3>
+      <p class="step-help">Let us plan around your hotel.</p>
 
-    <article class="card">
-      <div class="qrow">
-        <label class="switch"><input id="dinner-on" type="checkbox" ${state.wantDinner?'checked':''}/></label>
-        <h3 class="qtitle">Want dinner before the show?</h3>
-        <p class="qhelp">We’ll save time to eat and still arrive early.</p>
-      </div>
-
-      <div class="form-grid two" id="dinner-fields" style="${state.wantDinner ? '' : 'opacity:.5;pointer-events:none'}">
-        <div>
-          <label>Restaurant type</label>
-          <select id="placeStyle">
-            <option value="sitdown"${state.placeStyle==="sitdown" ? " selected" : ""}>Sit-down</option>
-            <option value="fast"${state.placeStyle==="fast" ? " selected" : ""}>Fast-casual / Quick</option>
-            <option value="bar"${state.placeStyle==="bar" ? " selected" : ""}>Bar / Lounge</option>
-            <option value="dessert"${state.placeStyle==="dessert" ? " selected" : ""}>Dessert / Cafe</option>
-          </select>
+      <article class="card">
+        <div class="qrow">
+          <label class="switch"><input id="staying" type="checkbox" ${state.staying?'checked':''}/></label>
+          <h3 class="qtitle">Staying at a hotel?</h3>
+          <p class="qhelp">We’ll start from there and route back after.</p>
         </div>
-        <div class="full">
-          <label>Cuisines (choose any)</label>
-          <div class="radio-group" id="cuisine-pills">
-            ${cuisines.map(c => `<div class="pill${state.foodStyles.includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+
+        <div class="form-grid two" id="hotel-fields" style="${state.staying ? '' : 'opacity:.5;pointer-events:none'}">
+          <div class="full">
+            <label>Hotel</label>
+            <input id="hotel" type="text" placeholder="Name or address" value="${esc(state.hotel)}"/>
           </div>
         </div>
-        <div>
-          <label>Other cuisine (optional)</label>
-          <input id="foodStyleOther" type="text" placeholder="e.g., ramen, tapas, Ethiopian" value="${esc(state.foodStyleOther)}" />
+      </article>
+    `;
+    const cb = $('staying'), fields = $('hotel-fields');
+    cb.onchange = () => {
+      state.staying = cb.checked;
+      fields.style.opacity = cb.checked ? '' : '.5';
+      fields.style.pointerEvents = cb.checked ? '' : 'none';
+    };
+    bindHotelAutocomplete();
+
+    $('btn-prev').disabled = false;
+    $('btn-next').textContent = "Next";
+
+  } else if (steps[step] === "lunch"){
+    const lunchCuisines = ["Sandwiches","Burgers","Pizza","Mexican/Tacos","Mediterranean","Japanese/Sushi","Salads","Soup","BBQ","Cafe"];
+    const L = state.lunch || (state.lunch = { want:true, time:"12:30", styles:[], placeStyle:"fast", budget:"$$" });
+    w.innerHTML = `
+      <h3 class="step-title">Lunch</h3>
+      <p class="step-help">We’ll slot lunch before dinner and the show.</p>
+
+      <article class="card">
+        <div class="qrow">
+          <label class="switch"><input id="l-want" type="checkbox" ${L.want?'checked':''}/></label>
+          <h3 class="qtitle">Should we plan lunch?</h3>
+          <p class="qhelp">We’ll aim for ~12:30 near the venue (you can change it).</p>
         </div>
-        <div>
-          <label>Budget</label>
-          <div class="radio-group segmented" id="budget-pills">
-            ${["$","$$","$$$","$$$$"].map(b => `<div class="pill${b===state.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
+
+        <div class="form-grid two" id="l-fields" style="${L.want ? '' : 'opacity:.5;pointer-events:none'}">
+          <div>
+            <label>Target time</label>
+            <input id="l-time" type="time" value="${esc(L.time||'12:30')}" ${L.want?'':'disabled'} />
+          </div>
+          <div>
+            <label>Restaurant type</label>
+            <select id="l-style" ${L.want?'':'disabled'}>
+              <option value="sitdown"${L.placeStyle==="sitdown"?" selected":""}>Sit-down</option>
+              <option value="fast"${L.placeStyle==="fast"?" selected":""}>Fast-casual / Quick</option>
+              <option value="sandwich"${L.placeStyle==="sandwich"?" selected":""}>Sandwich shop</option>
+              <option value="cafe"${L.placeStyle==="cafe"?" selected":""}>Cafe</option>
+            </select>
+          </div>
+          <div>
+            <label>Budget</label>
+            <div class="radio-group segmented" id="l-budget">
+              ${["$","$$","$$$"].map(b => `<div class="pill${b===L.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
+            </div>
+          </div>
+          <div class="full">
+            <label>Cuisines (choose any)</label>
+            <div class="radio-group" id="l-cuisines">
+              ${lunchCuisines.map(c => `<div class="pill${(L.styles||[]).includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+            </div>
           </div>
         </div>
-      </div>
-    </article>
-  `;
-  const dOn = $('dinner-on'), dFields = $('dinner-fields');
-  const setDinner = on => {
-    dFields.style.opacity = on ? '' : '.5';
-    dFields.style.pointerEvents = on ? '' : 'none';
-  };
-  dOn.onchange = () => { state.wantDinner = dOn.checked; setDinner(dOn.checked); };
-  setDinner(state.wantDinner);
+      </article>
+    `;
 
-  $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
-  $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
-  qsa('#cuisine-pills .pill').forEach(p=>{
-    p.onclick=()=>{ const v = p.dataset.val; const i = state.foodStyles.indexOf(v); if (i>=0) state.foodStyles.splice(i,1); else state.foodStyles.push(v); p.classList.toggle('active'); };
-  });
-  qsa('#budget-pills .pill').forEach(p=>{
-    p.onclick=()=>{ state.budget = p.dataset.val; qsa('#budget-pills .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
-  });
+    const cb=$('l-want'), tm=$('l-time'), st=$('l-style'), lFields=$('l-fields');
+    const setDisabled = on => {
+      lFields.style.opacity = on ? '' : '.5';
+      lFields.style.pointerEvents = on ? '' : 'none';
+      tm.disabled = st.disabled = !on;
+    };
+    cb.onchange=()=>{ L.want=cb.checked; setDisabled(cb.checked); };
+    setDisabled(L.want);
 
-  $('btn-prev').disabled = false;
-  $('btn-next').textContent = "Next";
-      
-} else {
-  w.innerHTML = `
-    <h3 class="step-title">Activities & Interests</h3>
-    <p class="step-help">Pick extras to round out your day.</p>
+    tm.onchange=e=>{ L.time=e.target.value||"12:30"; };
+    st.onchange=e=>{ L.placeStyle=e.target.value; };
 
-    <article class="card">
-      <div class="checks">
-        <label class="check"><input type="checkbox" id="int-coffee"    ${state.interests.coffee?'checked':''}><span>Coffee</span></label>
-        <label class="check"><input type="checkbox" id="int-drinks"    ${state.interests.drinks?'checked':''}><span>Drinks &amp; Lounge</span></label>
-        <label class="check"><input type="checkbox" id="int-dessert"   ${state.interests.dessert?'checked':''}><span>Dessert</span></label>
-        <label class="check"><input type="checkbox" id="int-lateNight" ${state.interests.lateNight?'checked':''}><span>Late-Night Eats</span></label>
-        <label class="check"><input type="checkbox" id="int-nightlife" ${state.interests.nightlife?'checked':''}><span>Nightlife &amp; Entertainment</span></label>
-        <label class="check"><input type="checkbox" id="int-shopping"  ${state.interests.shopping?'checked':''}><span>Shopping</span></label>
-        <label class="check"><input type="checkbox" id="int-sights"    ${state.interests.sights?'checked':''}><span>Sights &amp; Landmarks</span></label>
-        <label class="check"><input type="checkbox" id="int-relax"     ${state.interests.relax?'checked':''}><span>Relax &amp; Recover</span></label>
-      </div>
-    </article>
+    qsa('#l-cuisines .pill').forEach(p=>{
+      p.onclick=()=>{ const v=p.dataset.val; const i=(L.styles||[]).indexOf(v);
+        if(i>=0){ L.styles.splice(i,1); } else { (L.styles||(L.styles=[])).push(v); }
+        p.classList.toggle('active');
+      };
+    });
+    qsa('#l-budget .pill').forEach(p=>{
+      p.onclick=()=>{ L.budget=p.dataset.val; qsa('#l-budget .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
+    });
 
-    <article class="card" style="margin-top:12px;">
-      <div class="form-grid two">
-        <div>
-          <label>What time should your itinerary begin?</label>
-          <input id="start-at" type="time" value="${esc(state.startAt||'09:00')}" />
+    $('btn-prev').disabled=false;
+    $('btn-next').textContent="Next";
+
+  } else if (steps[step] === "dinner"){
+    const cuisines = ["American","Italian","Japanese/Sushi","Mexican/Tacos","Steakhouse","Seafood","Mediterranean","Vegan/Vegetarian","Pizza","BBQ"];
+    w.innerHTML = `
+      <h3 class="step-title">Dinner</h3>
+      <p class="step-help">We’ll pick dinner near your venue (before the show).</p>
+
+      <article class="card">
+        <div class="qrow">
+          <label class="switch"><input id="dinner-on" type="checkbox" ${state.wantDinner?'checked':''}/></label>
+          <h3 class="qtitle">Want dinner before the show?</h3>
+          <p class="qhelp">We’ll save time to eat and still arrive early.</p>
         </div>
-      </div>
-    </article>
-  `;
 
-  ["coffee","drinks","dessert","lateNight","nightlife","shopping","sights","relax"].forEach(k=>{
-    $('int-'+k)?.addEventListener('change', (e)=>{ state.interests[k] = !!e.target.checked; });
-  });
-  $('start-at')?.addEventListener('change', e=>{ state.startAt = e.target.value || "09:00"; });
+        <div class="form-grid two" id="dinner-fields" style="${state.wantDinner ? '' : 'opacity:.5;pointer-events:none'}">
+          <div>
+            <label>Restaurant type</label>
+            <select id="placeStyle">
+              <option value="sitdown"${state.placeStyle==="sitdown" ? " selected" : ""}>Sit-down</option>
+              <option value="fast"${state.placeStyle==="fast" ? " selected" : ""}>Fast-casual / Quick</option>
+              <option value="bar"${state.placeStyle==="bar" ? " selected" : ""}>Bar / Lounge</option>
+              <option value="dessert"${state.placeStyle==="dessert" ? " selected" : ""}>Dessert / Cafe</option>
+            </select>
+          </div>
+          <div class="full">
+            <label>Cuisines (choose any)</label>
+            <div class="radio-group" id="cuisine-pills">
+              ${cuisines.map(c => `<div class="pill${state.foodStyles.includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+            </div>
+          </div>
+          <div>
+            <label>Other cuisine (optional)</label>
+            <input id="foodStyleOther" type="text" placeholder="e.g., ramen, tapas, Ethiopian" value="${esc(state.foodStyleOther)}" />
+          </div>
+          <div>
+            <label>Budget</label>
+            <div class="radio-group segmented" id="budget-pills">
+              ${["$","$$","$$$","$$$$"].map(b => `<div class="pill${b===state.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
+            </div>
+          </div>
+        </div>
+      </article>
+    `;
+    const dOn = $('dinner-on'), dFields = $('dinner-fields');
+    const setDinner = on => {
+      dFields.style.opacity = on ? '' : '.5';
+      dFields.style.pointerEvents = on ? '' : 'none';
+    };
+    dOn.onchange = () => { state.wantDinner = dOn.checked; setDinner(dOn.checked); };
+    setDinner(state.wantDinner);
 
-  $('btn-prev').disabled = false;
-  $('btn-next').textContent = "Generate Schedule";
-}
+    $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
+    $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
+    qsa('#cuisine-pills .pill').forEach(p=>{
+      p.onclick=()=>{ const v = p.dataset.val; const i = state.foodStyles.indexOf(v); if (i>=0) state.foodStyles.splice(i,1); else state.foodStyles.push(v); p.classList.toggle('active'); };
+    });
+    qsa('#budget-pills .pill').forEach(p=>{
+      p.onclick=()=>{ state.budget = p.dataset.val; qsa('#budget-pills .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); };
+    });
+
+    $('btn-prev').disabled = false;
+    $('btn-next').textContent = "Next";
+        
+  } else {
+    w.innerHTML = `
+      <h3 class="step-title">Activities & Interests</h3>
+      <p class="step-help">Pick extras to round out your day.</p>
+
+      <article class="card">
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="int-coffee"    ${state.interests.coffee?'checked':''}><span>Coffee</span></label>
+          <label class="check"><input type="checkbox" id="int-drinks"    ${state.interests.drinks?'checked':''}><span>Drinks &amp; Lounge</span></label>
+          <label class="check"><input type="checkbox" id="int-dessert"   ${state.interests.dessert?'checked':''}><span>Dessert</span></label>
+          <label class="check"><input type="checkbox" id="int-lateNight" ${state.interests.lateNight?'checked':''}><span>Late-Night Eats</span></label>
+          <label class="check"><input type="checkbox" id="int-nightlife" ${state.interests.nightlife?'checked':''}><span>Nightlife &amp; Entertainment</span></label>
+          <label class="check"><input type="checkbox" id="int-shopping"  ${state.interests.shopping?'checked':''}><span>Shopping</span></label>
+          <label class="check"><input type="checkbox" id="int-sights"    ${state.interests.sights?'checked':''}><span>Sights &amp; Landmarks</span></label>
+          <label class="check"><input type="checkbox" id="int-relax"     ${state.interests.relax?'checked':''}><span>Relax &amp; Recover</span></label>
+        </div>
+      </article>
+
+      <article class="card" style="margin-top:12px;">
+        <div class="form-grid two">
+          <div>
+            <label>What time should your itinerary begin?</label>
+            <input id="start-at" type="time" value="${esc(state.startAt||'09:00')}" />
+          </div>
+        </div>
+      </article>
+    `;
+
+    ["coffee","drinks","dessert","lateNight","nightlife","shopping","sights","relax"].forEach(k=>{
+      $('int-'+k)?.addEventListener('change', (e)=>{ state.interests[k] = !!e.target.checked; });
+    });
+    $('start-at')?.addEventListener('change', e=>{ state.startAt = e.target.value || "09:00"; });
+
+    $('btn-prev').disabled = false;
+    $('btn-next').textContent = "Generate Schedule";
   }
+}
 
   /* ==================== Ticketmaster ==================== */
   const TM_KEY = "oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh";

@@ -760,7 +760,9 @@ return `
               background:#f8f9f9;
               color:#121e36;
               font-weight:500;
-              cursor:pointer;">
+              cursor:pointer;
+              position:relative; z-index:3;   /* <-- guarantees taps */
+              -webkit-tap-highlight-color: rgba(0,0,0,0);">
        Click here
     </a>
   </div>
@@ -852,13 +854,26 @@ function dwellByKey(k){ return k==='coffee'?35 : k==='sights'?75 : k==='shopping
 
 async function buildDayItineraryParts({ state, extras, dinnerPick }){
   // Pre-concert order: coffee → shopping → sights → relax  (lunch handled separately)
-  const bucket = categorizeExtras(extras||[]);
+  const bucket   = categorizeExtras(extras || []);
   const preOrder = ['coffee','shopping','sights','relax'];
+
+  // ---- venue filter helpers (exclude venue from daytime chain) ----
+  const venueNameLow = String(state.venue || '').toLowerCase();
+  const venuePid     = String(state.venuePlaceId || '').toLowerCase();
+  function notVenue(p){
+    if (!p) return false;
+    const name = String(p.name || p.title || '').toLowerCase();
+    const pid  = String(p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '').toLowerCase();
+    // exclude if same place_id or very similar name
+    if (venuePid && pid && pid === venuePid) return false;
+    if (venueNameLow && name && (name === venueNameLow || name.includes(venueNameLow) || venueNameLow.includes(name))) return false;
+    return true;
+  }
 
   // Start from hotel if staying; else from venue
   let cur = (state.staying && state.hotelLat!=null && state.hotelLng!=null)
-    ? { lat:state.hotelLat, lng:state.hotelLng, name:state.hotel||'hotel' }
-    : { lat:state.venueLat, lng:state.venueLng, name:state.venue||'venue' };
+    ? { lat: state.hotelLat, lng: state.hotelLng, name: state.hotel || 'hotel' }
+    : { lat: state.venueLat, lng: state.venueLng, name: state.venue || 'venue' };
 
   let clock = dateOnShowWithHM(state.startAt || "09:00");
   const out = [];
@@ -867,19 +882,21 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
   };
 
   for (const key of preOrder){
-    // prefer curated extras; fallback to Places if the bucket is empty
-    let list = bucket[key] || [];
+    // Prefer curated extras; fallback to Places if empty
+    let list = (bucket[key] || []).filter(notVenue);
     if (!list.length) {
-      try { list = await placesFallback(key, 3); } catch {}
+      try { list = (await placesFallback(key, 3)).filter(notVenue); } catch {}
     }
     if (!list.length) continue;
 
-    const pick = pickNearest(cur.lat, cur.lng, list); if (!pick) continue;
+    const pick = pickNearest(cur.lat, cur.lng, list);
+    if (!pick) continue;
 
     const lat = pick.lat ?? pick.geometry?.location?.lat?.();
     const lng = pick.lng ?? pick.geometry?.location?.lng?.();
     const travel = (typeof lat==='number' && typeof lng==='number')
-      ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng)) : 12;
+      ? estimateTravelMin(cur.lat, cur.lng, Number(lat), Number(lng))
+      : 12;
 
     const normPick = normalizePlace(pick);
     pushLeave(clock, cur?.name || 'current stop', pick.name || key, normPick);
@@ -891,28 +908,24 @@ async function buildDayItineraryParts({ state, extras, dinnerPick }){
     cur = { lat:Number(lat)||cur.lat, lng:Number(lng)||cur.lng, name: pick.name||key };
   }
 
-// Optional: head back to hotel 2h before show
-if (state.staying && state.hotelLat!=null && state.hotelLng!=null && state.showDate && state.showTime) {
-  const showStart  = new Date(parseShowDateTimeISO());
-  const bufferMs   = 2 * 60 * 60000; // 2 hours
-  const hotelLeave = new Date(showStart.getTime() - bufferMs);
+  // Optional: head back to hotel 2h before show
+  if (state.staying && state.hotelLat!=null && state.hotelLng!=null && state.showDate && state.showTime) {
+    const showStart  = new Date(parseShowDateTimeISO());
+    const bufferMs   = 2 * 60 * 60000; // 2 hours
+    const hotelLeave = new Date(showStart.getTime() - bufferMs);
 
-  if (clock < hotelLeave) {
-    const mins = estimateTravelMin(cur.lat, cur.lng, state.hotelLat, state.hotelLng);
-
-    // leave current stop at hotelLeave
-    pushLeave(
-      hotelLeave,
-      cur.name || 'current stop',
-      `head back to ${state.hotel} to get ready`,
-      { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng }
-    );
-
-    // advance clock and set current point to hotel
-    clock = new Date(hotelLeave.getTime() + mins*60000);
-    cur   = { lat: state.hotelLat, lng: state.hotelLng, name: state.hotel };
+    if (clock < hotelLeave) {
+      const mins = estimateTravelMin(cur.lat, cur.lng, state.hotelLat, state.hotelLng);
+      pushLeave(
+        hotelLeave,
+        cur.name || 'current stop',
+        `head back to ${state.hotel} to get ready`,
+        { name: state.hotel, lat: state.hotelLat, lng: state.hotelLng }
+      );
+      clock = new Date(hotelLeave.getTime() + mins*60000);
+      cur   = { lat: state.hotelLat, lng: state.hotelLng, name: state.hotel };
+    }
   }
-}
 
   return out;
 }

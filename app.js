@@ -260,6 +260,10 @@ function renderStep(){
 
   const dinnerCuisines = ["American","Italian","Japanese/Sushi","Mexican/Tacos","Steakhouse","Seafood","Mediterranean","Vegan/Vegetarian","Pizza","BBQ"];
 
+  // ensure arrays exist
+  if (!Array.isArray(L.styles)) L.styles = [];
+  if (!Array.isArray(state.foodStyles)) state.foodStyles = [];
+
   w.innerHTML = `
     <h3 class="step-title">Food</h3>
 
@@ -271,11 +275,15 @@ function renderStep(){
       </div>
 
       <div id="l-fields" style="${L.want ? '' : 'opacity:.5;pointer-events:none'}">
+        <!-- Cuisines first -->
         <div class="field" style="margin-bottom:12px;">
-          <label>Target time</label>
-          <input id="l-time" type="time" value="${esc(L.time||'12:30')}" ${L.want?'':'disabled'} />
+          <label>Cuisines (choose any)</label>
+          <div class="radio-group" id="l-cuisines">
+            ${lunchCuisines.map(c => `<div class="pill${(L.styles||[]).includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+          </div>
         </div>
 
+        <!-- Restaurant type -->
         <div class="field" style="margin-bottom:12px;">
           <label>Restaurant type</label>
           <select id="l-style" ${L.want?'':'disabled'}>
@@ -286,17 +294,11 @@ function renderStep(){
           </select>
         </div>
 
-        <div class="field" style="margin-bottom:12px;">
+        <!-- Budget -->
+        <div class="field">
           <label>Budget</label>
           <div class="radio-group segmented" id="l-budget">
             ${["$","$$","$$$"].map(b => `<div class="pill${b===L.budget?" active":""}" data-val="${b}">${b}</div>`).join("")}
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Cuisines (choose any)</label>
-          <div class="radio-group" id="l-cuisines">
-            ${lunchCuisines.map(c => `<div class="pill${(L.styles||[]).includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
           </div>
         </div>
       </div>
@@ -310,6 +312,15 @@ function renderStep(){
       </div>
 
       <div id="dinner-fields" style="${state.wantDinner ? '' : 'opacity:.5;pointer-events:none'}">
+        <!-- Cuisines first -->
+        <div class="field" style="margin-bottom:12px;">
+          <label>Cuisines (choose any)</label>
+          <div class="radio-group" id="cuisine-pills">
+            ${dinnerCuisines.map(c => `<div class="pill${state.foodStyles.includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
+          </div>
+        </div>
+
+        <!-- Restaurant type -->
         <div class="field" style="margin-bottom:12px;">
           <label>Restaurant type</label>
           <select id="placeStyle">
@@ -320,18 +331,7 @@ function renderStep(){
           </select>
         </div>
 
-        <div class="field" style="margin-bottom:12px;">
-          <label>Cuisines (choose any)</label>
-          <div class="radio-group" id="cuisine-pills">
-            ${dinnerCuisines.map(c => `<div class="pill${state.foodStyles.includes(c)?" active":""}" data-val="${c}">${c}</div>`).join("")}
-          </div>
-        </div>
-
-        <div class="field" style="margin-bottom:12px;">
-          <label>Other cuisine (optional)</label>
-          <input id="foodStyleOther" type="text" placeholder="e.g., ramen, tapas, Ethiopian" value="${esc(state.foodStyleOther)}" />
-        </div>
-
+        <!-- Budget -->
         <div class="field">
           <label>Budget</label>
           <div class="radio-group segmented" id="budget-pills">
@@ -345,26 +345,23 @@ function renderStep(){
   // ------ LUNCH wiring ------
   const lToggle = $('l-want');
   const lFields = $('l-fields');
-  const lTime   = $('l-time');
   const lStyle  = $('l-style');
 
   const setLunchEnabled = (on) => {
     lFields.style.opacity = on ? '' : '.5';
     lFields.style.pointerEvents = on ? '' : 'none';
-    if (lTime)  lTime.disabled  = !on;
     if (lStyle) lStyle.disabled = !on;
   };
   lToggle.onchange = () => { L.want = lToggle.checked; setLunchEnabled(L.want); };
   setLunchEnabled(L.want);
 
-  lTime.onchange  = (e)=>{ L.time = e.target.value || "12:30"; };
   lStyle.onchange = (e)=>{ L.placeStyle = e.target.value; };
 
   qsa('#l-cuisines .pill').forEach(p=>{
     p.onclick = () => {
       const v = p.dataset.val;
       const i = (L.styles||[]).indexOf(v);
-      if (i>=0){ L.styles.splice(i,1); } else { (L.styles||(L.styles=[])).push(v); }
+      if (i>=0){ L.styles.splice(i,1); } else { L.styles.push(v); }
       p.classList.toggle('active');
     };
   });
@@ -386,8 +383,7 @@ function renderStep(){
   dToggle.onchange = () => { state.wantDinner = dToggle.checked; setDinner(dToggle.checked); };
   setDinner(state.wantDinner);
 
-  $('placeStyle').onchange    = (e)=> state.placeStyle = e.target.value;
-  $('foodStyleOther').oninput = (e)=> state.foodStyleOther = e.target.value.trim();
+  $('placeStyle').onchange = (e)=> state.placeStyle = e.target.value;
 
   qsa('#cuisine-pills .pill').forEach(p=>{
     p.onclick = () => {
@@ -501,17 +497,26 @@ function renderStep(){
           </div>`;
         }).join("");
 
-        qsa('.suggest-item', list).forEach(item=>{
-          item.querySelector('button')?.addEventListener('click', async (e)=>{
-            e.stopPropagation();
-            try{
-              const ev = JSON.parse(item.dataset.ev || "{}");
-              await applyTicketmasterEvent(ev);
-              list.style.display = "none";
-              step++; renderStep();
-            }catch(err){ console.warn(err); }
-          });
-        });
+// inside bindTmSearch()
+qsa('.suggest-item', list).forEach(item=>{
+  item.querySelector('button')?.addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    try{
+      const ev = JSON.parse(item.dataset.ev || "{}");
+      await applyTicketmasterEvent(ev);
+      list.style.display = "none";
+
+      // Stay on the Concert step (NO step++ / renderStep here)
+      // Make sure hotel is enabled and focus it
+      state.staying = true;
+      const hotelInput = document.getElementById('hotel');
+      if (hotelInput){
+        hotelInput.closest('.card')?.scrollIntoView({ behavior:'smooth', block:'center' });
+        setTimeout(()=> hotelInput.focus({ preventScroll:true }), 180);
+      }
+    }catch(err){ console.warn(err); }
+  });
+});
 
       }catch{
         list.innerHTML = `<div class="suggest-item muted">Error contacting Ticketmaster.</div>`;

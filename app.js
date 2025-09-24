@@ -751,41 +751,45 @@ function venueInfoLinks(primaryUrl){
 }
 
 async function venueInfoCtaHtml(){
+  // Try to get the real venue website
   const website = await getVenueWebsite().catch(()=> '');
+  // Fallback: a Google search for "<venue> website"
   const fallback = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' website')}`;
   const href = website || fallback;
 
+  // Always build an exact Maps link too — this avoids newsletter modals
+  const mapsHref = (()=>{
+    const pid = state.venuePlaceId || '';
+    if (pid) return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(pid)}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(state.venue||'')}`;
+  })();
+
   return `
     <div class="venue-cta"
-         style="
-           margin-top:12px;
-           padding-top:10px;
-           border-top:1px dashed var(--border-muted,#e6e6e6);
-           text-align:center;
-           position: relative;      /* new: own stacking ctx */
-           z-index: 10;             /* new: above any scroll UI */
-           pointer-events: auto;    /* just in case */
-         ">
+         style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted,#e6e6e6);text-align:center;">
       <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span>
-      <a href="${esc(href)}"
-         class="venue-cta-link"
-         target="_blank" rel="noopener"
-         style="
-           display:block;
-           margin:12px auto 0;
-           padding:12px 16px;
-           border:1px solid rgba(0,0,0,.15);
-           border-radius:10px;
-           text-decoration:none;
-           background:#f8f9f9;
-           color:#121e36;
-           font-weight:500;
-           cursor:pointer;
-           -webkit-tap-highlight-color: rgba(0,0,0,0);
-           position: relative; z-index: 11; /* sit on top */
-         ">
-        Click here
-      </a>
+
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px;">
+        <a class="btn venue-cta-link"
+           href="${esc(href)}"
+           target="_blank" rel="noopener noreferrer"
+           data-href="${esc(href)}"
+           style="-webkit-tap-highlight-color: rgba(0,0,0,0);">
+          Venue Website
+        </a>
+
+        <a class="btn"
+           href="${esc(mapsHref)}"
+           target="_blank" rel="noopener noreferrer"
+           data-href="${esc(mapsHref)}"
+           style="-webkit-tap-highlight-color: rgba(0,0,0,0);">
+          Open in Google Maps
+        </a>
+      </div>
+
+      <div style="margin-top:6px;">
+        <button type="button" class="btn btn-ghost venue-cta-copy" data-copy="${esc(href)}">Copy link</button>
+      </div>
     </div>
   `;
 }
@@ -1412,27 +1416,45 @@ el.innerHTML = `
   </article>
 `;
 
-  // Make the CTA bullet-proof on iOS/in-app browsers
-const cta = el.querySelector('.venue-cta-link');
-if (cta){
+  // Make venue CTA open externally without ever replacing our app tab
+const ctaLinks = el.querySelectorAll('.venue-cta a[data-href]');
+ctaLinks.forEach((cta) => {
   cta.addEventListener('click', (e) => {
     e.preventDefault();
-    const href = cta.getAttribute('href') || '';
 
-    // Pre-open a blank tab in the user gesture, then assign URL.
+    const href = cta.getAttribute('data-href') || cta.getAttribute('href') || '';
+    if (!href) return;
+
+    // Pre-open a blank tab during the tap gesture (iOS/FB/IG in-app safe)
     let w = null;
     try { w = window.open('', '_blank', 'noopener'); } catch {}
 
     if (w) {
       try { w.opener = null; } catch {}
+      // Assign URL after the window exists — avoids blocks & preserves our tab
       w.location.href = href;
-      w.focus?.();
+      // optional: w.focus?.();
     } else {
-      // Fallback: same-tab navigation
-      location.href = href;
+      // If the browser blocks popups, *do not* navigate away — offer copy as fallback
+      alert("Your browser blocked opening a new tab. I’ll copy the link for you.");
+      try {
+        navigator.clipboard?.writeText(href);
+      } catch {}
     }
   }, { passive:false });
-}
+});
+
+// Optional: quick “Copy link” helper
+el.querySelector('.venue-cta-copy')?.addEventListener('click', async (e) => {
+  const href = e.currentTarget.getAttribute('data-copy') || '';
+  try {
+    await navigator.clipboard.writeText(href);
+    e.currentTarget.textContent = 'Copied!';
+    setTimeout(() => (e.currentTarget.textContent = 'Copy link'), 1200);
+  } catch {
+    alert('Copy failed — long-press and choose Copy.');
+  }
+});
   
   const stepsEl = el.querySelector('.tour-steps');
 if (stepsEl) {

@@ -17,29 +17,39 @@
   <noscript>This app requires JavaScript to run.</noscript>
 
 <!-- ========== WELCOME (Premium, brand-first) ========== -->
-<section id="screen-welcome" class="screen active" style="position:relative; min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:40px 20px; box-sizing:border-box;">
-  <div style="z-index:2; width:100%;">
-    <h1 style="font-size:2rem; letter-spacing:0.05em; margin-bottom:10px;">CONCERTO+</h1>
-    <p style="font-size:1.1rem; margin-bottom:6px;">Your personal itinerary for your concert night.</p>
-    <p style="font-size:0.95rem; letter-spacing:0.08em; font-variant:all-small-caps; margin-bottom:16px;">Every concert, every venue, every city</p>
-    <p style="max-width:420px; margin:0 auto 28px auto;">Get your own custom timeline for your day in the city and get recommendations that align with your preferences.</p>
+<section id="screen-welcome" class="screen active"
+  style="position:relative; min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:48px 20px; box-sizing:border-box;">
+
+  <!-- Content -->
+  <div style="z-index:2; width:100%; max-width:720px; margin:0 auto;">
+    <h1 class="hc-mark" style="margin-bottom:10px;">CONCERTO+</h1>
+
+    <p class="hc-sub" style="margin:0 0 10px;">
+      Your personal itinerary for your concert night.
+    </p>
+
+    <p style="font-family:'Cormorant Garamond', Georgia, serif; text-transform:uppercase;
+              letter-spacing:.08em; margin:0 0 18px; color:#5E6B86;">
+      Every concert, every venue, every city
+    </p>
+
+    <p style="max-width:540px; margin:0 auto 26px; line-height:1.6;">
+      Get your own custom timeline for your day in the city and get recommendations
+      that align with your preferences.
+    </p>
+
     <button id="btn-start" class="btn btn-cta">GET STARTED</button>
     <button id="btn-resume" class="btn btn-ghost" style="display:none;margin-top:10px;">RESUME PLAN</button>
   </div>
 
-  <!-- Skyline Background -->
-  <div style="position:absolute; bottom:0; left:0; width:100%; height:140px; opacity:0.08; background:#121E36;
-              mask-image: url('data:image/svg+xml;utf8,
-                <svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 1200 200\' preserveAspectRatio=\'none\'>
-                  <path d=\'M0,200 L0,150 L50,140 L90,160 L120,130 L180,150 L250,110 L320,150 L400,100 L480,140 L560,120 L640,160 L720,130 L800,150 L880,110 L960,140 L1040,100 L1120,140 L1200,120 L1200,200 Z\' fill=\'black\'/>
-                </svg>');
-              -webkit-mask-image: url('data:image/svg+xml;utf8,
-                <svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 1200 200\' preserveAspectRatio=\'none\'>
-                  <path d=\'M0,200 L0,150 L50,140 L90,160 L120,130 L180,150 L250,110 L320,150 L400,100 L480,140 L560,120 L640,160 L720,130 L800,150 L880,110 L960,140 L1040,100 L1120,140 L1200,120 L1200,200 Z\' fill=\'black\'/>
-                </svg>');
-              mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat;
-              mask-size:cover; -webkit-mask-size:cover; z-index:1;">
-  </div>
+  <!-- Faint skyline (inline SVG; rock-solid on iOS Safari) -->
+  <svg viewBox="0 0 1200 200" preserveAspectRatio="none"
+       style="position:absolute; left:0; bottom:0; width:100%; height:140px; opacity:.10; fill:#1F2B4A; pointer-events:none; z-index:1;">
+    <path d="M0,200 L0,160 30,150 30,130 60,130 60,150 95,165 120,150 150,152 150,110 190,110 190,150 230,170
+             260,150 300,145 300,105 340,105 340,145 380,165 420,120 460,135 500,110 500,90 540,90 540,135 580,150
+             620,120 660,145 700,130 740,150 780,115 820,140 860,100 900,140 940,120 980,150 1020,110 1060,140
+             1100,125 1140,145 1180,130 1200,140 1200,200 Z"/>
+  </svg>
 </section>
 
   <!-- ========== FORM STEPS ========== -->

@@ -901,3 +901,35 @@ body {
 .btn, .btn-primary, .btn-ghost, .btn-cta {
   font-family: 'Lora', Georgia, serif !important;
 }
+
+/* --- Form breathing room on phones --- */
+@media (max-width: 768px){
+  /* more air inside the white rounded form block */
+  .form-grid{
+    padding: 14px !important;
+    gap: 14px !important;      /* was 12px */
+  }
+
+  /* space between the label (question header) and the control/pills */
+  label{
+    margin: 0 0 8px !important; /* was 4px */
+  }
+
+  /* pill groups (cuisines, budget, etc.) shouldn't kiss the label */
+  .form-grid .radio-group{
+    margin-top: 4px !important;
+  }
+
+  /* toggle question rows need a touch more separation */
+  .qrow{
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+  }
+}
+
+/* Desktop/tablet: a touch more spacing too (keeps consistency) */
+@media (min-width: 769px){
+  .form-grid{ gap: 16px; }          /* was 14–16 across the file */
+  label{ margin-bottom: 10px; }     /* was 8px */
+  .form-grid .radio-group{ margin-top: 6px; }
+}

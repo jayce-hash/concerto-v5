@@ -751,45 +751,27 @@ function venueInfoLinks(primaryUrl){
 }
 
 async function venueInfoCtaHtml(){
-  // Try to get the real venue website
   const website = await getVenueWebsite().catch(()=> '');
-  // Fallback: a Google search for "<venue> website"
+  // fallback: Google search for venue website
   const fallback = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' website')}`;
   const href = website || fallback;
 
-  // Always build an exact Maps link too — this avoids newsletter modals
-  const mapsHref = (()=>{
-    const pid = state.venuePlaceId || '';
-    if (pid) return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(pid)}`;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(state.venue||'')}`;
-  })();
-
   return `
     <div class="venue-cta"
-         style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted,#e6e6e6);text-align:center;">
-      <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span>
-
-      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px;">
-        <a class="btn venue-cta-link"
-           href="${esc(href)}"
-           target="_blank" rel="noopener noreferrer"
-           data-href="${esc(href)}"
-           style="-webkit-tap-highlight-color: rgba(0,0,0,0);">
-          Venue Website
-        </a>
-
-        <a class="btn"
-           href="${esc(mapsHref)}"
-           target="_blank" rel="noopener noreferrer"
-           data-href="${esc(mapsHref)}"
-           style="-webkit-tap-highlight-color: rgba(0,0,0,0);">
-          Open in Google Maps
-        </a>
-      </div>
-
-      <div style="margin-top:6px;">
-        <button type="button" class="btn btn-ghost venue-cta-copy" data-copy="${esc(href)}">Copy link</button>
-      </div>
+         style="margin-top:12px;padding-top:10px;
+                border-top:1px dashed var(--border-muted,#e6e6e6);
+                text-align:center;">
+      <span class="muted" style="font-size:.95rem;">
+        Looking for information about your venue?
+      </span>
+      <a href="${esc(href)}"
+         target="_blank" rel="noopener noreferrer"
+         class="btn"
+         style="display:block; margin:12px auto 0 auto;
+                max-width:400px; width:90%;
+                -webkit-tap-highlight-color: rgba(0,0,0,0);">
+         Click here
+      </a>
     </div>
   `;
 }

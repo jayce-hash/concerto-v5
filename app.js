@@ -128,58 +128,70 @@ function renderStep(){
 
   if (steps[step] === "concert"){
     w.innerHTML = `
-      <h3 class="step-title">Concert Details</h3>
-      <p class="step-help">Choose your event via Ticketmaster or add details manually.</p>
+  <h3 class="step-title">Concert Details</h3>
+  <p class="step-help">Choose your event via Ticketmaster or add details manually.</p>
 
-      <!-- Ticketmaster card -->
-      <article class="card" style="margin-bottom:12px;">
-        <h3 class="step-title" style="margin-bottom:6px;">Find your show on Ticketmaster</h3>
-        <div class="form-grid two">
-          <div class="full">
-            <label>Artist or Venue</label>
-            <input id="tm-q" type="text" placeholder="e.g., Taylor Swift or Madison Square Garden" autocomplete="off"/>
-          </div>
-          <div>
-          <div>
-            <label>City</label>
-            <input id="tm-city" type="text" placeholder="e.g., New York"/>
-          </div>
-          <div>
-          <div>
-            <label>&nbsp;</label>
-            <button id="tm-search" class="btn btn-primary" type="button">Search Ticketmaster</button>
+  <!-- Ticketmaster card -->
+  <article class="card">
+    <h3 class="step-title">Find your show (Ticketmaster)</h3>
+    <div class="vstack gap-16" style="border:1px solid var(--line); border-radius:12px; padding:14px;">
+      <div class="form-grid two">
+
+        <div class="full field">
+          <label>Artist or Venue</label>
+          <input id="tm-q" type="text" placeholder="e.g., Olivia Rodrigo or Madison Square Garden" autocomplete="off"/>
+        </div>
+
+        <div class="field">
+          <label>City (optional)</label>
+          <input id="tm-city" type="text" placeholder="e.g., New York"/>
+        </div>
+
+      </div>
+
+      <div class="field">
+        <button id="tm-search" class="btn btn-primary" type="button">Search Ticketmaster</button>
+      </div>
+
+      <div id="tm-results" class="suggest-list" style="display:none; position:relative;"></div>
+    </div>
+  </article>
+
+  <!-- Manual card -->
+  <article class="card">
+    <h3 class="step-title">Or enter it manually</h3>
+
+    <div class="vstack gap-16" style="border:1px solid var(--line); border-radius:12px; padding:14px;">
+      <div class="form-grid two">
+
+        <div class="field">
+          <label>Artist (optional)</label>
+          <div class="suggest">
+            <input id="artist" type="text" placeholder="e.g., Taylor Swift" value="${esc(state.artist)}" autocomplete="off"/>
+            <div id="artist-list" class="suggest-list" style="display:none;"></div>
           </div>
         </div>
-        <div id="tm-results" class="suggest-list" style="display:none; position:relative; margin-top:12px;"></div>
-      </article>
 
-      <!-- Manual card -->
-      <article class="card">
-        <h3 class="step-title" style="margin-bottom:6px;">Or enter it manually</h3>
-        <div class="form-grid">
-          <div>
-            <label>Artist (optional)</label>
-            <div class="suggest">
-              <input id="artist" type="text" placeholder="e.g., Taylor Swift" value="${esc(state.artist)}" autocomplete="off"/>
-              <div id="artist-list" class="suggest-list" style="display:none;"></div>
-            </div>
-          </div>
-          <div>
-            <label>Venue</label>
-            <input id="venue" type="text" placeholder="Type a venue name" value="${esc(state.venue)}" autocomplete="off"/>
-          </div>
-          <div>
-            <label>Show date</label>
-            <input id="showDate" type="date" value="${esc(state.showDate)}"/>
-          </div>
-          <div>
-            <label>Show start time</label>
-            <input id="showTime" type="time" value="${esc(state.showTime)}"/>
-          </div>
+        <div class="field">
+          <label>Venue</label>
+          <input id="venue" type="text" placeholder="Type a venue name" value="${esc(state.venue)}" autocomplete="off"/>
         </div>
-      </article>
-    `;
 
+        <div class="field">
+          <label>Show date</label>
+          <input id="showDate" type="date" value="${esc(state.showDate)}"/>
+        </div>
+
+        <div class="field">
+          <label>Show start time</label>
+          <input id="showTime" type="time" value="${esc(state.showTime)}"/>
+        </div>
+
+      </div>
+    </div>
+  </article>
+`;
+    
     bindTmSearch();
     bindArtistSuggest();
     bindVenueAutocomplete();

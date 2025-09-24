@@ -16,12 +16,19 @@
 <body>
   <noscript>This app requires JavaScript to run.</noscript>
 
-<!-- ========== WELCOME (Concerto+ with skyline background) ========== -->
-<section id="screen-welcome" class="screen active" 
-         style="background:#f8f9f9; min-height:100vh; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
-  
-  <!-- Background skyline -->
-  <div style="position:absolute; bottom:0; left:0; width:100%; height:40%; opacity:0.08; background:#121E36;
+<!-- ========== WELCOME (Premium, brand-first) ========== -->
+<section id="screen-welcome" class="screen active" style="position:relative; min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:40px 20px; box-sizing:border-box;">
+  <div style="z-index:2; width:100%;">
+    <h1 style="font-size:2rem; letter-spacing:0.05em; margin-bottom:10px;">CONCERTO+</h1>
+    <p style="font-size:1.1rem; margin-bottom:6px;">Your personal itinerary for your concert night.</p>
+    <p style="font-size:0.95rem; letter-spacing:0.08em; font-variant:all-small-caps; margin-bottom:16px;">Every concert, every venue, every city</p>
+    <p style="max-width:420px; margin:0 auto 28px auto;">Get your own custom timeline for your day in the city and get recommendations that align with your preferences.</p>
+    <button id="btn-start" class="btn btn-cta">GET STARTED</button>
+    <button id="btn-resume" class="btn btn-ghost" style="display:none;margin-top:10px;">RESUME PLAN</button>
+  </div>
+
+  <!-- Skyline Background -->
+  <div style="position:absolute; bottom:0; left:0; width:100%; height:140px; opacity:0.08; background:#121E36;
               mask-image: url('data:image/svg+xml;utf8,
                 <svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 1200 200\' preserveAspectRatio=\'none\'>
                   <path d=\'M0,200 L0,150 L50,140 L90,160 L120,130 L180,150 L250,110 L320,150 L400,100 L480,140 L560,120 L640,160 L720,130 L800,150 L880,110 L960,140 L1040,100 L1120,140 L1200,120 L1200,200 Z\' fill=\'black\'/>
@@ -31,30 +38,7 @@
                   <path d=\'M0,200 L0,150 L50,140 L90,160 L120,130 L180,150 L250,110 L320,150 L400,100 L480,140 L560,120 L640,160 L720,130 L800,150 L880,110 L960,140 L1040,100 L1120,140 L1200,120 L1200,200 Z\' fill=\'black\'/>
                 </svg>');
               mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat;
-              mask-size:cover; -webkit-mask-size:cover;">
-  </div>
-
-  <!-- Foreground content -->
-  <div class="container narrow" style="text-align:center; z-index:2; padding:20px;">
-    <h1 class="hc-mark" style="margin-bottom:12px;">CONCERTO+</h1>
-
-    <p class="hc-sub" style="font-size:1.2rem; margin-bottom:8px;">
-      Your personal itinerary for your concert night.
-    </p>
-
-    <p style="text-transform:uppercase; letter-spacing:.08em; margin-bottom:20px; opacity:.85;">
-      Every concert, every venue, every city
-    </p>
-
-    <p style="max-width:600px; margin:0 auto 24px; line-height:1.6; font-size:1rem;">
-      Get your own custom timeline for your day in the city and get recommendations 
-      that align with your preferences.
-    </p>
-
-    <div style="display:flex; flex-direction:column; gap:10px; align-items:center; max-width:320px; margin:0 auto;">
-      <button id="btn-start" class="btn btn-cta" style="width:100%;">Get Started</button>
-      <button id="btn-resume" class="btn btn-ghost" style="display:none; width:100%;">Resume Plan</button>
-    </div>
+              mask-size:cover; -webkit-mask-size:cover; z-index:1;">
   </div>
 </section>
 

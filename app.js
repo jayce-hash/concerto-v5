@@ -508,7 +508,7 @@ function renderStep(){
               const ev = JSON.parse(item.dataset.ev || "{}");
               await applyTicketmasterEvent(ev);
               list.style.display = "none";
-              step = 1; renderStep();
+              step++; renderStep();
             }catch(err){ console.warn(err); }
           });
         });

@@ -1586,22 +1586,41 @@ function normalizePlace(p){
     }));
   }
 
-  // NEW: builds rails per selected interest (broad matching + fallback)
+  // --- Build & render all rails in fixed order ---
 async function renderRails({
   before,
   after,
   extras,
   dinnerByCuisine = {},
   selectedCuisines = [],
-  lunchList = []        // ← add this param
+  lunchList = []
 }) {
-  // ---- LUNCH rail FIRST (single rail) ----
+  // ---- LUNCH (always first if enabled) ----
   if (Array.isArray(lunchList) && lunchList.length) {
     fillRail('row-lunch', lunchList.slice(0, 10), 'Lunch near the venue');
   } else {
     hideRail('row-lunch');
   }
 
+  // ---- DINNER (always right after lunch) ----
+  document.querySelectorAll('[id^="row-dinner-"]').forEach(el => el.closest('.rail')?.remove());
+  if (state.wantDinner) {
+    if (Array.isArray(selectedCuisines) && selectedCuisines.length > 1) {
+      hideRail('row-dinner');
+      selectedCuisines.forEach(c => {
+        const id = `row-dinner-${slug(c)}`;
+        const picks = pickRange(dinnerByCuisine[c] || [], 5, 10, after);
+        if (picks.length) fillRail(id, picks, `Dinner near the venue — ${c}`);
+      });
+    } else {
+      const dinnerRow = pickRange(before, 5, 10, after);
+      fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
+    }
+  } else {
+    hideRail('row-dinner');
+  }
+
+  // ---- BUCKET EXTRAS ----
   const haystack = (x) => {
     const bits = [];
     if (x.section)   bits.push(String(x.section));
@@ -1612,91 +1631,61 @@ async function renderRails({
     return bits.join(' ').toLowerCase();
   };
 
-    const bucket = {
-      dessert:   [],
-      drinks:    [],
-      coffee:    [],
-      lateNight: [],
-      nightlife: [],
-      shopping:  [],
-      sights:    [],
-      relax:     []
-    };
+  const bucket = { dessert:[], drinks:[], coffee:[], lateNight:[], nightlife:[], shopping:[], sights:[], relax:[] };
+  const rx = {
+    dessert:   /(dessert|sweet|ice.?cream|gelato|bak(?:e|ery)|pastry|donut|cake|choco|cookie|creamery)/i,
+    drinks:    /(drink|bar|pub|lounge|wine|cocktail|taproom|speakeasy|gastropub|brewery)/i,
+    coffee:    /(coffee|café|cafe|espresso|roastery|tea\s?house)/i,
+    lateNight: /(late.?night|after.?hours|24.?\/?7|diner|fast.?food|pizza|taco|noodle|ramen|burger|shawarma|kebab|wings?)/i,
+    nightlife: /(nightlife|night.?club|club|karaoke|live\s?music|music\s?venue|entertainment|dj|dance|comedy\s?club)/i,
+    shopping:  /(shop|shopping|boutique|record\s?store|vintage|market|mall|store|department|thrift|book\s?store|gift\s?shop)/i,
+    sights:    /(sight|landmark|viewpoint|overlook|park|museum|gallery|statue|monument|bridge|plaza|observatory|tourist)/i,
+    relax:     /(relax|spa|recover|wellness|tea\s?house|onsen|soak|bathhouse|massage|sauna|yoga|float)/i
+  };
 
-    const rx = {
-      dessert:   /(dessert|sweet|ice.?cream|gelato|bak(?:e|ery)|pastry|donut|cake|choco|cookie|creamery)/i,
-      drinks:    /(drink|bar|pub|lounge|wine|cocktail|taproom|speakeasy|gastropub|brewery)/i,
-      coffee:    /(coffee|café|cafe|espresso|roastery|tea\s?house)/i,
-      lateNight: /(late.?night|after.?hours|24.?\/?7|diner|fast.?food|pizza|taco|noodle|ramen|burger|shawarma|kebab|wings?)/i,
-      nightlife: /(nightlife|night.?club|club|karaoke|live\s?music|music\s?venue|entertainment|dj|dance|comedy\s?club)/i,
-      shopping:  /(shop|shopping|boutique|record\s?store|vintage|market|mall|store|department|thrift|book\s?store|gift\s?shop)/i,
-      sights:    /(sight|landmark|viewpoint|overlook|park|museum|gallery|statue|monument|bridge|plaza|observatory|tourist)/i,
-      relax:     /(relax|spa|recover|wellness|tea\s?house|onsen|soak|bathhouse|massage|sauna|yoga|float)/i
-    };
+  (extras || []).forEach(x => {
+    const h = haystack(x);
+    if (rx.dessert.test(h))        bucket.dessert.push(x);
+    else if (rx.drinks.test(h))    bucket.drinks.push(x);
+    else if (rx.coffee.test(h))    bucket.coffee.push(x);
+    else if (rx.lateNight.test(h)) bucket.lateNight.push(x);
+    else if (rx.nightlife.test(h)) bucket.nightlife.push(x);
+    else if (rx.shopping.test(h))  bucket.shopping.push(x);
+    else if (rx.sights.test(h))    bucket.sights.push(x);
+    else if (rx.relax.test(h))     bucket.relax.push(x);
+  });
 
-    (extras || []).forEach(x => {
-      const h = haystack(x);
-      if (rx.dessert.test(h))        bucket.dessert.push(x);
-      else if (rx.drinks.test(h))    bucket.drinks.push(x);
-      else if (rx.coffee.test(h))    bucket.coffee.push(x);
-      else if (rx.lateNight.test(h)) bucket.lateNight.push(x);
-      else if (rx.nightlife.test(h)) bucket.nightlife.push(x);
-      else if (rx.shopping.test(h))  bucket.shopping.push(x);
-      else if (rx.sights.test(h))    bucket.sights.push(x);
-      else if (rx.relax.test(h))     bucket.relax.push(x);
-    });
+  // ---- CLEAR & RENDER IN FIXED ORDER ----
+  const preShowPlan = [
+    ['coffee',   'row-coffee',   'Coffee & Cafés'],
+    ['shopping', 'row-shopping', 'Shopping'],
+    ['sights',   'row-sights',   'Sights & Landmarks'],
+    ['relax',    'row-relax',    'Relax & Recover']
+  ];
+  const postShowPlan = [
+    ['dessert',   'row-dessert',   'Dessert'],
+    ['drinks',    'row-drinks',    'Drinks & Lounges'],
+    ['lateNight', 'row-late',      'Late-Night Eats'],
+    ['nightlife', 'row-nightlife', 'Nightlife & Entertainment']
+  ];
 
-    // Clear any previously-added multi dinner rails
-document.querySelectorAll('[id^="row-dinner-"]').forEach(el => el.closest('.rail')?.remove());
-
-if (Array.isArray(selectedCuisines) && selectedCuisines.length > 1) {
-  // Multiple cuisines: hide the legacy single rail and render one per cuisine
-  hideRail('row-dinner');
-  [...selectedCuisines].reverse().forEach((c) => {
-  const id = `row-dinner-${slug(c)}`;
-  const picks = pickRange(dinnerByCuisine[c] || [], 5, 10, after);
-  if (picks.length) fillRail(id, picks, `Dinner near the venue — ${c}`);
-});
-} else {
-  // Original single dinner rail
-  const dinnerRow = pickRange(before, 5, 10, after);
-  fillRail('row-dinner', dinnerRow, 'Dinner near the venue');
-}
-  // If dinner toggle is off, hide dinner rails entirely
-if (!state.wantDinner) {
-  hideRail('row-dinner');
-  document.querySelectorAll('[id^="row-dinner-"]').forEach(el => el.closest('.rail')?.remove());
-}
-
-    const allRails = ['row-dessert','row-drinks','row-sights','row-coffee','row-nightlife','row-shopping','row-late','row-relax'];
-    allRails.forEach(hideRail);
-
-    const plan = [
-      ['coffee',    'row-coffee',    'Coffee & Cafés'],
-      ['drinks',    'row-drinks',    'Drinks & Lounges'],
-      ['dessert',   'row-dessert',   'Dessert'],
-      ['lateNight', 'row-late',      'Late-Night Eats'],
-      ['nightlife', 'row-nightlife', 'Nightlife & Entertainment'],
-      ['shopping',  'row-shopping',  'Shopping'],
-      ['sights',    'row-sights',    'Sights & Landmarks'],
-      ['relax',     'row-relax',     'Relax & Recover']
-    ];
-
-    for (const [key, id, title] of plan){
+  const renderPlan = async (plan) => {
+    for (const [key, id, title] of plan) {
       if (!state.interests[key]) { hideRail(id); continue; }
-
       let picks = pickRange(bucket[key], 5, 10);
-
       if (!picks.length) {
         try {
           const fb = await placesFallback(key, 10);
           picks = pickRange(fb, 5, 10);
         } catch {}
       }
-
       showRail(id);
       fillRail(id, picks, title);
     }
+  };
+
+  await renderPlan(preShowPlan);
+  await renderPlan(postShowPlan);
 }
 
   /* ==================== Custom picks (helpers kept) ==================== */

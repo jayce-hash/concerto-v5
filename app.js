@@ -135,31 +135,29 @@ function renderStep(){
 <article class="card" style="padding:16px;">
   <h3 class="step-title" style="margin-bottom:12px;">Find your show (Ticketmaster)</h3>
 
-  <div class="form-grid two" style="gap:12px; margin-bottom:12px;">
+  <div class="form-grid two plain">
     <div class="full field">
       <label>Artist or Venue</label>
       <input id="tm-q" type="text" placeholder="e.g., Olivia Rodrigo or Madison Square Garden" autocomplete="off"/>
     </div>
-
     <div class="field">
       <label>City (optional)</label>
       <input id="tm-city" type="text" placeholder="e.g., New York"/>
     </div>
   </div>
 
-  <div class="field" style="margin-bottom:12px;">
+  <div class="field">
     <button id="tm-search" class="btn btn-primary" type="button">Search Ticketmaster</button>
   </div>
 
   <div id="tm-results" class="suggest-list" style="display:none; position:relative;"></div>
 </article>
 
-
 <!-- Manual card -->
 <article class="card" style="padding:16px;">
   <h3 class="step-title" style="margin-bottom:12px;">Or enter it manually</h3>
 
-  <div class="form-grid two" style="gap:12px;">
+  <div class="form-grid two plain">
     <div class="field">
       <label>Artist (optional)</label>
       <div class="suggest">

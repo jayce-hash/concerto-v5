@@ -933,3 +933,21 @@ body {
   label{ margin-bottom: 10px; }     /* was 8px */
   .form-grid .radio-group{ margin-top: 6px; }
 }
+
+/* --- Equal vertical rhythm inside cards --- */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;                /* equal spacing between every child */
+}
+
+/* reset inner margins so gap does all the spacing */
+.card > h3,
+.card > p,
+.card > label,
+.card > .form-grid,
+.card > button,
+.card > .btn,
+.card > .qrow {
+  margin: 0 !important;
+}

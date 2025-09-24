@@ -24,7 +24,7 @@ import { shareLinkOrCopy, toICS } from './export-tools.js';
   };
 
   let step = 0;
-  const steps = ["concert","travel","stay","lunch","dinner","activities"];
+  const steps = ["concert","stay","lunch","dinner","activities"];
 
 const state = window.__concertoState = {
   artist: "", venue: "", venuePlaceId: "", venueLat: null, venueLng: null,
@@ -59,12 +59,6 @@ const state = window.__concertoState = {
 
   /* New: dinner toggle */
   wantDinner: true,
-
-  /* Travel */
-  travel: {
-    inbound:  { enabled:false, airport:"", arrDate:"", arrTime:"" },
-    outbound: { airport:"", depDate:"", depTime:"", taking:false }
-  },
 };
 
   /* ==================== Nav ==================== */
@@ -193,50 +187,6 @@ function renderStep(){
     $('showDate').onchange = (e)=> state.showDate = e.target.value;
 
     $('btn-prev').disabled = true;
-    $('btn-next').textContent = "Next";
-
-  } else if (steps[step] === "travel"){
-    w.innerHTML = `
-      <h3 class="step-title">Travel</h3>
-      <p class="step-help">Add your inbound flight and we’ll plan around it.</p>
-
-      <article class="card" style="margin-bottom:12px;">
-        <div class="qrow">
-          <label class="switch"><input id="inb-enabled" type="checkbox" ${state.travel?.inbound?.enabled ? 'checked' : ''}/></label>
-          <h3 class="qtitle">Flying in the day of the show?</h3>
-          <p class="qhelp">We’ll time coffee, lunch, and arrival.</p>
-        </div>
-
-        <div class="form-grid two" id="inb-fields" style="${state.travel?.inbound?.enabled ? '' : 'opacity:.5;pointer-events:none'}">
-          <div>
-            <label>Arrival Airport</label>
-            <input id="inb-airport" type="text" placeholder="e.g., LGA" value="${esc(state.travel?.inbound?.airport || '')}">
-          </div>
-          <div>
-            <label>Arrival Date</label>
-            <input id="inb-date" type="date" value="${esc(state.travel?.inbound?.arrDate || state.showDate || '')}">
-          </div>
-          <div>
-            <label>Arrival Time</label>
-            <input id="inb-time" type="time" value="${esc(state.travel?.inbound?.arrTime || '')}">
-          </div>
-        </div>
-      </article>
-    `;
-
-    // Bind
-    const enableInb = $('inb-enabled');
-    const inbFields  = $('inb-fields');
-    enableInb.onchange = () => {
-      state.travel.inbound.enabled = enableInb.checked;
-      inbFields.style.opacity = enableInb.checked ? '' : '.5';
-      inbFields.style.pointerEvents = enableInb.checked ? '' : 'none';
-    };
-    $('inb-airport').oninput = e => state.travel.inbound.airport = e.target.value.trim();
-    $('inb-date').onchange = e => state.travel.inbound.arrDate = e.target.value;
-    $('inb-time').onchange = e => state.travel.inbound.arrTime = e.target.value;
-
-    $('btn-prev').disabled = false;
     $('btn-next').textContent = "Next";
 
   } else if (steps[step] === "stay"){
@@ -1242,16 +1192,6 @@ async function renderTourCard(city, items, dinnerPick, extras){
     stepsRaw.push({ ts:+ts, verb, dest: destText, mapUrl, suffix });
   };
   const tz = state.showTz || '';
-
-  // 1) Flight IN (only if enabled and fully specified)
-  if (state.travel?.inbound?.enabled &&
-      state.travel?.inbound?.airport &&
-      state.travel?.inbound?.arrDate &&
-      state.travel?.inbound?.arrTime) {
-    const land = new Date(`${state.travel.inbound.arrDate}T${state.travel.inbound.arrTime}`);
-    const airportPayload = { name: state.travel.inbound.airport };
-    pushAct(land, 'land at', state.travel.inbound.airport, airportPayload);
-  }
 
   // 2) Daytime chain (coffee/sights/shopping/relax)
   const day = await buildDayItineraryParts({ state, extras, dinnerPick }); // [{ts, label:"Leave A for B"}, ...]

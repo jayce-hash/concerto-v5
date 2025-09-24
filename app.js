@@ -751,10 +751,37 @@ function venueInfoLinks(primaryUrl){
 }
 
 async function venueInfoCtaHtml(){
-  const website = await getVenueWebsite().catch(()=> '');
-  // fallback: Google search for venue website
-  const fallback = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' website')}`;
-  const href = website || fallback;
+  let href = "";
+
+  try {
+    const pid = state.venuePlaceId || '';
+    if (pid && mapsReady()) {
+      const svc = new google.maps.places.PlacesService(document.createElement('div'));
+      const det = await new Promise((resolve) => {
+        svc.getDetails({ placeId: pid, fields: ['website'] }, (d, s) => {
+          resolve(s === google.maps.places.PlacesServiceStatus.OK ? d : null);
+        });
+      });
+
+      if (det?.website) {
+        // Try to point users to a "visit / plan your visit" page if the venue has one
+        if (/msg\.com/i.test(det.website)) {
+          href = "https://www.msg.com/plan-your-visit/visit-madison-square-garden";
+        } else if (/sphere\.at/i.test(det.website)) {
+          href = "https://www.thespherevegas.com/plan-your-visit"; // Sphere example
+        } else if (/kiaforum\.com/i.test(det.website)) {
+          href = "https://www.kiaforum.com/plan-your-visit";
+        } else {
+          href = det.website;
+        }
+      }
+    }
+  } catch {}
+
+  // Fallback if no clean URL was found
+  if (!href) {
+    href = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' plan your visit')}`;
+  }
 
   return `
     <div class="venue-cta"
@@ -768,8 +795,7 @@ async function venueInfoCtaHtml(){
          target="_blank" rel="noopener noreferrer"
          class="btn"
          style="display:block; margin:12px auto 0 auto;
-                max-width:400px; width:90%;
-                -webkit-tap-highlight-color: rgba(0,0,0,0);">
+                max-width:400px; width:90%;">
          Click here
       </a>
     </div>

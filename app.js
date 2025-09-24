@@ -253,7 +253,6 @@ function renderStep(){
 
   $('btn-prev').disabled = true;
   $('btn-next').textContent = "Next";
-}
   
   } else if (steps[step] === "food") {
   const lunchCuisines = ["Sandwiches","Burgers","Pizza","Mexican/Tacos","Mediterranean","Japanese/Sushi","Salads","Soup","BBQ","Cafe"];

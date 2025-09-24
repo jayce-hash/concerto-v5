@@ -951,3 +951,16 @@ body {
 .card > .qrow {
   margin: 0 !important;
 }
+
+/* vertical stacks with consistent gaps */
+.vstack { display:flex; flex-direction:column; }
+.gap-8  { gap:8px; }
+.gap-12 { gap:12px; }
+.gap-14 { gap:14px; }
+.gap-16 { gap:16px; }
+
+/* a single form field: label + control stacked evenly */
+.field { display:flex; flex-direction:column; gap:10px; }
+
+/* disable auto margins so our gaps control spacing */
+.card > * { margin:0 !important; }

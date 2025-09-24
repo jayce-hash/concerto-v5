@@ -849,3 +849,55 @@ input[type="date"], input[type="time"]{
     scrollbar-width: thin;
   }
 }
+
+/* === Concerto+ Final Font & Color Cleanup === */
+
+/* Major headers (Cormorant Garamond, all caps) */
+.step-title,
+.rail-title,
+.qtitle,
+#results-context {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 500;
+  color: #121E36; /* navy */
+}
+
+/* Body text, labels, inputs, pills, itinerary details */
+body,
+p,
+label,
+input,
+select,
+.pill,
+.t-label,
+.step-help,
+.tiny,
+.results-header .muted,
+.venue-cta a {
+  font-family: 'Lora', Georgia, serif !important;
+  color: #121E36;
+}
+
+/* Muted stays softer */
+.muted {
+  color: var(--muted) !important;
+}
+
+/* Backgrounds use soft white */
+body {
+  background: #F8F9F9;
+}
+
+.card,
+.form-grid,
+.place-card,
+.tour-card {
+  background: #FFFFFF; /* keep cards pure white for contrast */
+}
+
+/* Buttons unify font */
+.btn, .btn-primary, .btn-ghost, .btn-cta {
+  font-family: 'Lora', Georgia, serif !important;
+}

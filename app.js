@@ -1411,6 +1411,28 @@ el.innerHTML = `
     ${await venueInfoCtaHtml()}
   </article>
 `;
+
+  // Make the CTA bullet-proof on iOS/in-app browsers
+const cta = el.querySelector('.venue-cta-link');
+if (cta){
+  cta.addEventListener('click', (e) => {
+    e.preventDefault();
+    const href = cta.getAttribute('href') || '';
+
+    // Pre-open a blank tab in the user gesture, then assign URL.
+    let w = null;
+    try { w = window.open('', '_blank', 'noopener'); } catch {}
+
+    if (w) {
+      try { w.opener = null; } catch {}
+      w.location.href = href;
+      w.focus?.();
+    } else {
+      // Fallback: same-tab navigation
+      location.href = href;
+    }
+  }, { passive:false });
+}
   
   const stepsEl = el.querySelector('.tour-steps');
 if (stepsEl) {

@@ -751,51 +751,19 @@ function venueInfoLinks(primaryUrl){
 }
 
 async function venueInfoCtaHtml(){
-  let href = "";
-
-  try {
-    const pid = state.venuePlaceId || '';
-    if (pid && mapsReady()) {
-      const svc = new google.maps.places.PlacesService(document.createElement('div'));
-      const det = await new Promise((resolve) => {
-        svc.getDetails({ placeId: pid, fields: ['website'] }, (d, s) => {
-          resolve(s === google.maps.places.PlacesServiceStatus.OK ? d : null);
-        });
-      });
-
-      if (det?.website) {
-        // Try to point users to a "visit / plan your visit" page if the venue has one
-        if (/msg\.com/i.test(det.website)) {
-          href = "https://www.msg.com/plan-your-visit/visit-madison-square-garden";
-        } else if (/sphere\.at/i.test(det.website)) {
-          href = "https://www.thespherevegas.com/plan-your-visit"; // Sphere example
-        } else if (/kiaforum\.com/i.test(det.website)) {
-          href = "https://www.kiaforum.com/plan-your-visit";
-        } else {
-          href = det.website;
-        }
-      }
-    }
-  } catch {}
-
-  // Fallback if no clean URL was found
-  if (!href) {
-    href = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' plan your visit')}`;
-  }
+  // Try to get the real venue website
+  const website = await getVenueWebsite().catch(()=> '');
+  // Fallback: a Google search for "<venue> website"
+  const fallback = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' website')}`;
+  const href = website || fallback;
 
   return `
-    <div class="venue-cta"
-         style="margin-top:12px;padding-top:10px;
-                border-top:1px dashed var(--border-muted,#e6e6e6);
-                text-align:center;">
-      <span class="muted" style="font-size:.95rem;">
-        Looking for information about your venue?
-      </span>
+    <div class="venue-cta" style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--border-muted,#e6e6e6); text-align:center;">
+      <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span>
       <a href="${esc(href)}"
-         target="_blank" rel="noopener noreferrer"
          class="btn"
-         style="display:block; margin:12px auto 0 auto;
-                max-width:400px; width:90%;">
+         target="_blank" rel="noopener noreferrer"
+         style="margin-top:12px; display:inline-block; max-width:400px; width:90%;">
          Click here
       </a>
     </div>

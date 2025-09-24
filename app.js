@@ -752,27 +752,28 @@ async function venueInfoCtaHtml(){
   const fallback = `https://www.google.com/search?q=${encodeURIComponent((state.venue||'')+' website')}`;
   const href = website || fallback;
 
-return `
-  <div class="venue-cta"
-       style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted,#e6e6e6);text-align:center;">
-    <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span>
-    <a href="${esc(href)}"
-       target="_blank" rel="noopener noreferrer"
-       style="display:block;margin:12px auto 0 auto;
-              padding:12px 16px;
-              border:1px solid rgba(0,0,0,.15);
-              border-radius:10px;
-              text-decoration:none;
-              background:#f8f9f9;
-              color:#121e36;
-              font-weight:500;
-              cursor:pointer;
-              position:relative; z-index:3;   /* <-- guarantees taps */
-              -webkit-tap-highlight-color: rgba(0,0,0,0);">
-       Click here
-    </a>
-  </div>
-`;
+  return `
+    <div class="venue-cta"
+         style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-muted,#e6e6e6);text-align:center;">
+      <span class="muted" style="font-size:.95rem;">Looking for information about your venue?</span>
+      <div style="position:relative; z-index:10;">
+        <a href="${esc(href)}"
+           target="_blank" rel="noopener noreferrer"
+           style="display:block;margin:12px auto 0 auto;
+                  padding:12px 16px;
+                  border:1px solid rgba(0,0,0,.15);
+                  border-radius:10px;
+                  text-decoration:none;
+                  background:#f8f9f9;
+                  color:#121e36;
+                  font-weight:500;
+                  cursor:pointer;
+                  -webkit-tap-highlight-color: rgba(0,0,0,0);">
+           Click here
+        </a>
+      </div>
+    </div>
+  `;
 }
   
 /* Render a single-wide card rail at the bottom */

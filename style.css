@@ -964,3 +964,18 @@ body {
 
 /* disable auto margins so our gaps control spacing */
 .card > * { margin:0 !important; }
+
+/* flatten inner grids inside cards */
+.form-grid.plain{
+  background:transparent !important;
+  border:none !important;
+  border-radius:0 !important;
+  padding:0 !important;
+}
+
+/* even rhythm inside cards */
+.card .field{ margin-bottom:12px; }
+.card .field:last-child{ margin-bottom:0; }
+
+/* optional: ensure consistent gaps in 2-col grids */
+.form-grid.plain.two{ row-gap:12px; column-gap:12px; }

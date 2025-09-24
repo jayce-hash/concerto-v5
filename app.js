@@ -194,35 +194,44 @@ function renderStep(){
     $('btn-next').textContent = "Next";
 
   } else if (steps[step] === "stay"){
-    w.innerHTML = `
-      <h3 class="step-title">Accommodation</h3>
-      <p class="step-help">Let us plan around your hotel.</p>
+  w.innerHTML = `
+    <h3 class="step-title">Accommodation</h3>
 
-      <article class="card">
-        <div class="qrow">
-          <label class="switch"><input id="staying" type="checkbox" ${state.staying?'checked':''}/></label>
-          <h3 class="qtitle">Staying at a hotel?</h3>
-          <p class="qhelp">We’ll start from there and route back after.</p>
-        </div>
+    <article class="card">
+      <!-- Header row with left toggle -->
+      <div class="qrow" style="margin-bottom:12px;">
+        <label class="switch"><input id="staying" type="checkbox" ${state.staying?'checked':''}/></label>
+        <h3 class="step-title" style="margin:0;">Staying at a hotel?</h3>
+      </div>
 
-        <div class="form-grid two" id="hotel-fields" style="${state.staying ? '' : 'opacity:.5;pointer-events:none'}">
-          <div class="full">
-            <label>Hotel</label>
-            <input id="hotel" type="text" placeholder="Name or address" value="${esc(state.hotel)}"/>
-          </div>
-        </div>
-      </article>
-    `;
-    const cb = $('staying'), fields = $('hotel-fields');
-    cb.onchange = () => {
-      state.staying = cb.checked;
-      fields.style.opacity = cb.checked ? '' : '.5';
-      fields.style.pointerEvents = cb.checked ? '' : 'none';
-    };
-    bindHotelAutocomplete();
+      <!-- Single input pill (no label, no inner container) -->
+      <div id="hotel-fields">
+        <input id="hotel" type="text" placeholder="Name or address" value="${esc(state.hotel)}"/>
+      </div>
+    </article>
+  `;
 
-    $('btn-prev').disabled = false;
-    $('btn-next').textContent = "Next";
+  // toggle → enable/disable the input + dim the section
+  const cb = $('staying');
+  const fields = $('hotel-fields');
+  const input = $('hotel');
+
+  const setHotelEnabled = (on) => {
+    fields.style.opacity = on ? '' : '.5';
+    fields.style.pointerEvents = on ? '' : 'none';
+    input.disabled = !on;
+  };
+
+  setHotelEnabled(!!state.staying);
+  cb.onchange = () => {
+    state.staying = cb.checked;
+    setHotelEnabled(cb.checked);
+  };
+
+  bindHotelAutocomplete();
+
+  $('btn-prev').disabled = false;
+  $('btn-next').textContent = "Next";
 
   } else if (steps[step] === "lunch"){
     const lunchCuisines = ["Sandwiches","Burgers","Pizza","Mexican/Tacos","Mediterranean","Japanese/Sushi","Salads","Soup","BBQ","Cafe"];

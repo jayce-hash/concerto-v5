@@ -16,21 +16,34 @@
 <body>
   <noscript>This app requires JavaScript to run.</noscript>
 
-<!-- ========== WELCOME (Premium, brand-first) ========== -->
-<section id="screen-welcome" class="screen active" 
-         style="display:flex; align-items:center; justify-content:center; min-height:100vh; text-align:center;">
-  <div class="container narrow">
-    <div class="hero-classic" style="margin:0;">
-      <h1 class="hc-mark" style="margin-bottom:16px;">CONCERTO+</h1>
-      <p class="hc-sub" style="margin:0 0 8px; font-size:1.1rem;">Plan your perfect concert night.</p>
-      <p class="hc-sub" style="margin:0 0 16px; font-size:0.95rem; letter-spacing:0.05em; text-transform:uppercase;">
-        Every Concert · Every Venue · Every City
-      </p>
-      <p class="hc-sub" style="margin:0 auto 24px; max-width:420px;">
-        Build a custom timeline for your day in the city, with curated dinner, drinks, and extras that fit your preferences.
-      </p>
-      <button id="btn-start" class="btn btn-cta">Get Started</button>
-      <button id="btn-resume" class="btn btn-ghost" style="display:none;margin-top:10px;">Resume Plan</button>
+<!-- ========== WELCOME (centered, HTML-only overrides) ========== -->
+<section id="screen-welcome" class="screen active" style="padding:0;">
+  <!-- Full-viewport flex wrapper -->
+  <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center;">
+    <!-- Remove container’s vertical padding so centering is exact -->
+    <div class="container narrow" style="padding:0;">
+      <!-- Kill the 86vh from .hero-classic and any extra margins -->
+      <div class="hero-classic" style="min-height:auto; margin:0; padding:0 16px;">
+        <h1 class="hc-mark" style="margin:0 0 12px;">CONCERTO+</h1>
+
+        <p class="hc-sub" style="margin:0 0 10px; font-size:1.05rem;">
+          Plan your perfect concert night.
+        </p>
+
+        <!-- Force one line -->
+        <p class="hc-sub"
+           style="margin:0 0 16px; font-size:.9rem; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;">
+          Every Concert · Every Venue · Every City
+        </p>
+
+        <p class="hc-sub" style="margin:0 auto 22px; max-width:420px;">
+          Build a custom timeline for your day in the city, with curated dinner, drinks, and extras that fit your preferences.
+        </p>
+
+        <!-- Same style as the rest of your buttons -->
+        <button id="btn-start" class="btn btn-cta">Get Started</button>
+        <button id="btn-resume" class="btn btn-ghost" style="display:none; margin-top:10px;">Resume Plan</button>
+      </div>
     </div>
   </div>
 </section>

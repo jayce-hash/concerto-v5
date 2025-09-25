@@ -16,39 +16,22 @@
 <body>
   <noscript>This app requires JavaScript to run.</noscript>
 
-<!-- ========== WELCOME (Centered Clean Hero) ========== -->
-<section id="screen-welcome" class="screen active"
-  style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:0 20px; box-sizing:border-box; text-align:center;">
-
-  <div style="max-width:680px; margin:0 auto; display:flex; flex-direction:column; gap:18px; align-items:center;">
-
-    <!-- Brand -->
-    <h1 class="hc-mark" style="margin:0;">CONCERTO+</h1>
-
-    <!-- Main tagline -->
-    <p class="hc-sub" style="margin:0;">
-      Plan your perfect concert night.
-    </p>
-
-    <!-- Secondary line -->
-    <p style="font-family:'Cormorant Garamond', Georgia, serif;
-              text-transform:uppercase; letter-spacing:.07em;
-              font-size:0.92rem; margin:0; color:#5E6B86;">
-      Every concert • Every venue • Every city
-    </p>
-
-    <!-- Supporting text -->
-    <p style="margin:6px 0 0; line-height:1.6;">
-      Build a custom timeline for your day in the city, with curated
-      dinner, drinks, and extras that fit your preferences.
-    </p>
-
-    <!-- Actions -->
-    <div style="margin-top:24px; display:flex; flex-direction:column; gap:12px; align-items:center;">
-      <button id="btn-start" class="btn btn-primary" style="min-width:200px;">Get Started</button>
-      <button id="btn-resume" class="btn btn-ghost" style="display:none; min-width:200px;">Resume Plan</button>
+<!-- ========== WELCOME (Premium, brand-first) ========== -->
+<section id="screen-welcome" class="screen active" 
+         style="display:flex; align-items:center; justify-content:center; min-height:100vh; text-align:center;">
+  <div class="container narrow">
+    <div class="hero-classic" style="margin:0;">
+      <h1 class="hc-mark" style="margin-bottom:16px;">CONCERTO+</h1>
+      <p class="hc-sub" style="margin:0 0 8px; font-size:1.1rem;">Plan your perfect concert night.</p>
+      <p class="hc-sub" style="margin:0 0 16px; font-size:0.95rem; letter-spacing:0.05em; text-transform:uppercase;">
+        Every Concert · Every Venue · Every City
+      </p>
+      <p class="hc-sub" style="margin:0 auto 24px; max-width:420px;">
+        Build a custom timeline for your day in the city, with curated dinner, drinks, and extras that fit your preferences.
+      </p>
+      <button id="btn-start" class="btn btn-cta">Get Started</button>
+      <button id="btn-resume" class="btn btn-ghost" style="display:none;margin-top:10px;">Resume Plan</button>
     </div>
-
   </div>
 </section>
   

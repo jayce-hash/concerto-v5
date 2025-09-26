@@ -146,7 +146,7 @@ function renderStep(){
   if (steps[step] === "concert"){
   w.innerHTML = `
     <h3 class="step-title">Concert & Accommodation</h3>
-    <p class="step-help">Find your show, add details if needed, then (optionally) add your hotel.</p>
+    <p class="step-help">Find your show and add your hotel.</p>
 
     <!-- Ticketmaster card -->
     <article class="card" style="padding:16px;">
@@ -155,11 +155,11 @@ function renderStep(){
       <div class="form-grid two plain">
         <div class="full field">
           <label>Artist or Venue</label>
-          <input id="tm-q" type="text" placeholder="e.g., Olivia Rodrigo or Madison Square Garden" autocomplete="off"/>
+          <input id="tm-q" type="text" placeholder="e.g., Taylor Swift or Madison Square Garden" autocomplete="off"/>
         </div>
         <div class="field">
           <label>City (optional)</label>
-          <input id="tm-city" type="text" placeholder="e.g., New York"/>
+          <input id="tm-city" type="text" placeholder="e.g., New York or Los Angeles"/>
         </div>
       </div>
 
@@ -271,7 +271,7 @@ function renderStep(){
     <article class="card" style="padding:16px;">
       <div class="qrow" style="margin-bottom:12px;">
         <label class="switch"><input id="l-want" type="checkbox" ${L.want?'checked':''}/></label>
-        <h3 class="step-title" style="margin:0;">Plan lunch?</h3>
+        <h3 class="step-title" style="margin:0;">Want us to find lunch?</h3>
       </div>
 
       <div id="l-fields" style="${L.want ? '' : 'opacity:.5;pointer-events:none'}">
@@ -410,7 +410,7 @@ function renderStep(){
       <p class="step-help">Pick extras to round out your day.</p>
 
    <article class="card">
-  <h3 class="step-title" style="margin-bottom:12px;">Choose activities you want to be a part of your day</h3>
+  <h3 class="step-title" style="margin-bottom:12px;">Choose your activities and interests</h3>
   <div class="checks">
           <label class="check"><input type="checkbox" id="int-coffee"    ${state.interests.coffee?'checked':''}><span>Coffee</span></label>
           <label class="check"><input type="checkbox" id="int-drinks"    ${state.interests.drinks?'checked':''}><span>Drinks &amp; Lounge</span></label>

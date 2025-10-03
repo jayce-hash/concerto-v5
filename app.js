@@ -451,10 +451,13 @@ function renderStep(){
   }
   async function tmSearch({ keyword, city="", size=10, startDateTime, endDateTime }){
     if (!keyword) return [];
-    const url = tmUrl("/discovery/v2/events.json", {
-      keyword, city: city || undefined, classificationName: "music",
-      size: Math.max(1, Math.min(20, size)), startDateTime, endDateTime
-    });
+ const url = tmUrl("/discovery/v2/events.json", {
+  keyword,
+  city: city || undefined,
+  size: Math.max(1, Math.min(20, size)),
+  startDateTime,
+  endDateTime
+});
     const res = await fetch(url);
     if (!res.ok) return [];
     const json = await res.json();

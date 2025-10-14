@@ -146,19 +146,19 @@ function renderStep(){
   if (steps[step] === "concert"){
   w.innerHTML = `
     <h3 class="step-title">Concert & Accommodation</h3>
-    <p class="step-help">Find your show and add your hotel.</p>
+    <p class="step-help">Use Ticketmaster to find your event, and add your hotel.</p>
 
     <!-- Ticketmaster card -->
     <article class="card" style="padding:16px;">
-      <h3 class="step-title" style="margin-bottom:12px;">Find your show (Ticketmaster)</h3>
+      <h3 class="step-title" style="margin-bottom:12px;">Find your show or game</h3>
 
       <div class="form-grid two plain">
         <div class="full field">
-          <label>Artist or Venue</label>
+          <label>Artist, Team, or Venue</label>
           <input id="tm-q" type="text" placeholder="e.g., Taylor Swift or Madison Square Garden" autocomplete="off"/>
         </div>
         <div class="field">
-          <label>City (optional)</label>
+          <label>City</label>
           <input id="tm-city" type="text" placeholder="e.g., New York or Los Angeles"/>
         </div>
       </div>
@@ -181,7 +181,7 @@ function renderStep(){
       <div id="manual-body" style="display:none; margin-top:12px;">
         <div class="form-grid two plain">
           <div class="field">
-            <label>Artist (optional)</label>
+            <label>Artist or Team</label>
             <div class="suggest">
               <input id="artist" type="text" placeholder="e.g., Taylor Swift" value="${esc(state.artist)}" autocomplete="off"/>
               <div id="artist-list" class="suggest-list" style="display:none;"></div>
@@ -214,7 +214,7 @@ function renderStep(){
       </div>
 
       <div id="hotel-fields">
-        <input id="hotel" type="text" placeholder="Name or address" value="${esc(state.hotel)}"/>
+        <input id="hotel" type="text" placeholder="Name or Address" value="${esc(state.hotel)}"/>
       </div>
     </article>
   `;

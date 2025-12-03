@@ -2,22 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Concerto+ Day Planner</title>
+  <title>Concerto+ · Day Planner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 
-  <!-- Fonts -->
+  <!-- Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet"
-  />
+  >
 
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="page">
-    <!-- TOP HERO -->
+    <!-- Header -->
     <header class="page-header">
       <div class="page-header-inner">
         <img
@@ -27,158 +27,193 @@
         />
         <h1 class="feature-title">Concerto+</h1>
         <p class="tagline">
-          Build an easy, curated day around your show.
+          Build a curated day around your show — before and after the main event.
         </p>
       </div>
     </header>
 
+    <!-- Main content -->
     <main class="page-main">
-      <!-- STEP 1: PICK EVENT (Ticketmaster) -->
-      <section class="card planner-card" id="card-event">
-        <div class="stack gap-16">
-          <div class="stack gap-6">
-            <div class="step-chip">Step 1 · Choose your event</div>
-            <h2 class="section-title">Find your show or game</h2>
-            <p class="section-help">
-              Search Ticketmaster by artist, team, or venue, then pick your event.
-            </p>
-          </div>
-
-          <!-- Search inputs -->
-          <div class="form-grid">
-            <div class="field">
-              <label for="eventKeyword">Artist, Team, or Venue</label>
-              <input
-                type="text"
-                id="eventKeyword"
-                placeholder="e.g. Taylor Swift or Madison Square Garden"
-                autocomplete="off"
-              />
-            </div>
-            <div class="field">
-              <label for="eventCity">City (optional)</label>
-              <input
-                type="text"
-                id="eventCity"
-                placeholder="e.g. New York, NY"
-                autocomplete="off"
-              />
+      <!-- STEP 1: Choose Your Show -->
+      <section class="step-pill open" data-step="1">
+        <button type="button" class="step-pill-header">
+          <div class="step-pill-label">
+            <span class="step-number">01</span>
+            <div class="step-text-block">
+              <div class="step-title">Choose Your Show</div>
+              <div class="step-subtitle">Search Ticketmaster for your event.</div>
             </div>
           </div>
-
-          <!-- Search button + status -->
-          <div class="search-actions">
-            <button type="button" id="searchEventsBtn" class="btn-primary">
-              Find events
-            </button>
-            <div id="eventStatus" class="status muted"></div>
+          <div class="step-pill-status">
+            <span class="step-pill-check" aria-hidden="true">✓</span>
+            <span class="step-pill-caret" aria-hidden="true">⌄</span>
           </div>
+        </button>
 
-          <!-- Ticketmaster results -->
-          <div id="eventResults" class="events-list"></div>
-        </div>
-      </section>
+        <div class="step-pill-body">
+          <div class="card">
+            <div class="stack gap-16">
+              <div class="stack gap-6">
+                <h2 class="section-title">Find your event</h2>
+                <p class="section-help">
+                  Search by artist, team, tour, venue, or city.
+                </p>
+              </div>
 
-      <!-- STEP 2: CHOOSE VIBE -->
-      <section class="card planner-card" id="card-vibe">
-        <div class="stack gap-16">
-          <div class="stack gap-6">
-            <div class="step-chip">Step 2 · Choose your vibe</div>
-            <h2 class="section-title">Before &amp; after the show</h2>
-            <p class="section-help">
-              Tell us what you’re in the mood for and how packed the day should be.
-            </p>
-          </div>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="eventKeyword">Artist / Team / Tour</label>
+                  <input
+                    type="text"
+                    id="eventKeyword"
+                    placeholder="e.g. Billie Eilish, Lakers, The Eras Tour"
+                    autocomplete="off"
+                  />
+                </div>
+                <div class="field">
+                  <label for="eventCity">City (optional)</label>
+                  <input
+                    type="text"
+                    id="eventCity"
+                    placeholder="e.g. Los Angeles, CA"
+                    autocomplete="off"
+                  />
+                  <p class="tiny">Add a city to narrow results, or leave blank.</p>
+                </div>
+              </div>
 
-          <!-- Selected event summary -->
-          <div id="selectedEventSummary" class="selected-event-summary muted">
-            Select an event in Step 1 to continue.
-          </div>
+              <div class="search-actions">
+                <button type="button" id="searchEventsBtn" class="btn-primary">
+                  Search Ticketmaster
+                </button>
+                <div id="eventStatus" class="status muted"></div>
+              </div>
 
-          <!-- Pre-show -->
-          <div class="field">
-            <label>Before the show</label>
-            <div class="pill-row" id="preVibePills">
-              <button type="button" class="pill" data-vibe="coffee">Coffee</button>
-              <button type="button" class="pill" data-vibe="lunch">Lunch</button>
-              <button type="button" class="pill" data-vibe="dinner">Dinner</button>
-              <button type="button" class="pill" data-vibe="shopping">Shopping</button>
-              <button type="button" class="pill" data-vibe="sightseeing">Sightseeing</button>
+              <div id="eventResults" class="event-results"></div>
             </div>
-          </div>
-
-          <!-- Post-show -->
-          <div class="field">
-            <label>After the show</label>
-            <div class="pill-row" id="postVibePills">
-              <button type="button" class="pill" data-vibe="dessert">Dessert</button>
-              <button type="button" class="pill" data-vibe="drinks">Drinks</button>
-              <button type="button" class="pill" data-vibe="nightlife">Nightlife</button>
-              <button type="button" class="pill" data-vibe="latenight">Late-night eats</button>
-            </div>
-          </div>
-
-          <!-- Pace -->
-          <div class="field">
-            <label>How packed should the day be?</label>
-            <div class="segmented" id="paceControl">
-              <button type="button" class="seg-pill" data-pace="chill">Chill</button>
-              <button type="button" class="seg-pill active" data-pace="balanced">Balanced</button>
-              <button type="button" class="seg-pill" data-pace="packed">Packed</button>
-            </div>
-          </div>
-
-          <!-- Generate -->
-          <div class="search-actions">
-            <button type="button" id="generatePlanBtn" class="btn-primary" disabled>
-              Generate my plan
-            </button>
-            <div id="planStatus" class="status muted"></div>
           </div>
         </div>
       </section>
 
-      <!-- STEP 3: PLAN RESULT -->
-      <section class="card planner-card" id="card-plan" hidden>
-        <div class="stack gap-16">
-          <div class="stack gap-6">
-            <div class="step-chip">Step 3 · Your day</div>
-            <h2 class="section-title">Timeline &amp; picks</h2>
-            <p class="section-help">
-              Here’s a simple flow for your day, plus places picked around your venue.
-            </p>
+      <!-- STEP 2: Plan Your Vibe -->
+      <section class="step-pill" data-step="2" id="card-vibe">
+        <button type="button" class="step-pill-header">
+          <div class="step-pill-label">
+            <span class="step-number">02</span>
+            <div class="step-text-block">
+              <div class="step-title">Plan Your Vibe</div>
+              <div class="step-subtitle">Before &amp; after the show, what are you in the mood for?</div>
+            </div>
           </div>
+          <div class="step-pill-status">
+            <span class="step-pill-check" aria-hidden="true">✓</span>
+            <span class="step-pill-caret" aria-hidden="true">⌄</span>
+          </div>
+        </button>
 
-          <!-- Timeline -->
-          <div class="plan-block">
-            <h3 class="plan-title">Timeline</h3>
+        <div class="step-pill-body">
+          <div class="card">
+            <p id="selectedEventSummary" class="muted">
+              Select an event in Step 1 to continue.
+            </p>
+
+            <div class="field">
+              <label>Before the show</label>
+              <p class="tiny">Pick a couple of things you’d love to do before doors.</p>
+              <div id="preVibePills" class="pill-row">
+                <button type="button" class="pill" data-vibe="coffee">Coffee</button>
+                <button type="button" class="pill" data-vibe="lunch">Lunch</button>
+                <button type="button" class="pill" data-vibe="dinner">Dinner</button>
+                <button type="button" class="pill" data-vibe="shopping">Shopping</button>
+                <button type="button" class="pill" data-vibe="sightseeing">Sightseeing</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>After the show</label>
+              <p class="tiny">Keep the night going or wind down with something chill.</p>
+              <div id="postVibePills" class="pill-row">
+                <button type="button" class="pill" data-vibe="dessert">Dessert</button>
+                <button type="button" class="pill" data-vibe="drinks">Drinks</button>
+                <button type="button" class="pill" data-vibe="nightlife">Nightlife</button>
+                <button type="button" class="pill" data-vibe="latenight">Late-night eats</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>How packed should the day feel?</label>
+              <div id="paceControl" class="seg-row">
+                <button type="button" class="seg-pill" data-pace="chill">Chill</button>
+                <button type="button" class="seg-pill active" data-pace="balanced">Balanced</button>
+                <button type="button" class="seg-pill" data-pace="packed">Packed</button>
+              </div>
+            </div>
+
+            <div class="search-actions">
+              <button type="button" id="generatePlanBtn" class="btn-primary" disabled>
+                Build my Concerto plan
+              </button>
+              <div id="planStatus" class="status muted"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 3: Your Concerto Plan -->
+      <section class="step-pill" data-step="3" id="card-plan">
+        <button type="button" class="step-pill-header">
+          <div class="step-pill-label">
+            <span class="step-number">03</span>
+            <div class="step-text-block">
+              <div class="step-title">Your Concerto Plan</div>
+              <div class="step-subtitle">A step-by-step schedule with nearby picks.</div>
+            </div>
+          </div>
+          <div class="step-pill-status">
+            <span class="step-pill-check" aria-hidden="true">✓</span>
+            <span class="step-pill-caret" aria-hidden="true">⌄</span>
+          </div>
+        </button>
+
+        <div class="step-pill-body">
+          <div class="card">
+            <div class="plan-header">
+              <div>
+                <h2 class="section-title">Timeline</h2>
+                <p class="section-help">
+                  From first stop to final encore, all in one scroll.
+                </p>
+              </div>
+              <div class="plan-actions">
+                <button type="button" id="editChoicesBtn" class="btn-ghost">
+                  Edit choices
+                </button>
+                <button type="button" id="sharePlanBtn" class="btn-secondary">
+                  Share plan
+                </button>
+              </div>
+            </div>
+
             <div id="timeline" class="timeline"></div>
-          </div>
 
-          <!-- Rails -->
-          <div class="plan-block">
-            <h3 class="plan-title">Picks near your venue</h3>
-            <div id="placeRails" class="rails"></div>
-          </div>
-
-          <!-- Actions -->
-          <div class="plan-actions">
-            <button type="button" id="editChoicesBtn" class="link-toggle">
-              Edit choices
-            </button>
-            <button type="button" id="sharePlanBtn" class="btn-secondary">
-              Share plan
-            </button>
+            <div class="rails-wrapper">
+              <h3 class="subsection-title">Nearby picks</h3>
+              <div id="placeRails" class="rails"></div>
+            </div>
           </div>
         </div>
       </section>
     </main>
+
+    <footer class="page-footer">
+      <p class="muted">From the Concert to the City · Powered by Concerto+</p>
+    </footer>
   </div>
 
   <!-- Google Maps JS (Places API) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
 
-  <!-- App logic -->
+  <!-- App -->
   <script src="app.js"></script>
 </body>
 </html>

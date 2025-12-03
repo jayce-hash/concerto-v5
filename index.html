@@ -2,116 +2,183 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Concerto+ · Concert Day Planner</title>
+  <title>Concerto+ Day Planner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 
-  <!-- Fonts (same as Events Near Me vibe) -->
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet"
-  >
+  />
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <noscript>This app requires JavaScript to run.</noscript>
+  <div class="page">
+    <!-- TOP HERO -->
+    <header class="page-header">
+      <div class="page-header-inner">
+        <img
+          src="IMG_3180.jpeg"
+          alt="Concerto - From the Concert to the City"
+          class="brand-logo"
+        />
+        <h1 class="feature-title">Concerto+</h1>
+        <p class="tagline">
+          Build an easy, curated day around your show.
+        </p>
+      </div>
+    </header>
 
-  <main class="shell">
-    <!-- ========== WELCOME / HERO ========== -->
-    <section id="screen-welcome" class="screen active">
-      <div class="container narrow">
-        <div class="hero-welcome">
-          <img
-            src="IMG_3180.jpeg"
-            alt="Concerto - From the Concert to the City"
-            class="brand-logo"
-          />
-
-          <h1 class="hc-mark">Concerto+</h1>
-
-          <p class="hc-sub">
-            Plan your perfect day in the city.
-          </p>
-
-          <p class="hc-sub hc-sub-kicker">
-            Every Concert · Every Game · Every City
-          </p>
-
-          <p class="hc-sub hc-sub-body">
-            Build a curated schedule with dining, coffee, nightlife, and more —
-            all around your venue.
-          </p>
-
-          <div class="hero-actions">
-            <button id="btn-start" class="btn btn-primary">Get Started</button>
-            <button id="btn-resume" class="btn btn-ghost" style="display:none;">Resume Plan</button>
+    <main class="page-main">
+      <!-- STEP 1: PICK EVENT (Ticketmaster) -->
+      <section class="card planner-card" id="card-event">
+        <div class="stack gap-16">
+          <div class="stack gap-6">
+            <div class="step-chip">Step 1 · Choose your event</div>
+            <h2 class="section-title">Find your show or game</h2>
+            <p class="section-help">
+              Search Ticketmaster by artist, team, or venue, then pick your event.
+            </p>
           </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- ========== FORM (multi-step UI that app.js controls) ========== -->
-    <section id="screen-form" class="screen">
-      <div class="container narrow">
-        <div class="progress">
-          <div id="progress-bar" class="progress-bar"></div>
-        </div>
-
-        <article class="card step-card">
-          <!-- app.js injects the current step contents here -->
-          <div id="step-wrapper"></div>
-
-          <div class="sticky-actions">
-            <button id="btn-prev" class="btn btn-ghost">Back</button>
-            <button id="btn-next" class="btn btn-primary">Next</button>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- ========== LOADING OVERLAY ========== -->
-    <section id="screen-loading" class="screen loading">
-      <div class="container narrow loading-inner">
-        <div class="spinner"></div>
-        <p class="muted">Creating your curated itinerary…</p>
-      </div>
-    </section>
-
-    <!-- ========== RESULTS ========== -->
-    <section id="screen-results" class="screen">
-      <div class="container wide">
-        <header class="results-header">
-          <div class="results-context-wrap">
-            <!-- app.js rewrites this entire element -->
-            <div id="results-context" class="results-context">
-              Your Concert Day
+          <!-- Search inputs -->
+          <div class="form-grid">
+            <div class="field">
+              <label for="eventKeyword">Artist, Team, or Venue</label>
+              <input
+                type="text"
+                id="eventKeyword"
+                placeholder="e.g. Taylor Swift or Madison Square Garden"
+                autocomplete="off"
+              />
             </div>
-            <p id="intro-line" class="muted"></p>
+            <div class="field">
+              <label for="eventCity">City (optional)</label>
+              <input
+                type="text"
+                id="eventCity"
+                placeholder="e.g. New York, NY"
+                autocomplete="off"
+              />
+            </div>
           </div>
 
-          <div class="results-actions">
-            <button id="btn-edit" class="btn btn-ghost">Edit inputs</button>
-            <button id="btn-new" class="btn btn-ghost">New plan</button>
-            <button id="btn-share" class="btn btn-primary btn-share">Share link</button>
+          <!-- Search button + status -->
+          <div class="search-actions">
+            <button type="button" id="searchEventsBtn" class="btn-primary">
+              Find events
+            </button>
+            <div id="eventStatus" class="status muted"></div>
           </div>
-        </header>
 
-        <!-- Timeline-style schedule (app.js fills this) -->
-        <div id="schedule" class="schedule"></div>
+          <!-- Ticketmaster results -->
+          <div id="eventResults" class="events-list"></div>
+        </div>
+      </section>
 
-        <!-- Rails: app.js will inject .rail sections into this container -->
-        <div id="rails" class="rails-root"></div>
-      </div>
-    </section>
-  </main>
+      <!-- STEP 2: CHOOSE VIBE -->
+      <section class="card planner-card" id="card-vibe">
+        <div class="stack gap-16">
+          <div class="stack gap-6">
+            <div class="step-chip">Step 2 · Choose your vibe</div>
+            <h2 class="section-title">Before &amp; after the show</h2>
+            <p class="section-help">
+              Tell us what you’re in the mood for and how packed the day should be.
+            </p>
+          </div>
+
+          <!-- Selected event summary -->
+          <div id="selectedEventSummary" class="selected-event-summary muted">
+            Select an event in Step 1 to continue.
+          </div>
+
+          <!-- Pre-show -->
+          <div class="field">
+            <label>Before the show</label>
+            <div class="pill-row" id="preVibePills">
+              <button type="button" class="pill" data-vibe="coffee">Coffee</button>
+              <button type="button" class="pill" data-vibe="lunch">Lunch</button>
+              <button type="button" class="pill" data-vibe="dinner">Dinner</button>
+              <button type="button" class="pill" data-vibe="shopping">Shopping</button>
+              <button type="button" class="pill" data-vibe="sightseeing">Sightseeing</button>
+            </div>
+          </div>
+
+          <!-- Post-show -->
+          <div class="field">
+            <label>After the show</label>
+            <div class="pill-row" id="postVibePills">
+              <button type="button" class="pill" data-vibe="dessert">Dessert</button>
+              <button type="button" class="pill" data-vibe="drinks">Drinks</button>
+              <button type="button" class="pill" data-vibe="nightlife">Nightlife</button>
+              <button type="button" class="pill" data-vibe="latenight">Late-night eats</button>
+            </div>
+          </div>
+
+          <!-- Pace -->
+          <div class="field">
+            <label>How packed should the day be?</label>
+            <div class="segmented" id="paceControl">
+              <button type="button" class="seg-pill" data-pace="chill">Chill</button>
+              <button type="button" class="seg-pill active" data-pace="balanced">Balanced</button>
+              <button type="button" class="seg-pill" data-pace="packed">Packed</button>
+            </div>
+          </div>
+
+          <!-- Generate -->
+          <div class="search-actions">
+            <button type="button" id="generatePlanBtn" class="btn-primary" disabled>
+              Generate my plan
+            </button>
+            <div id="planStatus" class="status muted"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 3: PLAN RESULT -->
+      <section class="card planner-card" id="card-plan" hidden>
+        <div class="stack gap-16">
+          <div class="stack gap-6">
+            <div class="step-chip">Step 3 · Your day</div>
+            <h2 class="section-title">Timeline &amp; picks</h2>
+            <p class="section-help">
+              Here’s a simple flow for your day, plus places picked around your venue.
+            </p>
+          </div>
+
+          <!-- Timeline -->
+          <div class="plan-block">
+            <h3 class="plan-title">Timeline</h3>
+            <div id="timeline" class="timeline"></div>
+          </div>
+
+          <!-- Rails -->
+          <div class="plan-block">
+            <h3 class="plan-title">Picks near your venue</h3>
+            <div id="placeRails" class="rails"></div>
+          </div>
+
+          <!-- Actions -->
+          <div class="plan-actions">
+            <button type="button" id="editChoicesBtn" class="link-toggle">
+              Edit choices
+            </button>
+            <button type="button" id="sharePlanBtn" class="btn-secondary">
+              Share plan
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <!-- Google Maps JS (Places API) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
 
   <!-- App logic -->
-  <script type="module" src="./app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

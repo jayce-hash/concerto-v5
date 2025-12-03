@@ -1,981 +1,701 @@
-/* style.css — Concerto+ Light Luxe (v7.8.4) */
+/* ============================================================
+   Concerto+ — Match Events Near Me Look & Feel
+   - Inter font
+   - Same colors, pills, buttons, spacing rhythm
+   ============================================================ */
 
-/* ===== Theme ===== */
-:root{
-  --bg:#F8F9F9; --ink:#121E36; --muted:#5E6B86;
-  --accent:#1F2B4A; --accent-2:#2A3A63;
-  --line:#E5EAF0; --line-soft:#EEF2F7; --card:#FFFFFF;
-  --shadow:0 6px 18px rgba(18,30,54,.08);
-  --ring:0 0 0 3px rgba(31,43,74,.18);
-
-  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px; --s-10:40px;
-  --r-10:10px; --r-12:12px; --r-14:14px; --r-16:16px; --r-18:18px;
+/* ===== Theme Tokens (same palette as Events Near Me) ===== */
+:root {
+  --bg: #F8F9F9;
+  --ink: #121E36;
+  --muted: #5E6B86;
+  --accent: #1F2B4A;
+  --accent-2: #2A3A63;
+  --line: #E2E7F0;
+  --card: #FFFFFF;
+  --shadow-soft: 0 4px 10px rgba(18, 30, 54, 0.08);
+  --radius-card: 16px;
 }
 
-/* ===== Stability / Screen switching ===== */
-html,body{margin:0;padding:0}
-.screen{display:none!important;visibility:hidden}
-.screen.active{display:block!important;visibility:visible}
-
-/* ===== Base ===== */
-*{box-sizing:border-box}
-body{
-  color:var(--ink); background:var(--bg);
-  font-family:'Lora', Georgia, serif;
-  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-}
-a{color:var(--accent-2);text-decoration:none}
-a:hover{text-decoration:underline}
-
-/* ===== Typography ===== */
-h1,h2,h3{
-  font-family:'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  letter-spacing:.08em; color:var(--ink); text-transform:uppercase; font-weight:400;
-}
-h1{font-size:clamp(30px,4vw,42px);margin:0 0 var(--s-3)}
-h2{font-size:clamp(22px,3vw,30px);margin:0 0 var(--s-2)}
-h3{font-size:clamp(18px,2.2vw,22px);margin:0 0 var(--s-2)}
-p{line-height:1.6;margin:0 0 var(--s-3)}
-.muted{color:var(--muted);font-weight:400}
-
-/* Labels */
-label{
-  display:block; font-family:'Cormorant Garamond', Georgia, serif;
-  text-transform:uppercase; letter-spacing:.06em; font-weight:400;
-  margin:0 0 8px; font-size:.95rem;
+/* ===== Reset & Base ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-/* ===== Layout ===== */
-.container{width:min(1120px,92vw);margin:0 auto;padding:var(--s-6) 0}
-.container.narrow{width:min(780px,92vw)}
-.container.wide{width:min(1120px,94vw)}
-
-/* ===== Buttons ===== */
-.btn{
-  appearance:none; min-height:44px; padding:.72rem 1.1rem; border-radius:var(--r-14);
-  border:1px solid var(--line); color:var(--ink);
-  background:linear-gradient(180deg,#FFF,#F5F7FA);
-  cursor:pointer; transition:transform .12s, box-shadow .2s, border-color .2s, background .2s;
-}
-.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
-.btn:active{transform:translateY(0);box-shadow:none}
-.btn-primary{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2));border-color:transparent}
-.btn-primary:hover{box-shadow:var(--shadow)}
-.btn-ghost{background:transparent}
-.btn-ghost:hover{border-color:var(--accent-2)}
-
-/* CTA (welcome) */
-.btn-cta{
-  font-family:'Cormorant Garamond', Georgia, serif;
-  text-transform:uppercase; letter-spacing:.06em; font-weight:600;
-  color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-2));
-  border:none; border-radius:999px; padding:.95rem 1.6rem; min-height:48px;
-  box-shadow:0 10px 22px rgba(18,30,54,.12);
-}
-.btn-cta:hover{transform:translateY(-1px);box-shadow:0 14px 26px rgba(18,30,54,.16)}
-.btn-cta:active{transform:translateY(0);box-shadow:0 8px 18px rgba(18,30,54,.12)}
-
-/* ===== Progress ===== */
-.progress{height:6px;border-radius:999px;background:var(--line-soft);margin:var(--s-2) 0 var(--s-4);overflow:hidden}
-.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0}
-
-/* ===== Cards ===== */
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-16);padding:var(--s-5);box-shadow:var(--shadow)}
-.step-card{margin-top:var(--s-2)}
-.step-card{background:transparent!important;border:none!important;padding:0!important;box-shadow:none!important}
-
-/* ===== Form ===== */
-.step-title{margin-top:0;margin-bottom:6px}
-.step-help{color:var(--muted);margin:2px 0 16px;line-height:1.5}
-#step-wrapper{display:grid;gap:16px;padding:8px 2px}
-.form-grid{background:#FFF;border:1px solid var(--line);border-radius:var(--r-16);padding:18px;gap:16px;grid-template-columns:1fr 1fr}
-.form-grid.two{grid-template-columns:1fr 1fr}
-.form-grid .full{grid-column:1 / -1}
-input[type="text"],input[type="time"],input[type="date"],select{
-  width:100%; color:var(--ink); background:#fff; border:1px solid var(--line);
-  border-radius:var(--r-14); padding:.78rem .9rem; min-height:44px; outline:none;
-  transition:border-color .14s, box-shadow .18s, background .18s;
-}
-input::placeholder{color:#8A94A6}
-select{background-image:linear-gradient(180deg,#FFF,#F6F8FB)}
-input:focus,select:focus{border-color:var(--accent-2);box-shadow:var(--ring)}
-.tiny{color:var(--muted);font-size:.95rem;margin-top:6px}
-.suggest{position:relative}
-.suggest-list{
-  background:#fff;border:1px solid var(--line);border-radius:var(--r-14);margin-top:var(--s-2);padding:var(--s-2);
-  position:absolute;z-index:2000;width:100%;max-height:260px;overflow:auto;box-shadow:var(--shadow)
-}
-.suggest-item{padding:10px 12px;border-radius:10px;cursor:pointer;color:var(--ink)}
-.suggest-item:hover{background:#F2F5FA}
-
-/* Pills */
-.radio-group{display:flex;flex-wrap:wrap;gap:10px;--pill-bg:linear-gradient(180deg,#FFF,#F6F8FB);--pill-brd:#E1E7F0}
-.pill{
-  display:inline-flex;align-items:center;gap:.5ch;padding:.56rem .9rem;min-height:40px;
-  border-radius:999px;border:1px solid var(--pill-brd);background:var(--pill-bg);color:var(--ink);
-  cursor:pointer;transition:border-color .14s,box-shadow .18s,background .18s,transform .12s;user-select:none
-}
-.pill:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
-.pill.active{background:#E9EEF6;border-color:#C8D3E6;box-shadow:0 1px 0 rgba(0,0,0,.02), inset 0 0 0 1px rgba(42,58,99,.04)}
-.radio-group.segmented .pill{border-radius:10px}
-.radio-group.segmented .pill + .pill{margin-left:-1px}
-
-.sticky-actions{
-  margin-top:18px;padding-top:14px;gap:10px;display:flex;justify-content:flex-end;
-  border-top:1px solid var(--line-soft);background:linear-gradient(to top,#FBFCFD,transparent);
-  border-radius:0 0 var(--r-16) var(--r-16)
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
+    sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ===== Results Header ===== */
-.results-header{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s-3);margin-bottom:var(--s-3)}
-.results-header h2{margin:0 0 var(--s-1)}
-.results-header .muted{color:var(--muted);margin:var(--s-1) 0 0}
-
-/* ===== Vertical Schedule ===== */
-.schedule{position:relative;padding-left:18px}
-.schedule::before{content:"";position:absolute;left:9px;top:0;bottom:0;width:1px;background:var(--line)}
-.schedule .row{padding:10px 0 18px;border-bottom:1px dashed var(--line-soft)}
-.schedule .row:last-child{border-bottom:none}
-.schedule .hdr{display:flex;align-items:center;gap:.6rem}
-.schedule .pin{width:10px;height:10px;border-radius:50%;background:var(--accent-2);box-shadow:0 0 0 6px rgba(42,58,99,.15)}
-.schedule .time{min-width:60px;color:var(--muted);font-variant-numeric:tabular-nums}
-.schedule .title{
-  flex:1;font-family:'Cormorant Garamond', Georgia, serif;letter-spacing:.08em;text-transform:uppercase;font-weight:400;color:var(--ink);font-size:1rem
-}
-.schedule .meta{display:flex;gap:.66rem;flex-wrap:wrap;color:var(--muted);margin-top:.25rem}
-.schedule .meta a{color:var(--accent-2);text-decoration:underline;text-underline-offset:2px}
-.schedule .meta a:hover{color:var(--accent)}
-.schedule .note{color:var(--muted);margin-top:var(--s-2)}
-
-/* ===== Extras ===== */
-.alt{margin-top:8px;display:none}
-.alt.open{display:block}
-.alt h5{
-  text-transform:uppercase;letter-spacing:.08em;color:var(--accent);
-  font-family:'Cormorant Garamond', Georgia, serif;font-weight:400;margin:var(--s-2) 0 var(--s-1)
-}
-.alt ul{list-style:none;padding:0;margin:0;display:grid;gap:var(--s-2)}
-.alt li{color:var(--ink)}
-.alt .blurb{color:var(--muted)}
-.link-alt{font-size:.95rem;color:var(--accent-2);cursor:pointer;text-decoration:underline}
-.link-alt:hover{color:var(--accent)}
-
-/* ===== Rails ===== */
-.rail{margin-top:22px}
-.rail-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.rail-title{
-  font-family:'Cormorant Garamond', Georgia, serif;text-transform:uppercase;letter-spacing:.08em;font-weight:400;
-  font-size:clamp(16px,1.8vw,18px)
-}
-.h-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory}
-.h-scroll::-webkit-scrollbar{height:8px}
-.h-scroll::-webkit-scrollbar-thumb{background:#D9E0EB;border-radius:999px}
-.rail:has(.cards-rail:empty){display:none}
-.rail:has(.cards-rail .muted){display:none}
-
-/* ===== Cards for rails ===== */
-.place-card{scroll-snap-align:start;min-width:200px;max-width:220px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;cursor:pointer;transition:transform .12s, box-shadow .18s}
-.place-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(18,30,54,.10)}
-.pc-img{width:100%;aspect-ratio:16/11;background:#F1F4F8;overflow:hidden}
-.pc-img img{width:100%;height:100%;object-fit:cover;display:block}
-.pc-img.ph{background:repeating-linear-gradient(45deg,#f3f6fb 0 8px,#e9eef6 8px 16px)}
-.pc-body{padding:10px 12px 12px}
-.pc-title{
-  font-weight:600;line-height:1.2;margin:0 0 6px;font-size:.98rem;color:var(--ink);
-  font-family:'Lora', Georgia, serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden
-}
-.pc-meta{display:flex;gap:.5rem;flex-wrap:wrap;color:var(--muted);font-size:.92rem}
-.pc-actions{margin-top:6px;display:flex;gap:10px}
-.pc-actions a{color:var(--accent-2);text-decoration:underline;text-underline-offset:2px}
-.pc-actions a:hover{color:var(--accent)}
-
-/* ===== Loading ===== */
-.loading .spinner{width:38px;height:38px;border-radius:999px;border:3px solid var(--line);border-top-color:var(--accent);animation:spin 1s linear infinite;margin:var(--s-4) auto}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ===== Page transition ===== */
-body.page-transition::before{
-  content:"";position:fixed;inset:0;pointer-events:none;
-  background:radial-gradient(900px 420px at 85% 0%,rgba(31,43,74,.06),transparent);
-  animation:veil .30s ease
-}
-@keyframes veil{from{opacity:0}to{opacity:1}}
-.screen.active{animation:cc-fade .24s ease both}
-@keyframes cc-fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-
-/* ===== Welcome Hero (brand-first, fixed) ===== */
-.hero-classic{
-  min-height:86vh;
-  display:flex;
-  flex-direction:column;        /* <<< stack vertically */
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  padding:0 16px;
+body {
+  min-height: 100vh;
 }
 
-/* CONCERTO+ — tighter tracking & responsive size */
-.hc-mark{
-  font-family:'Cormorant Garamond', Georgia, serif;
-  text-transform:uppercase;
-  letter-spacing:0.07em;        /* tighter to echo the logo */
-  font-weight:600;
-  font-size:clamp(34px, 8.5vw, 64px); /* smaller floor so it fits phones */
-  color:var(--ink);
-  margin:0 0 12px;
-  white-space:nowrap;           /* keep it on one line, we scale instead */
+a {
+  color: var(--accent-2);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
 }
 
-/* Mobile: tighten a touch more */
-@media (max-width:480px){
-  .hc-mark{ letter-spacing:0.05em; }
+.muted {
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
-/* Description — smaller Lora */
-.hc-sub{
-  font-family:'Lora', Georgia, serif;
-  color:var(--muted);
-  font-size:clamp(16px,2.6vw,20px);
-  line-height:1.6;
-  max-width:640px;
-  margin:0 auto 20px;
+/* ===== Screen Switching (Concerto+ multi-screen) ===== */
+.screen {
+  display: none;
+}
+.screen.active {
+  display: block;
 }
 
-/* kill any old hero headline if it’s still in DOM */
-.hc-title{display:none!important}
-
-/* ===== Center the tour card & results title ===== */
-.tour-card{max-width:760px;margin:0 auto 18px;display:block;text-align:left}
-.schedule{display:flex;justify-content:center;padding-left:0!important}
-.schedule::before{content:none!important}
-.results-header{align-items:center}
-.results-header>div:first-child{flex:1 1 0;text-align:center}
-@media (max-width:900px){
-  .results-header{flex-direction:column;align-items:center}
-  .results-header>div:first-child{width:100%;text-align:center}
-}
-
-/* ===== Responsive tweaks ===== */
-@media (max-width:720px){
-  .container{width:min(100%,94vw)}
-  .form-grid,.form-grid.two{grid-template-columns:1fr;padding:16px;gap:14px}
-  .radio-group{gap:var(--s-2)}
-  .pill{padding:.56rem .9rem;min-height:40px}
-  .sticky-actions .btn{flex:1}
-  .progress{height:5px}
-  .h-scroll{gap:10px}
-  .place-card{min-width:180px;max-width:200px}
-}
-
-/* ===== Reduced motion ===== */
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-
-.pc-actions {
-  margin-top: 8px;
+/* ===== Welcome Hero (match ENM spacing/typography) ===== */
+.hero-welcome {
+  min-height: 100vh;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px 24px;
+  text-align: center;
 }
 
-.btn-reserve {
+/* CONCERTO+ mark — styled like ENM feature-title, just a bit bigger */
+.hc-mark {
+  margin: 0 0 8px;
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Taglines below title */
+.hc-sub {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.hc-sub-kicker {
+  margin-top: 4px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hc-sub-body {
+  max-width: 440px;
+  margin: 0 auto 20px;
+  font-size: 0.92rem;
+}
+
+/* Welcome buttons */
+.hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ===== Containers (narrow/wide) ===== */
+.container {
+  width: min(640px, 92vw);
+  margin: 0 auto;
+  padding: 16px 0 20px;
+}
+
+.container.wide {
+  width: min(720px, 94vw);
+}
+
+/* ===== Headings / Section Titles (ENM-style) ===== */
+h1, h2, h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 1.45rem;
+}
+h2 {
+  font-size: 0.95rem;
+}
+h3 {
   font-size: 0.9rem;
-  padding: 6px 12px;
+}
+
+.section-title {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Results header title */
+#results-context {
+  font-size: 1rem;
+}
+
+/* Helper text under section titles */
+.step-help {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ===== Cards (match ENM search card/results cards) ===== */
+.card {
+  background: var(--card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 16px 16px 18px;
+}
+
+.step-card {
+  margin-top: 12px;
+}
+
+/* ===== Progress Bar ===== */
+.progress {
+  height: 4px;
   border-radius: 999px;
-  line-height: 1.2;
+  background: #E5EAF3;
+  margin: 4px 0 14px;
+  overflow: hidden;
 }
 
-/* ===== Cards for rails (keep original sizing) ===== */
-.place-card{
-  scroll-snap-align:start;
-  display:block;                 /* ensure anchor fills the card */
-  min-width:200px;
-  max-width:220px;
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:14px;
-  box-shadow:var(--shadow);
-  overflow:hidden;
-  cursor:pointer;
-  transition:transform .12s, box-shadow .18s;
-  text-decoration:none;          /* no underline on the whole card */
-  color:inherit;                 /* keep text colors as defined below */
-}
-.place-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(18,30,54,.10)}
-
-.pc-img{width:100%;aspect-ratio:16/11;background:#F1F4F8;overflow:hidden}
-.pc-img img{width:100%;height:100%;object-fit:cover;display:block}
-.pc-img.ph{background:repeating-linear-gradient(45deg,#f3f6fb 0 8px,#e9eef6 8px 16px)}
-
-.pc-body{padding:10px 12px 12px}
-.pc-title{
-  font-weight:600;line-height:1.2;margin:0 0 6px;font-size:.98rem;color:var(--ink);
-  font-family:'Lora', Georgia, serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden
-}
-.pc-meta{display:flex;gap:.5rem;flex-wrap:wrap;color:var(--muted);font-size:.92rem}
-
-/* Actions row — slim, doesn’t change card size */
-.pc-actions{
-  margin-top:6px;
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
 }
 
-/* Reserve control (span inside the anchor card) */
-.btn-reserve{
-  display:inline-flex;
-  align-items:center;
-  gap:.4ch;
-  font-size:.9rem;
-  line-height:1.1;
-  padding:6px 12px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  background:linear-gradient(180deg,#FFF,#F6F8FB);
-  color:var(--accent-2);
-  box-shadow:0 1px 0 rgba(0,0,0,.02);
-  text-decoration:none;          /* no underline */
-  user-select:none;
-  cursor:pointer;
-}
-.btn-reserve:hover{box-shadow:var(--shadow)}
-.btn-reserve:focus{outline:none; box-shadow:var(--ring)}
-.btn-reserve:active{transform:translateY(0);box-shadow:none}
-
-/* Keep link look only for text links you add manually */
-.pc-actions a:not(.btn-reserve){
-  color:var(--accent-2);
-  text-decoration:underline;
-  text-underline-offset:2px
-}
-.pc-actions a:not(.btn-reserve):hover{color:var(--accent)}
-
-/* ===== Concerto+ light refinements (drop-in overrides) ===== */
-
-/* 1) Slightly slimmer global spacing for forms & cards */
-.container{ padding: var(--s-5) 0; }                 /* was --s-6 */
-.progress{ height:4px; }                              /* was 6px */
-.card.tour-card{ padding: var(--s-4); }               /* tighter tour card */
-.step-title{ margin-bottom:4px; }
-.step-help{ margin:2px 0 12px; }
-
-/* 2) Form grid: reduce inner padding & gaps a touch */
-.form-grid{ padding:14px; gap:14px; }                 /* was 18/16 */
-.form-grid.two{ grid-template-columns:1fr 1fr; }
-
-/* 3) Inputs: same height everywhere (so rows align) */
-input[type="text"],
-input[type="time"],
-input[type="date"],
-select{
-  min-height:42px;                                    /* was 44px */
-  padding:.7rem .9rem;                                /* slightly slimmer */
-  font-size:.98rem;
+/* ===== Form Layout ===== */
+#step-wrapper {
+  display: grid;
+  gap: 16px;
+  padding: 4px 0 0;
 }
 
-/* 4) Pills/bubbles: unify size, shape & color */
-.radio-group{ gap:10px; }
-.pill{
-  padding:.5rem .9rem;                                /* consistent */
-  min-height:38px;                                    /* consistent */
-  border-radius:999px;
-  background:linear-gradient(180deg,#FFF,#F6F8FB);    /* consistent */
-  border:1px solid #E1E7F0;                           /* consistent */
+.field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
 }
-.pill.active{
-  background:#E9EEF6;                                 /* consistent active bg */
-  border-color:#C8D3E6;
-  box-shadow:0 1px 0 rgba(0,0,0,.02), inset 0 0 0 1px rgba(42,58,99,.04);
-}
-/* Segmented pills (budget etc.) keep the same visual language */
-.radio-group.segmented .pill{ border-radius:10px; }
-
-/* 5) Venue action buttons on tour card: compact row */
-.pc-actions{ gap:8px; margin-top:8px; flex-wrap:wrap; }
-.pc-actions .btn{
-  min-height:40px;
-  padding:.6rem .9rem;
-  font-size:.92rem;
+.field:last-child {
+  margin-bottom: 0;
 }
 
-/* 6) Rails/cards: shave a little vertical space */
-.rail{ margin-top:18px; }                             /* was 22px */
-.rail-head{ margin-bottom:8px; }
-.cards-rail{ gap:10px; padding-bottom:4px; }
-.place-card .pc-body{ padding:10px 12px; }
-
-/* 7) Mobile tightness (helps avoid scrolling on small phones) */
-@media (max-width:720px){
-  .form-grid,.form-grid.two{ padding:12px; gap:12px; }
-  .pill{ padding:.48rem .85rem; min-height:36px; }
-  .pc-actions .btn{ padding:.55rem .85rem; font-size:.9rem; }
-  .place-card{ min-width:180px; max-width:200px; }
+label {
+  font-size: 0.8rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
 }
 
-/* 8) Times align better in schedule/tour card */
-.schedule .time{ font-variant-numeric:tabular-nums; }
-
-/* ===== Concerto+ refinement: font + bubble scaling ===== */
-
-/* Typography: step down all headings & body */
-h1{ font-size:clamp(26px,3.5vw,38px); }
-h2{ font-size:clamp(20px,2.8vw,26px); }
-h3{ font-size:clamp(16px,2vw,20px); }
-p, label, .step-help, .tiny, input, select{
-  font-size:0.95rem;     /* slightly smaller */
-  line-height:1.5;
+/* Form grid (two-column on desktop, stack on mobile) */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: #FFFFFF;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--line);
+  padding: 14px;
 }
 
-/* Buttons: reduce padding/font size slightly */
-.btn, .btn-primary, .btn-ghost{
-  min-height:40px;
-  padding:.6rem .9rem;
-  font-size:0.9rem;
-}
-.btn-cta{
-  padding:.85rem 1.4rem;
-  font-size:1rem;
-  min-height:44px;
+.form-grid.two {
+  grid-template-columns: 1fr 1fr;
 }
 
-/* Pills (the bubbles for cuisine, budget, etc.) */
-.pill{
-  padding:.42rem .8rem;       /* was ~.56/.9 */
-  min-height:34px;            /* was 38–40 */
-  font-size:0.88rem;          /* was ~.95 */
-}
-.pill.active{
-  background:#E6EBF3;
-  border-color:#C0CCE0;
+.form-grid .full {
+  grid-column: 1 / -1;
 }
 
-/* Inputs: slimmer to match */
-input[type="text"], input[type="time"], input[type="date"], select{
-  min-height:40px;
-  font-size:0.92rem;
-  padding:.65rem .8rem;
+.form-grid > * {
+  min-width: 0;
 }
 
-/* Schedule text a notch smaller */
-.schedule .title{ font-size:.95rem; }
-.schedule .time{ font-size:.9rem; }
-.schedule .note{ font-size:.9rem; }
-
-/* Venue action buttons smaller */
-.pc-actions .btn{
-  min-height:36px;
-  padding:.5rem .75rem;
-  font-size:.88rem;
-}
-
-/* ===== Mobile refinements (phones only) ===== */
-@media (max-width: 768px){
-
-  /* Global rhythm + container */
-  .container{ padding: 14px 0 !important; }
-  #step-wrapper{ gap: 12px !important; padding: 6px 0 !important; }
-  .progress{ height: 4px !important; margin: 6px 0 12px !important; }
-
-  /* Section title + helper copy */
-  .step-title{
-    margin-bottom: 4px !important;
-    font-size: 0.92rem !important;
+@media (max-width: 600px) {
+  .form-grid,
+  .form-grid.two {
+    grid-template-columns: 1fr;
   }
-  .step-help{
-    margin: 0 0 8px !important;
-    font-size: 0.9rem !important;
-    line-height: 1.4 !important;
-  }
+}
 
-  /* Form cards tighter */
-  .form-grid{
-    padding: 12px !important;
-    gap: 12px !important;
-  }
-  .form-grid.two{ grid-template-columns: 1fr !important; } /* single column on phone */
-
-  /* Labels + inputs a touch smaller */
-  label{
-    margin: 0 0 4px !important;
-    font-size: 0.85rem !important;
-  }
+/* Inputs (match ENM City/Date pills) */
 input[type="text"],
 input[type="time"],
 input[type="date"],
 select {
-  padding: 0.65rem 0.75rem 0.4rem !important;
-  min-height: 36px !important;
-  font-size: 0.85rem !important; /* smaller font */
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 0.65rem 0.95rem;
+  font-size: 0.95rem;
+  min-height: 42px;
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-  /* Buttons */
-  .btn{ min-height: 40px !important; padding: .6rem .9rem !important; }
-  .btn-cta{ min-height: 44px !important; padding: .85rem 1.4rem !important; }
-
-  /* Pills (bubbles) — smaller, consistent */
-  .radio-group{ gap: 8px !important; }
-  .pill{
-    padding: .42rem .7rem !important;
-    min-height: 32px !important;
-    font-size: 0.88rem !important;
-  }
-  .radio-group.segmented .pill{ border-radius: 9px !important; }
-
-  /* Rails + cards a bit denser */
-  .rail{ margin-top: 16px !important; }
-  .rail-head{ margin-bottom: 8px !important; }
-  .rail-title{ font-size: 0.95rem !important; }
-  .h-scroll{ gap: 10px !important; padding-bottom: 4px !important; }
-
-  .place-card{
-    min-width: 170px !important;
-    max-width: 190px !important;
-  }
-  .pc-body{ padding: 8px 10px 10px !important; }
-  .pc-title{ font-size: .94rem !important; margin: 0 0 4px !important; }
-  .pc-meta{ font-size: .88rem !important; gap: .45rem !important; }
-
-  /* Venue actions row under tour card */
-  .pc-actions{ gap: 8px !important; }
-  .btn-reserve{ font-size: .88rem !important; padding: 5px 10px !important; }
-
-  /* Results header spacing */
-  .results-header{ margin-bottom: 10px !important; }
-}
-
-/* --- Fix: prevent form controls from overflowing their card --- */
-.form-grid > *{ min-width:0 }                 /* allow grid children to shrink */
-.form-grid input,
-.form-grid select{ width:100%; max-width:100% }
-
-/* Make sure long placeholders/values wrap instead of pushing width */
-input, select { overflow:hidden; text-overflow:ellipsis; }
-
-/* iOS date/time controls won’t oversize the grid */
-input[type="date"], input[type="time"]{
+input[type="date"],
+input[type="time"] {
   -webkit-appearance: none;
   appearance: none;
+  text-align: left;
 }
 
-/* --- Segmented pills: no negative-overflow at edges --- */
-.form-grid .radio-group.segmented{
-  overflow:hidden;           /* clip tiny borders so they don't stick out */
-  border-radius:10px;
-}
-.form-grid .radio-group.segmented .pill{
-  margin:0;                  /* kill the -1px join trick that can overflow */
-  border-radius:0;
-}
-.form-grid .radio-group.segmented .pill:first-child{ border-radius:10px 0 0 10px }
-.form-grid .radio-group.segmented .pill:last-child { border-radius:0 10px 10px 0 }
-
-/* Safety: allow all pill groups to wrap before they force width growth */
-.radio-group{ flex-wrap:wrap }
-.radio-group .pill{ max-width:100% }
-
-/* Tour card timeline polish */
-.tour-card{max-width:760px;margin:0 auto 18px}
-.tour-head{margin-bottom:8px}
-.tour-title{margin:0}
-
-.tour-steps{
-  display:block;
-  max-height:68vh;            /* keeps the card from taking the whole screen */
-  overflow:auto;
-  padding-right:4px;
-  border-top:1px dashed var(--line-soft);
-  margin-top:8px;
-}
-
-.tstep{
-  display:grid;
-  grid-template-columns: 78px 1fr;  /* fixed time column */
-  align-items:flex-start;
-  gap:10px;
-  padding:10px 0;
-  border-bottom:1px dashed var(--line-soft);
-}
-.tstep:last-child{border-bottom:none}
-
-.t-time{
-  color:var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space:nowrap;
-}
-
-.t-label{line-height:1.35}
-.t-arr{margin:0 .4ch; opacity:.8}
-.t-from{font-weight:500}
-.t-to{font-weight:600}
-
-/* Event/flight lines */
-.t-event{
-  font-family:'Cormorant Garamond', Georgia, serif;
-  text-transform:uppercase; letter-spacing:.06em;
-  font-weight:600;
-}
-.t-fly{color:var(--muted)}
-.t-air{font-weight:600}
-
-/* Make "Your Night" card scroll if it gets long */
-.tour-card .tour-steps{
-  max-height: 48vh;           /* fits nicely under the header/buttons */
-  overflow: auto;
-  padding-right: 4px;         /* room for scrollbar */
-}
-
-/* Inline arrow format */
-.tstep{display:flex; gap:.9rem; align-items:flex-start; padding:10px 0; border-bottom:1px dashed var(--line-soft)}
-.tstep:last-child{border-bottom:none}
-.t-time{min-width:70px; color:var(--muted); font-variant-numeric:tabular-nums}
-.t-label{flex:1; line-height:1.45}
-.t-arrow{opacity:.6; margin-right:.25rem}
-.t-verb{color:var(--ink)}
-.t-dest{font-weight:600}
-
-/* one-line question row with a left toggle */
-.qrow {
-  display:flex; align-items:center; gap:10px;
-  margin-bottom:10px;
-}
-.qrow .switch { display:inline-flex; align-items:center; }
-.qrow .qtitle { margin:0; font-size:1.05rem; font-weight:600; }
-.qrow .qhelp  { margin:0 0 0 auto; color:var(--muted,#666); font-size:.9rem; }
-
-/* keep checkbox + label copy on ONE line in Activities & Interests */
-.form-grid.two > div > label {
-  display:flex; align-items:center; gap:8px; line-height:1.2;
-}
-.form-grid.two > div > label input[type="checkbox"] { margin:0; }
-
-/* question row with left toggle (used earlier) */
-.qrow { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-.qrow .qtitle { margin:0; font-size:1.05rem; font-weight:600; }
-.qrow .qhelp  { margin:0 0 0 auto; color:var(--muted,#666); font-size:.9rem; }
-
-/* clean checkbox list */
-.checks { display:flex; flex-direction:column; gap:10px; }
-.checks .check { display:flex; align-items:center; gap:10px; line-height:1.2; }
-.checks .check input { margin:0; }
-.checks .check span { flex:1; min-width:0; }
-
-/* --- Tour steps: tidy columns & alignment --- */
-.tour-steps { 
-  max-height: 360px;          /* shorter so users see the venue info + first rail */
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 8px;         /* space for scrollbar */
-}
-
-.tstep {
-  display: grid;
-  grid-template-columns: 88px 22px 1fr;  /* time | arrow | text */
-  align-items: baseline;
-  gap: 8px;
-  padding: 6px 0;
-}
-
-.t-time   { text-align: right; font-variant-numeric: tabular-nums; }
-.t-arrow  { text-align: center; display: inline-block; width: 100%; }
-.t-label  { text-align: left; }          /* left align the sentence */
-
-/* Make the scrollbar visible */
-.tour-steps::-webkit-scrollbar { width: 6px; }
-.tour-steps::-webkit-scrollbar-track { background: rgba(0,0,0,.06); border-radius: 8px; }
-.tour-steps::-webkit-scrollbar-thumb { background: rgba(0,0,0,.22); border-radius: 8px; }
-.tour-steps { scrollbar-color: rgba(0,0,0,.22) rgba(0,0,0,.06); scrollbar-width: thin; }
-
-/* Optional: subtle top/bottom fades to hint scrollability */
-.tour-card .tour-steps {
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,.85) 0%, rgba(0,0,0,1) 10%, rgba(0,0,0,1) 90%, rgba(0,0,0,.85) 100%);
-}
-
-.tour-card { margin-top: 8px; margin-bottom: 12px; }
-
-.tstep {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 6px 0;
-}
-
-.t-time {
-  width: 70px;               /* fixed width column for time */
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.t-arrow {
-  flex: 0 0 18px;             /* fixed width for arrow */
-  text-align: center;
-}
-
-.t-label {
-  flex: 1;                   /* take the rest of the row */
-  text-align: left;          /* keep wording left-aligned */
-  word-break: keep-all;
-  white-space: normal;
-}
-
-.tour-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 420px;   /* shorter card so rails peek through */
-  overflow-y: auto;    /* visible scrollbar */
-  padding-right: 10px; /* space for scrollbar */
-}
-
-.tstep {
-  display: flex;
-  align-items: baseline;
-  font-size: 0.95rem;
-  line-height: 1.4;
-}
-
-.t-time {
-  width: 75px;        /* fixed width column for times */
-  text-align: right;  /* keeps all times aligned */
-  flex-shrink: 0;
-  font-weight: 500;
-}
-
-.t-arrow {
-  width: 25px;        /* fixed width column for arrows */
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.t-label {
-  flex: 1;
-  text-align: left;   /* ensures wording is all flush-left */
-}
-
-.tour-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 420px;
-  overflow-y: scroll;          /* force scroll bar always visible */
-  padding-right: 12px;         /* space so text doesn’t hit the bar */
-  scrollbar-width: thin;       /* Firefox */
-  scrollbar-color: #ccc #f9f9f9;
-}
-
-/* Chrome / Safari */
-.tour-steps::-webkit-scrollbar {
-  width: 6px;
-}
-.tour-steps::-webkit-scrollbar-track {
-  background: #f9f9f9;
-  border-radius: 3px;
-}
-.tour-steps::-webkit-scrollbar-thumb {
-  background-color: #ccc;
-  border-radius: 3px;
-}
-
-.venue-cta a {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 6px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #f8f9f9;
-  text-decoration: none;
+input::placeholder {
+  color: #9aa3b5;
   font-size: 0.9rem;
-  color: #121e36;
-}
-.venue-cta a:hover {
-  background: #eee;
 }
 
-/* Your Night: mobile-friendly scroll affordance */
-.tour-card .tour-steps{
+input:focus,
+select:focus {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px rgba(31, 43, 74, 0.18);
+}
+
+.tiny {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* Autocomplete list (locations, venues, etc.) */
+.suggest {
   position: relative;
-  max-height: 420px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* iOS momentum */
-  scrollbar-gutter: stable;
-  padding-right: 10px;               /* room for the faux bar */
 }
-
-/* Bottom fade = “there’s more below” */
-.tour-card .tour-steps::before{
-  content: "";
-  position: sticky;
-  display: block;
-  bottom: -1px;
+.suggest-list {
+  position: absolute;
+  z-index: 2000;
   width: 100%;
-  height: 24px;
-  pointer-events: none;
-  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(0,0,0,.06));
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 6px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+  padding: 4px;
+}
+.suggest-list[hidden] {
+  display: none;
+}
+.suggest-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.suggest-item:hover {
+  background: #F2F5FA;
 }
 
-/* Faux right-side “scroll bar” that’s always visible on mobile */
-.tour-card .tour-steps::after{
+/* ===== Pills (match ENM category/filter pills) ===== */
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.pill:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+.pill.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+}
+
+/* ===== Buttons (aligned to ENM CTA button style) ===== */
+.btn {
+  appearance: none;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  padding: 0.7rem 1.2rem;
+  min-height: 40px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease,
+    transform 0.12s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(18, 30, 54, 0.16);
+}
+
+.btn-ghost {
+  background: #ffffff;
+}
+
+/* Share button can be same as primary but narrower if needed */
+.btn-share {
+  white-space: nowrap;
+}
+
+/* Sticky actions under step card */
+.sticky-actions {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #E5EAF3;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ===== Loading Spinner ===== */
+.loading .spinner {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 3px solid #E2E7F0;
+  border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
+  margin: 20px auto 10px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== Results Header ===== */
+.results-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.results-header h2 {
+  margin: 0 0 2px;
+}
+
+.results-header .muted {
+  margin: 0;
+}
+
+.results-header .actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+/* Stack actions on mobile */
+@media (max-width: 600px) {
+  .results-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .results-header .actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+/* ===== Vertical Schedule Timeline (itinerary) ===== */
+.schedule {
+  position: relative;
+  padding-left: 18px;
+  margin-top: 14px;
+}
+
+.schedule::before {
   content: "";
   position: absolute;
-  top: 8px;
-  right: 2px;
-  width: 4px;
-  height: calc(100% - 16px);
-  border-radius: 3px;
-  background: rgba(0,0,0,.18);  /* visible track */
-  pointer-events: none;
-  transition: opacity .2s ease;
+  left: 9px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
 }
 
-/* Hide affordance once user has scrolled */
-.tour-card .tour-steps.scrolled::after{
-  opacity: 0;
+.schedule .row {
+  padding: 10px 0 14px;
+  border-bottom: 1px dashed #E5EAF3;
 }
 
-/* Desktop/Chromium/Safari: keep the native scrollbar visible & styled */
-.tour-card .tour-steps::-webkit-scrollbar{ width: 10px; }
-.tour-card .tour-steps::-webkit-scrollbar-track{
-  background: rgba(0,0,0,.08);
-  border-radius: 8px;
-}
-.tour-card .tour-steps::-webkit-scrollbar-thumb{
-  background: rgba(0,0,0,.35);
-  border-radius: 8px;
-  border: 2px solid rgba(255,255,255,.6);
-}
-.tour-card .tour-steps::-webkit-scrollbar-thumb:hover{ background: rgba(0,0,0,.5); }
-
-/* Firefox */
-@supports (scrollbar-color: auto) {
-  .tour-card .tour-steps{
-    scrollbar-color: rgba(0,0,0,.45) rgba(0,0,0,.12);
-    scrollbar-width: thin;
-  }
+.schedule .row:last-child {
+  border-bottom: none;
 }
 
-/* === Concerto+ Final Font & Color Cleanup === */
-
-/* Major headers (Cormorant Garamond, all caps) */
-.step-title,
-.rail-title,
-.qtitle,
-#results-context {
-  font-family: 'Cormorant Garamond', Georgia, serif !important;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: 500;
-  color: #121E36; /* navy */
-}
-
-/* Body text, labels, inputs, pills, itinerary details */
-body,
-p,
-label,
-input,
-select,
-.pill,
-.t-label,
-.step-help,
-.tiny,
-.results-header .muted,
-.venue-cta a {
-  font-family: 'Lora', Georgia, serif !important;
-  color: #121E36;
-}
-
-/* Muted stays softer */
-.muted {
-  color: var(--muted) !important;
-}
-
-/* Backgrounds use soft white */
-body {
-  background: #F8F9F9;
-}
-
-.card,
-.form-grid,
-.place-card,
-.tour-card {
-  background: #FFFFFF; /* keep cards pure white for contrast */
-}
-
-/* Buttons unify font */
-.btn, .btn-primary, .btn-ghost, .btn-cta {
-  font-family: 'Lora', Georgia, serif !important;
-}
-
-/* --- Form breathing room on phones --- */
-@media (max-width: 768px){
-  /* more air inside the white rounded form block */
-  .form-grid{
-    padding: 14px !important;
-    gap: 14px !important;      /* was 12px */
-  }
-
-  /* space between the label (question header) and the control/pills */
-  label{
-    margin: 0 0 8px !important; /* was 4px */
-  }
-
-  /* pill groups (cuisines, budget, etc.) shouldn't kiss the label */
-  .form-grid .radio-group{
-    margin-top: 4px !important;
-  }
-
-  /* toggle question rows need a touch more separation */
-  .qrow{
-    gap: 12px !important;
-    margin-bottom: 12px !important;
-  }
-}
-
-/* Desktop/tablet: a touch more spacing too (keeps consistency) */
-@media (min-width: 769px){
-  .form-grid{ gap: 16px; }          /* was 14–16 across the file */
-  label{ margin-bottom: 10px; }     /* was 8px */
-  .form-grid .radio-group{ margin-top: 6px; }
-}
-
-/* --- Equal vertical rhythm inside cards --- */
-.card {
+.schedule .hdr {
   display: flex;
-  flex-direction: column;
-  gap: 14px;                /* equal spacing between every child */
+  align-items: center;
+  gap: 0.6rem;
 }
 
-/* reset inner margins so gap does all the spacing */
-.card > h3,
-.card > p,
-.card > label,
-.card > .form-grid,
-.card > button,
-.card > .btn,
-.card > .qrow {
-  margin: 0 !important;
+.schedule .pin {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  box-shadow: 0 0 0 6px rgba(42, 58, 99, 0.15);
 }
 
-/* vertical stacks with consistent gaps */
-.vstack { display:flex; flex-direction:column; }
-.gap-8  { gap:8px; }
-.gap-12 { gap:12px; }
-.gap-14 { gap:14px; }
-.gap-16 { gap:16px; }
-
-/* a single form field: label + control stacked evenly */
-.field { display:flex; flex-direction:column; gap:10px; }
-
-/* disable auto margins so our gaps control spacing */
-.card > * { margin:0 !important; }
-
-/* flatten inner grids inside cards */
-.form-grid.plain{
-  background:transparent !important;
-  border:none !important;
-  border-radius:0 !important;
-  padding:0 !important;
+.schedule .time {
+  min-width: 60px;
+  font-size: 0.86rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
-/* even rhythm inside cards */
-.card .field{ margin-bottom:12px; }
-.card .field:last-child{ margin-bottom:0; }
+.schedule .title {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
 
-/* optional: ensure consistent gaps in 2-col grids */
-.form-grid.plain.two{ row-gap:12px; column-gap:12px; }
+.schedule .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.schedule .meta a {
+  color: var(--accent-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.schedule .note {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* ===== Rails (horizontal scrollers for places) ===== */
+.rail {
+  margin-top: 20px;
+}
+
+.rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.rail-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.h-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+}
+
+.h-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.h-scroll::-webkit-scrollbar-thumb {
+  background: #D9E0EB;
+  border-radius: 999px;
+}
+
+/* Hide rails if empty (JS can leave them in DOM) */
+.rail:empty {
+  display: none;
+}
+
+/* ===== Place Cards (restaurants, hotels, etc.) ===== */
+.place-card {
+  scroll-snap-align: start;
+  min-width: 200px;
+  max-width: 220px;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.18s ease;
+}
+
+.place-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(18, 30, 54, 0.10);
+}
+
+.pc-img {
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  background: #F1F4F8;
+  overflow: hidden;
+}
+.pc-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pc-body {
+  padding: 10px 12px 12px;
+}
+
+.pc-title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.pc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.pc-actions {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Small “Reserve / Directions” pill buttons inside cards */
+.btn-reserve {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4ch;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--accent-2);
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-reserve:hover {
+  box-shadow: var(--shadow-soft);
+}
+
+/* ===== Mobile Tweaks ===== */
+@media (max-width: 600px) {
+  .container {
+    width: min(100%, 94vw);
+    padding: 14px 0 18px;
+  }
+
+  .card {
+    padding: 14px 14px 16px;
+  }
+
+  .hero-welcome {
+    padding: 0 14px 20px;
+  }
+
+  .hc-mark {
+    font-size: 1.4rem;
+  }
+
+  .form-grid,
+  .form-grid.two {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  label {
+    margin-bottom: 4px;
+  }
+
+  input[type="text"],
+  input[type="time"],
+  input[type="date"],
+  select {
+    padding: 0.6rem 0.8rem;
+    min-height: 38px;
+    font-size: 0.88rem;
+  }
+
+  .pill {
+    padding: 6px 12px;
+    font-size: 0.88rem;
+  }
+
+  .btn {
+    min-height: 38px;
+    padding: 0.6rem 1rem;
+    font-size: 0.86rem;
+  }
+
+  .place-card {
+    min-width: 180px;
+    max-width: 200px;
+  }
+}

@@ -1,6 +1,6 @@
 /* ============================================================
-   Concerto+ — Day Planner (Inter / Ultra-Clean)
-   Based on Events Near Me styles
+   Concerto+ · Day Planner
+   Clean, mobile-first, Events Near Me–style
    ============================================================ */
 
 :root {
@@ -11,8 +11,8 @@
   --accent-2: #2A3A63;
   --line: #E2E7F0;
   --card: #FFFFFF;
-  --shadow-soft: 0 4px 10px rgba(18, 30, 54, 0.08);
-  --radius-card: 16px;
+  --shadow-soft: 0 4px 16px rgba(18, 30, 54, 0.10);
+  --radius-pill: 18px;
 }
 
 /* ===== Reset ===== */
@@ -34,7 +34,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ===== Layout Shell ===== */
+/* ===== Layout ===== */
 .page {
   min-height: 100vh;
   display: flex;
@@ -56,15 +56,21 @@ body {
   padding-bottom: 20px;
 }
 
-/* ===== Branding & Top Hero ===== */
+.page-footer {
+  margin-top: auto;
+  padding: 14px 0 18px;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+/* ===== Branding ===== */
 .brand-logo {
   max-width: 260px;
-  width: 72%;
+  width: 70%;
   display: block;
   margin: 0 auto 10px;
 }
 
-/* Main feature headline: Concerto+ */
 .feature-title {
   margin: 0 0 4px;
   font-size: 1.45rem;
@@ -77,15 +83,15 @@ body {
 .tagline {
   margin: 0 0 16px;
   text-align: center;
-  font-size: 0.92rem;
-  line-height: 1.45;
+  font-size: 0.9rem;
+  line-height: 1.5;
   color: var(--muted);
 }
 
 /* ===== Typography ===== */
 .section-title {
   margin: 0 0 4px;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   font-weight: 400;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -98,58 +104,39 @@ body {
   color: var(--muted);
 }
 
-.plan-title {
-  margin: 0 0 6px;
-  font-size: 0.9rem;
-  font-weight: 400;
+.subsection-title {
+  margin: 18px 0 6px;
+  font-size: 0.84rem;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--muted);
 }
 
 .muted {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.84rem;
 }
 
-/* ===== Utilities ===== */
+/* ===== Generic layout helpers ===== */
 .stack {
   display: flex;
   flex-direction: column;
 }
 
+.gap-6 {
+  gap: 6px;
+}
 .gap-16 {
   gap: 16px;
 }
 
-.gap-6 {
-  gap: 6px;
-}
-
-/* ===== Cards ===== */
+/* ===== Card ===== */
 .card {
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0;
-  margin-top: 10px;
-}
-
-.planner-card {
-  padding-top: 6px;
-}
-
-/* ===== Step Chip ===== */
-.step-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: #E9EDF6;
-  color: var(--muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  background: var(--card);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  padding: 16px 16px 18px;
 }
 
 /* ===== Form ===== */
@@ -159,12 +146,8 @@ body {
   margin-bottom: 12px;
 }
 
-.field:last-child {
-  margin-bottom: 0;
-}
-
 label {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 400;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -173,7 +156,7 @@ label {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1.3fr 0.9fr;
+  grid-template-columns: 1.2fr 1fr;
   gap: 12px;
 }
 
@@ -181,13 +164,12 @@ label {
   min-width: 0;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .form-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* Input pills */
 input[type="text"],
 input[type="date"] {
   width: 100%;
@@ -195,7 +177,6 @@ input[type="date"] {
   border: 1px solid var(--line);
   padding: 0.65rem 0.95rem;
   font-size: 15px;
-  min-height: 42px;
   background: #fff;
   color: var(--ink);
   outline: none;
@@ -213,13 +194,20 @@ input:focus {
   box-shadow: 0 0 0 2px rgba(31, 43, 74, 0.18);
 }
 
-/* ===== Primary + Secondary Buttons ===== */
+.tiny {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ===== Buttons ===== */
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.btn-ghost {
   border-radius: 999px;
   border: none;
-  padding: 0.85rem 1.1rem;
-  font-size: 0.96rem;
+  padding: 0.78rem 1.3rem;
+  font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -235,51 +223,192 @@ input:focus {
 }
 
 .btn-secondary {
-  background: #fff;
+  background: #ffffff;
   color: var(--accent-2);
-  border: 1px solid var(--line);
-  box-shadow: 0 4px 10px rgba(18, 30, 54, 0.08);
+  border: 1px solid var(--accent-2);
 }
 
-/* Disabled state */
-button:disabled {
-  opacity: 0.55;
+.btn-ghost {
+  background: transparent;
+  color: var(--accent-2);
+  border: 1px solid transparent;
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
   cursor: default;
   box-shadow: none;
 }
 
-/* ===== Subtle link-style button ===== */
-.link-toggle {
-  margin: 0;
-  padding: 0;
+/* ===== Step Pills (Accordion) ===== */
+.step-pill {
+  background: transparent;
+  border-radius: var(--radius-pill);
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 12px rgba(18, 30, 54, 0.06);
+  overflow: hidden;
+}
+
+.step-pill-header {
+  width: 100%;
   border: none;
-  background: none;
-  color: var(--accent-2);
-  font-size: 0.88rem;
-  display: inline-flex;
+  background: #ffffff;
+  padding: 10px 14px;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
   cursor: pointer;
 }
 
-/* ===== Status text ===== */
-.search-actions {
+.step-pill-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.step-number {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.step-text-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+}
+
+.step-title {
+  font-size: 0.96rem;
+  font-weight: 500;
+}
+
+.step-subtitle {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.step-pill-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.step-pill-check {
+  display: none;
+}
+
+.step-pill-caret {
+  transition: transform 0.18s ease;
+}
+
+/* Open state */
+.step-pill.open .step-pill-caret {
+  transform: rotate(180deg);
+}
+
+/* Completed state */
+.step-pill.completed {
+  border-color: var(--accent-2);
+}
+
+.step-pill.completed .step-pill-check {
+  display: inline-block;
+}
+
+/* Body */
+.step-pill-body {
+  background: var(--bg);
+  padding: 8px 10px 14px;
+  border-top: 1px solid #eef2f8;
+  display: none;
+}
+
+.step-pill.open .step-pill-body {
+  display: block;
+}
+
+/* ===== Search actions & status ===== */
+.search-actions {
+  margin-top: 6px;
 }
 
 .status {
-  min-height: 16px;
+  margin-top: 6px;
 }
 
-/* ===== Pills (vibe selections) ===== */
+/* ===== Event search results ===== */
+.event-results {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.event-result {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  padding: 10px 12px;
+  box-shadow: 0 2px 6px rgba(18, 30, 54, 0.05);
+}
+
+.event-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.event-result-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 500;
+}
+
+.event-result-meta {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.event-result-footer {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.event-result button {
+  border-radius: 999px;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+}
+
+/* Selected state */
+.event-result.selected {
+  border-color: var(--accent-2);
+  box-shadow: 0 4px 12px rgba(31, 43, 74, 0.18);
+}
+
+/* ===== Vibes & Pace ===== */
 .pill-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   margin-top: 6px;
-  margin-bottom: 4px;
 }
 
 .pill {
@@ -287,11 +416,11 @@ button:disabled {
   padding: 7px 14px;
   border: 1px solid var(--line);
   background: #fff;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   color: var(--ink);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease,
-    transform 0.12s ease, box-shadow 0.12s ease;
+    box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .pill:hover {
@@ -305,194 +434,122 @@ button:disabled {
   color: #fff;
 }
 
-/* ===== Segmented control for pace ===== */
-.segmented {
+.seg-row {
   display: inline-flex;
+  padding: 3px;
   border-radius: 999px;
-  background: #e6eaf3;
-  padding: 2px;
-  gap: 2px;
-}
-
-.seg-pill {
-  border: none;
-  border-radius: 999px;
-  padding: 6px 12px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.86rem;
-  cursor: pointer;
-}
-
-.seg-pill.active {
-  background: #fff;
-  color: var(--accent-2);
-  box-shadow: 0 2px 6px rgba(18, 30, 54, 0.16);
-}
-
-/* ===== Selected event summary (step 2) ===== */
-.selected-event-summary {
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #eff2f8;
-  font-size: 0.86rem;
-}
-
-/* ===== Ticketmaster Event Results (Step 1) ===== */
-.events-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.event-result {
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  padding: 12px 14px;
-  box-shadow: 0 2px 8px rgba(18, 30, 54, 0.06);
-  display: flex;
-  flex-direction: column;
+  background: #e9edf6;
   gap: 4px;
 }
 
-.event-result-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.event-result-title {
-  margin: 0;
-  font-size: 0.98rem;
-  font-weight: 400;
-}
-
-.event-result-meta {
-  font-size: 0.84rem;
+.seg-pill {
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
   color: var(--muted);
 }
 
-.event-result-footer {
-  margin-top: 6px;
+.seg-pill.active {
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 2px 6px rgba(18, 30, 54, 0.15);
+}
+
+/* ===== Plan (Timeline & Rails) ===== */
+.plan-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.event-result button {
-  border-radius: 999px;
-  padding: 6px 14px;
-  border: none;
-  background: #121E36;
-  color: #fff;
-  font-size: 0.82rem;
-  cursor: pointer;
+.plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.event-result.selected {
-  border-color: var(--accent-2);
-  box-shadow: 0 4px 12px rgba(18, 30, 54, 0.14);
-}
-
-/* ===== Plan Card (Step 3) ===== */
-.plan-block {
-  padding: 10px 0;
-  border-top: 1px solid var(--line);
-}
-
-.plan-block:first-of-type {
-  border-top: none;
-  padding-top: 0;
-}
-
-/* ===== Timeline ===== */
 .timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  padding: 10px 12px;
 }
 
 .timeline-item {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 10px;
-  font-size: 0.9rem;
-  align-items: baseline;
-}
-
-.timeline-time {
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
+  grid-template-columns: 80px 1fr;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef2f8;
   font-size: 0.86rem;
 }
 
-.timeline-label {
-  line-height: 1.4;
+.timeline-item:last-child {
+  border-bottom: none;
 }
 
-.timeline-label strong {
+.timeline-time {
   font-weight: 500;
+  color: var(--ink);
 }
 
 .timeline-label a {
   color: inherit;
-  text-decoration: none;
-}
-
-.timeline-label a:hover {
   text-decoration: underline;
 }
 
-/* ===== Rails for places ===== */
+.rails-wrapper {
+  margin-top: 16px;
+}
+
 .rails {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: 6px;
+  gap: 10px;
 }
 
 .rail {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  padding: 10px 12px 12px;
 }
 
 .rail-title {
   font-size: 0.84rem;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
+  margin-bottom: 8px;
 }
 
 .rail-row {
   display: flex;
-  overflow-x: auto;
   gap: 10px;
-  padding-bottom: 4px;
-  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .place-card {
-  flex: 0 0 190px;
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  box-shadow: 0 2px 8px rgba(18, 30, 54, 0.06);
+  flex: 0 0 160px;
+  border-radius: 12px;
+  border: 1px solid #ecf0f7;
+  background: #ffffff;
   text-decoration: none;
   color: inherit;
-  display: flex;
-  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(18, 30, 54, 0.06);
   overflow: hidden;
 }
 
 .place-card-img {
-  width: 100%;
-  height: 110px;
-  background: #dfe3ee;
+  height: 96px;
+  background: #dfe4f0;
   overflow: hidden;
 }
 
@@ -503,51 +560,34 @@ button:disabled {
 }
 
 .place-card-body {
-  padding: 8px 10px 10px;
+  padding: 6px 8px 8px;
 }
 
 .place-card-name {
-  margin: 0 0 3px;
-  font-size: 0.9rem;
+  margin: 0 0 4px;
+  font-size: 0.86rem;
   font-weight: 500;
 }
 
 .place-card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 8px;
-  font-size: 0.8rem;
+  gap: 6px;
+  font-size: 0.78rem;
   color: var(--muted);
 }
 
-/* ===== Plan actions ===== */
-.plan-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ===== Mobile Tweaks ===== */
-@media (max-width: 600px) {
-  .card {
-    padding: 0;
-  }
-
+/* ===== Mobile tweaks ===== */
+@media (max-width: 480px) {
   .feature-title {
     font-size: 1.35rem;
   }
 
-  .btn-primary {
-    font-size: 0.94rem;
+  .timeline-item {
+    grid-template-columns: 72px 1fr;
   }
 
-  .plan-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .btn-secondary {
-    width: 100%;
+  .place-card {
+    flex: 0 0 150px;
   }
 }

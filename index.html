@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Concerto+ · Concert Day Planner</title>
 
-  <!-- Fonts -->
+  <!-- Fonts: Inter (same as Events Near Me) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
 
   <!-- Styles -->
   <link rel="stylesheet" href="./style.css" />
@@ -16,35 +19,32 @@
 <body>
   <noscript>This app requires JavaScript to run.</noscript>
 
-<!-- ========== WELCOME (centered, fully button-consistent) ========== -->
-<section id="screen-welcome" class="screen active" style="padding:0;">
-  <div style="min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 16px;">
-    
-    <!-- Logo -->
-    <h1 class="hc-mark" style="margin:0 0 16px;">CONCERTO+</h1>
+  <!-- ========== WELCOME (centered, ENM-style typography/spacing) ========== -->
+  <section id="screen-welcome" class="screen active">
+    <div class="hero-welcome">
+      <!-- Logo / Title -->
+      <h1 class="hc-mark">Concerto+</h1>
 
-    <!-- Taglines -->
-    <p class="hc-sub" style="margin:0 0 12px; font-size:1.05rem;">
-      Plan your perfect day in the city.
-    </p>
+      <!-- Taglines -->
+      <p class="hc-sub">
+        Plan your perfect day in the city.
+      </p>
 
-    <p class="hc-sub"
-       style="margin:0 0 18px; font-size:.9rem; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;">
-      Every Concert · Every Game · Every City
-    </p>
+      <p class="hc-sub hc-sub-kicker">
+        Every Concert · Every Game · Every City
+      </p>
 
-    <p class="hc-sub" style="margin:0 auto 28px; max-width:440px; font-size:.95rem;">
-      Create a custom itinerary with curated dining, city experiences, and more.
-    </p>
+      <p class="hc-sub hc-sub-body">
+        Create a custom itinerary with curated dining, city experiences, and more.
+      </p>
 
-<!-- Buttons -->
-<div style="display:flex; flex-direction:column; gap:12px; align-items:center;">
-  <button id="btn-start" class="btn btn-primary">Get Started</button>
-  <button id="btn-resume" class="btn btn-ghost" style="display:none;">Resume Plan</button>
-</div>
-
-  </div>
-</section>
+      <!-- Buttons -->
+      <div class="hero-actions">
+        <button id="btn-start" class="btn btn-primary">Get Started</button>
+        <button id="btn-resume" class="btn btn-ghost" style="display:none;">Resume Plan</button>
+      </div>
+    </div>
+  </section>
   
   <!-- ========== FORM STEPS ========== -->
   <section id="screen-form" class="screen">
@@ -76,14 +76,19 @@
           <h2 id="results-context">Your Concert Day</h2>
           <p id="intro-line" class="muted"></p>
         </div>
-        <div class="actions" style="display:flex; gap:10px; align-items:flex-end;">
+        <div class="actions">
           <button id="btn-edit" class="btn btn-ghost">Edit inputs</button>
           <button id="btn-new" class="btn btn-ghost">New plan</button>
-          <button id="btn-share" class="btn">Share link</button>
+          <button id="btn-share" class="btn btn-primary btn-share">Share link</button>
         </div>
       </div>
 
       <div id="schedule" class="schedule"></div>
+
+      <!-- Rails for places (restaurants, hotels, etc.) get injected here by JS -->
+      <div id="rails"></div>
+    </div>
+  </section>
 
   <!-- Google Maps JS (Places API) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>

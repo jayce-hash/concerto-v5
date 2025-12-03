@@ -1,24 +1,19 @@
-/* ============================================================
-   Concerto+ — Match Events Near Me Look & Feel
-   - Inter font
-   - Same colors, pills, buttons, spacing rhythm
-   - Single-page flow (no multi-screen paging)
-   ============================================================ */
+/* ========= Root & Global ========= */
 
-/* ===== Theme Tokens (same palette as Events Near Me) ===== */
 :root {
-  --bg: #F8F9F9;
-  --ink: #121E36;
-  --muted: #5E6B86;
-  --accent: #1F2B4A;
-  --accent-2: #2A3A63;
-  --line: #E2E7F0;
-  --card: #FFFFFF;
-  --shadow-soft: 0 4px 10px rgba(18, 30, 54, 0.08);
-  --radius-card: 16px;
+  --bg: #f5f5f7;
+  --bg-elevated: #ffffff;
+  --accent: #121e36;
+  --accent-soft: #e2e4f0;
+  --accent-soft-strong: #c7ccdd;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --radius-card: 18px;
+  --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-subtle: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
-/* ===== Reset & Base ===== */
 *,
 *::before,
 *::after {
@@ -29,724 +24,629 @@ html,
 body {
   margin: 0;
   padding: 0;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
-    sans-serif;
-  background: var(--bg);
-  color: var(--ink);
-  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  min-height: 100vh;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
 }
 
-a {
-  color: var(--accent-2);
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
+/* ========= Layout Shell ========= */
 
-.muted {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-/* ===== Screen layout (one-page) ===== */
-/* All sections stack by default */
 .screen {
-  display: block;
-}
-
-/* Loading overlay (only shows when .active is set by JS) */
-#screen-loading {
   display: none;
+  padding: 18px 16px 32px;
 }
-#screen-loading.active {
+
+.screen.active {
   display: block;
 }
 
-/* Hide form + results until user starts / has a plan */
-#screen-form,
-#screen-results {
-  display: none;
+.container {
+  margin: 0 auto;
 }
 
-/* Show form once the user has tapped Get Started */
-body.show-form #screen-form {
-  display: block;
+.container.narrow {
+  max-width: 720px;
 }
 
-/* Show results once an itinerary exists */
-body.has-plan #screen-results {
-  display: block;
+.container.wide {
+  max-width: 960px;
 }
 
-/* Loading overlay only when active */
-.screen.loading {
-  display: none;
-}
-.screen.loading.active {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: fixed;
-  inset: 0;
-  background: rgba(248, 249, 249, 0.9);
-  z-index: 999;
-}
-
-/* Optional inner container alignment for loading */
-.loading-inner {
-  text-align: center;
-}
-
-/* ===== Header / Hero (ENM-style) ===== */
+/* ========= Hero / Welcome ========= */
 
 .hero-welcome {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 16px 16px 8px;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  padding: 12px 0 8px;
 }
 
-/* Brand logo (same treatment as Events Near Me) */
 .brand-logo {
-  max-width: 260px;
-  width: 72%;
+  width: 120px;
+  height: 120px;
+  border-radius: 26px;
+  object-fit: cover;
   display: block;
-  margin: 0 auto 10px;
+  margin: 0 auto 16px;
+  box-shadow: var(--shadow-soft);
 }
 
-/* CONCERTO+ mark — similar to ENM feature-title */
 .hc-mark {
-  margin: 0 0 4px;
-  font-size: 1.45rem;
-  font-weight: 400;
+  margin: 0 0 6px;
+  font-size: 30px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  font-weight: 600;
+  color: var(--accent);
 }
 
-/* Taglines below title */
 .hc-sub {
   margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.5;
+  font-size: 14px;
   color: var(--muted);
 }
 
 .hc-sub-kicker {
   margin-top: 4px;
-  margin-bottom: 8px;
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--accent);
 }
 
 .hc-sub-body {
-  max-width: 440px;
-  margin: 0 auto 18px;
-  font-size: 0.9rem;
+  margin-top: 10px;
+  font-size: 13px;
 }
 
-/* Welcome buttons */
 .hero-actions {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   gap: 10px;
-  align-items: center;
-  margin-bottom: 4px;
+  margin-top: 18px;
 }
 
-/* ===== Containers (narrow/wide) ===== */
-.container {
-  width: min(640px, 92vw);
-  margin: 0 auto;
-  padding: 4px 0 20px;
-}
+/* ========= Buttons ========= */
 
-.container.wide {
-  width: min(720px, 94vw);
-}
-
-/* ===== Headings / Section Titles (ENM-style) ===== */
-h1, h2, h3 {
-  margin: 0 0 4px;
-  font-size: 1rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-h1 {
-  font-size: 1.45rem;
-}
-h2 {
-  font-size: 0.95rem;
-}
-h3 {
-  font-size: 0.9rem;
-}
-
-.section-title {
-  margin: 0 0 4px;
-  font-size: 0.9rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-/* Results header title */
-#results-context {
-  font-size: 1rem;
-}
-
-/* Helper text under section titles */
-.step-help {
-  margin: 0 0 12px;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-/* ===== Cards (match ENM search card/results cards) ===== */
-.card {
-  background: var(--card);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-soft);
-  padding: 16px 16px 18px;
-}
-
-.step-card {
-  margin-top: 12px;
-}
-
-/* ===== Progress Bar ===== */
-.progress {
-  height: 4px;
-  border-radius: 999px;
-  background: #E5EAF3;
-  margin: 4px 0 14px;
-  overflow: hidden;
-}
-
-.progress-bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-}
-
-/* ===== Form Layout ===== */
-#step-wrapper {
-  display: grid;
-  gap: 16px;
-  padding: 4px 0 0;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 12px;
-}
-.field:last-child {
-  margin-bottom: 0;
-}
-
-label {
-  font-size: 0.8rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-
-/* Form grid (two-column on desktop, stack on mobile) */
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  background: #FFFFFF;
-  border-radius: var(--radius-card);
-  border: 1px solid var(--line);
-  padding: 14px;
-}
-
-.form-grid.two {
-  grid-template-columns: 1fr 1fr;
-}
-
-.form-grid .full {
-  grid-column: 1 / -1;
-}
-
-.form-grid > * {
-  min-width: 0;
-}
-
-@media (max-width: 600px) {
-  .form-grid,
-  .form-grid.two {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Inputs (match ENM City/Date pills) */
-input[type="text"],
-input[type="time"],
-input[type="date"],
-select {
-  width: 100%;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  padding: 0.65rem 0.95rem;
-  font-size: 0.95rem;
-  min-height: 42px;
-  background: #fff;
-  color: var(--ink);
-  outline: none;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-input[type="date"],
-input[type="time"] {
-  -webkit-appearance: none;
-  appearance: none;
-  text-align: left;
-}
-
-input::placeholder {
-  color: #9aa3b5;
-  font-size: 0.9rem;
-}
-
-input:focus,
-select:focus {
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 2px rgba(31, 43, 74, 0.18);
-}
-
-.tiny {
-  margin-top: 4px;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-/* Autocomplete list (locations, venues, etc.) */
-.suggest {
-  position: relative;
-}
-.suggest-list {
-  position: absolute;
-  z-index: 2000;
-  width: 100%;
-  max-height: 260px;
-  overflow-y: auto;
-  margin-top: 6px;
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-soft);
-  padding: 4px;
-}
-.suggest-list[hidden] {
-  display: none;
-}
-.suggest-item {
-  padding: 8px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.suggest-item:hover {
-  background: #F2F5FA;
-}
-
-/* ===== Pills (match ENM category/filter pills) ===== */
-.radio-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.pill {
-  border-radius: 999px;
-  padding: 7px 14px;
-  border: 1px solid var(--line);
-  background: #fff;
-  font-size: 0.9rem;
-  color: var(--ink);
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease,
-    transform 0.12s ease, box-shadow 0.12s ease;
-}
-
-.pill:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-soft);
-}
-
-.pill.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  border-color: transparent;
-  color: #fff;
-}
-
-/* ===== Buttons (aligned to ENM CTA button style) ===== */
 .btn {
   appearance: none;
+  border: 1px solid transparent;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  background: #ffffff;
-  color: var(--ink);
-  padding: 0.7rem 1.2rem;
-  min-height: 40px;
-  font-size: 0.9rem;
+  font-family: inherit;
+  font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  padding: 10px 18px;
   cursor: pointer;
-  transition: background 0.15s ease, box-shadow 0.15s ease,
-    transform 0.12s ease, border-color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-soft);
-}
-
-.btn:active {
-  transform: translateY(0);
-  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--text);
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+              box-shadow 0.15s ease, transform 0.08s ease;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 8px 18px rgba(18, 30, 54, 0.16);
+  background: var(--accent);
+  color: #f9fafb;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-subtle);
+}
+
+.btn-primary:hover {
+  background: #0f172a;
+  border-color: #0f172a;
 }
 
 .btn-ghost {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--accent);
+  border-color: rgba(148, 163, 184, 0.4);
 }
 
-/* Share button can be same as primary but narrower if needed */
+.btn-ghost:hover {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.8);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
 .btn-share {
   white-space: nowrap;
 }
 
-/* Sticky actions under step card */
+/* ========= Progress / Step Card ========= */
+
+.progress {
+  width: 100%;
+  height: 3px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 4px 0 12px;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-soft), var(--accent));
+  border-radius: inherit;
+  transition: width 0.2s ease-out;
+}
+
+.card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-card);
+  padding: 18px 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+.step-card {
+  margin-top: 10px;
+  position: relative;
+  padding-bottom: 60px; /* room for sticky actions */
+}
+
+/* Sticky footer buttons inside card */
 .sticky-actions {
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid #E5EAF3;
+  position: sticky;
+  bottom: 0;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  margin-top: 16px;
+  background: linear-gradient(to top,
+    var(--bg-elevated) 0%,
+    rgba(255, 255, 255, 0.85) 70%,
+    rgba(255, 255, 255, 0) 100%);
+}
+
+.sticky-actions .btn {
+  flex: 1;
+}
+
+/* Step content heading & helpers */
+.step-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--accent);
+}
+
+.step-help {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ========= Form Elements ========= */
+
+.field {
+  margin-bottom: 12px;
+}
+
+.field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: #4b5563;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="time"],
+select {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 13px;
+  background: #ffffff;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent-soft-strong);
+  box-shadow: 0 0 0 1px var(--accent-soft-strong);
+}
+
+/* Two-column grid for desktop, single column on phones */
+.form-grid.two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 12px;
+}
+
+.form-grid.two .full {
+  grid-column: 1 / -1;
+}
+
+/* Pills / segmented controls */
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.radio-group .pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+  background: #ffffff;
+  white-space: nowrap;
+}
+
+.radio-group .pill.active {
+  border-color: var(--accent);
+  background: #121e36;
+  color: #f9fafb;
+}
+
+/* Toggle switch row */
+.qrow {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-/* ===== Loading Spinner ===== */
-.loading .spinner {
+/* Simple switch */
+.switch {
+  position: relative;
+  display: inline-flex;
   width: 38px;
-  height: 38px;
+  height: 22px;
   border-radius: 999px;
-  border: 3px solid #E2E7F0;
+  background: #e5e7eb;
+  align-items: center;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.switch input {
+  display: none;
+}
+
+.switch::after {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+  transform: translateX(0);
+  transition: transform 0.16s ease, background-color 0.16s ease;
+}
+
+.switch input:checked + .switch::after,
+.switch input:checked ~ .switch::after {
+  transform: translateX(16px);
+}
+
+/* Checkboxes for interests */
+.checks {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.check {
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.check input {
+  width: 14px;
+  height: 14px;
+}
+
+/* ========= Suggest lists (Ticketmaster, artist search) ========= */
+
+.suggest {
+  position: relative;
+}
+
+.suggest-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.suggest-item {
+  padding: 8px 11px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.suggest-item.muted {
+  color: var(--muted);
+  cursor: default;
+}
+
+.suggest-item:hover {
+  background: #f3f4f6;
+}
+
+/* ========= Loading Screen ========= */
+
+#screen-loading.loading {
+  display: none;
+}
+
+#screen-loading.active {
+  display: block;
+}
+
+.loading-inner {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid #e5e7eb;
   border-top-color: var(--accent);
-  animation: spin 1s linear infinite;
-  margin: 20px auto 10px;
+  animation: spin 0.85s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-/* ===== Results Header ===== */
+/* ========= Results Header & Schedule ========= */
+
 .results-header {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
-.results-header h2 {
-  margin: 0 0 2px;
+.results-title-wrap {
+  min-width: 0;
 }
 
-.results-header .muted {
-  margin: 0;
+.results-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+#intro-line {
+  margin-top: 4px;
+  font-size: 12px;
 }
 
 .results-header .actions {
   display: flex;
-  gap: 8px;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
 }
 
-/* Stack actions on mobile */
-@media (max-width: 600px) {
-  .results-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .results-header .actions {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-}
-
-/* ===== Vertical Schedule Timeline (itinerary) ===== */
+/* Timeline schedule */
 .schedule {
-  position: relative;
-  padding-left: 18px;
-  margin-top: 14px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 14px 14px 10px;
+  margin-bottom: 18px;
 }
 
-.schedule::before {
-  content: "";
-  position: absolute;
-  left: 9px;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--line);
+/* The JS renders a .tour-card inside #schedule; keep it consistent */
+.tour-card {
+  border-radius: var(--radius-card);
+  background: #ffffff;
 }
 
-.schedule .row {
-  padding: 10px 0 14px;
-  border-bottom: 1px dashed #E5EAF3;
+.tour-head {
+  text-align: center;
+  padding: 6px 4px 10px;
 }
 
-.schedule .row:last-child {
-  border-bottom: none;
+.tour-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
 }
 
-.schedule .hdr {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+/* Scrollable steps */
+.tour-steps {
+  max-height: min(36vh, 360px);
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 10px;
 }
 
-.schedule .pin {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent-2);
-  box-shadow: 0 0 0 6px rgba(42, 58, 99, 0.15);
+/* Individual step rows */
+.tstep {
+  display: grid;
+  grid-template-columns: 70px 16px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 13px;
+  padding: 4px 0;
 }
 
-.schedule .time {
-  min-width: 60px;
-  font-size: 0.86rem;
-  color: var(--muted);
+.t-time {
   font-variant-numeric: tabular-nums;
+  color: var(--muted);
 }
 
-.schedule .title {
-  flex: 1;
-  font-size: 0.95rem;
+.t-arrow {
+  text-align: center;
+  color: #9ca3af;
+}
+
+.t-label {
+  color: var(--text);
+}
+
+.t-verb {
   font-weight: 500;
 }
 
-.schedule .meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 4px;
-  font-size: 0.85rem;
+.t-dest a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(15, 23, 42, 0.35);
+}
+
+.t-dest a:hover {
+  border-bottom-style: solid;
+}
+
+.t-suffix {
   color: var(--muted);
 }
 
-.schedule .meta a {
-  color: var(--accent-2);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+/* Venue CTA block inside tour card */
+.venue-cta {
+  margin-top: 10px;
 }
 
-.schedule .note {
-  margin-top: 6px;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
+/* ========= Rails (Places Rows) ========= */
 
-/* ===== Rails (horizontal scrollers for places) ===== */
 .rail {
-  margin-top: 20px;
+  margin-bottom: 18px;
 }
 
 .rail-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   margin-bottom: 6px;
 }
 
 .rail-title {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
 }
 
-.h-scroll {
+.h-scroll,
+.cards-rail {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   overflow-x: auto;
-  padding-bottom: 6px;
-  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
 }
 
-.h-scroll::-webkit-scrollbar {
-  height: 6px;
-}
-.h-scroll::-webkit-scrollbar-thumb {
-  background: #D9E0EB;
-  border-radius: 999px;
+/* Hide scrollbars where possible */
+.h-scroll::-webkit-scrollbar,
+.cards-rail::-webkit-scrollbar {
+  height: 0;
 }
 
-/* Hide rails if empty (JS can leave them in DOM) */
-.rail:empty {
-  display: none;
-}
-
-/* ===== Place Cards (restaurants, hotels, etc.) ===== */
+/* Place cards (tappable to Maps) */
 .place-card {
-  scroll-snap-align: start;
-  min-width: 200px;
-  max-width: 220px;
-  background: #fff;
+  flex: 0 0 180px;
+  display: flex;
+  flex-direction: column;
   border-radius: 14px;
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-soft);
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: var(--shadow-subtle);
+  text-decoration: none;
+  color: inherit;
   overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.18s ease;
-}
-
-.place-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(18, 30, 54, 0.10);
 }
 
 .pc-img {
   width: 100%;
-  aspect-ratio: 16 / 11;
-  background: #F1F4F8;
+  height: 110px;
+  background: #e5e7eb;
   overflow: hidden;
 }
+
 .pc-img img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 
 .pc-body {
-  padding: 10px 12px 12px;
+  padding: 8px 9px 9px;
 }
 
 .pc-title {
-  margin: 0 0 4px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
 }
 
 .pc-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  font-size: 0.86rem;
+  gap: 6px;
+  font-size: 11px;
   color: var(--muted);
 }
 
-.pc-actions {
-  margin-top: 6px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* ========= Utility ========= */
+
+.muted {
+  color: var(--muted);
+  font-size: 12px;
 }
 
-/* Small “Reserve / Directions” pill buttons inside cards */
-.btn-reserve {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4ch;
-  font-size: 0.85rem;
-  line-height: 1.2;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: #ffffff;
-  color: var(--accent-2);
-  text-decoration: none;
-  cursor: pointer;
-}
-.btn-reserve:hover {
-  box-shadow: var(--shadow-soft);
-}
+/* ========= Responsive Tweaks ========= */
 
-/* ===== Mobile Tweaks ===== */
-@media (max-width: 600px) {
-  .container {
-    width: min(100%, 94vw);
-    padding: 14px 0 18px;
+@media (max-width: 640px) {
+  .screen {
+    padding: 14px 12px 26px;
   }
 
-  .card {
-    padding: 14px 14px 16px;
+  .hero-actions {
+    flex-direction: column;
   }
 
-  .hero-welcome {
-    padding: 16px 14px 10px;
-  }
-
-  .hc-mark {
-    font-size: 1.35rem;
-  }
-
-  .form-grid,
   .form-grid.two {
-    padding: 12px;
-    gap: 12px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  label {
-    margin-bottom: 4px;
+  .results-header {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  input[type="text"],
-  input[type="time"],
-  input[type="date"],
-  select {
-    padding: 0.6rem 0.8rem;
-    min-height: 38px;
-    font-size: 0.88rem;
-  }
-
-  .pill {
-    padding: 6px 12px;
-    font-size: 0.88rem;
-  }
-
-  .btn {
-    min-height: 38px;
-    padding: 0.6rem 1rem;
-    font-size: 0.86rem;
+  .results-header .actions {
+    justify-content: flex-start;
   }
 
   .place-card {
-    min-width: 180px;
-    max-width: 200px;
+    flex-basis: 160px;
   }
 }

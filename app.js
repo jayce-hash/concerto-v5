@@ -1,1069 +1,860 @@
-// app.js — Concerto+ Simple Night Planner (v1.0)
-// Cleaned-up version to match the simple, effective "Events Near Me" style.
+// app.js — Concerto+ Day Planner (simple v1)
+// Uses Ticketmaster Discovery API + Google Places Nearby Search
 
-import { pickRestaurants, pickExtras } from './quality-filter.js';
-
-(() => {
-  if (window.__concertoPlusInit) return;
-  window.__concertoPlusInit = true;
+(function () {
+  const TM_KEY = "oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh"; // <- replace with your Ticketmaster key
 
   const $ = (id) => document.getElementById(id);
-  const qsa = (sel, el = document) => Array.from(el.querySelectorAll(sel));
-  const esc = (s) =>
-    (s || '').replace(/[&<>\"']/g, (m) => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[m]));
 
-  /* --------------------------------------------------
-   * State
-   * -------------------------------------------------- */
-  const state = {
-    // Event
-    artist: '',
-    venue: '',
-    venuePlaceId: '',
-    venueLat: null,
-    venueLng: null,
-    showDate: '',
-    showTime: '',
-    showTz: '',
+  const eventKeywordInput = $("eventKeyword");
+  const eventCityInput = $("eventCity");
+  const searchEventsBtn = $("searchEventsBtn");
+  const eventStatusEl = $("eventStatus");
+  const eventResultsEl = $("eventResults");
 
-    // Hotel
-    staying: true,
-    hotel: '',
-    hotelPlaceId: '',
-    hotelLat: null,
-    hotelLng: null,
+  const selectedEventSummary = $("selectedEventSummary");
+  const preVibePills = $("preVibePills");
+  const postVibePills = $("postVibePills");
+  const paceControl = $("paceControl");
+  const generatePlanBtn = $("generatePlanBtn");
+  const planStatusEl = $("planStatus");
 
-    // Preferences
-    startAt: '10:00',        // itinerary "day" start (for schedule flavor text)
-    arrivalBufferMin: 45,    // arrive this many minutes before show
+  const cardPlan = $("card-plan");
+  const timelineEl = $("timeline");
+  const placeRailsEl = $("placeRails");
+  const editChoicesBtn = $("editChoicesBtn");
+  const sharePlanBtn = $("sharePlanBtn");
 
-    wantDinner: true,
-    dinnerBudget: '$$',
-    dinnerCuisine: 'American',
+  let selectedEvent = null;           // Ticketmaster event (normalized)
+  let selectedPace = "balanced";      // chill | balanced | packed
+  let selectedPreVibes = [];          // ['coffee', 'dinner', ...]
+  let selectedPostVibes = [];         // ['dessert', 'drinks', ...]
+  let placesService = null;
 
-    interests: {
-      coffee: true,
-      dessert: true,
-      drinks: true,
-      nightlife: true
-    }
+  // Map vibe -> Places configuration + labels
+  const VIBE_CONFIG = {
+    coffee: {
+      label: "Coffee",
+      pre: true,
+      places: { type: "cafe", keyword: "coffee" },
+    },
+    lunch: {
+      label: "Lunch",
+      pre: true,
+      places: { type: "restaurant", keyword: "lunch" },
+    },
+    dinner: {
+      label: "Dinner",
+      pre: true,
+      places: { type: "restaurant", keyword: "dinner" },
+    },
+    shopping: {
+      label: "Shopping",
+      pre: true,
+      places: { type: "shopping_mall", keyword: "shopping" },
+    },
+    sightseeing: {
+      label: "Sightseeing",
+      pre: true,
+      places: { type: "tourist_attraction", keyword: "landmark" },
+    },
+    dessert: {
+      label: "Dessert",
+      post: true,
+      places: { type: "bakery", keyword: "dessert" },
+    },
+    drinks: {
+      label: "Drinks",
+      post: true,
+      places: { type: "bar", keyword: "cocktail bar" },
+    },
+    nightlife: {
+      label: "Nightlife",
+      post: true,
+      places: { type: "night_club", keyword: "nightlife" },
+    },
+    latenight: {
+      label: "Late-night eats",
+      post: true,
+      places: { type: "restaurant", keyword: "late night food" },
+    },
   };
 
-  /* --------------------------------------------------
-   * Layout / Init
-   * -------------------------------------------------- */
-  function initLayout() {
-    document.body.classList.add('show-form');
-    document.body.classList.remove('has-plan');
+  /* ------------ Helpers ------------ */
 
-    const formScreen = $('screen-form');
-    const resultsScreen = $('screen-results');
-
-    if (!formScreen || !resultsScreen) {
-      console.warn('Concerto+ screens not found');
-      return;
-    }
-
-    formScreen.innerHTML = `
-      <div class="container">
-        <h2 class="page-title" style="text-align:center; margin-bottom:12px;">
-          Plan Your Concert Night
-        </h2>
-        <p class="muted" style="text-align:center; margin-bottom:18px;">
-          Pick your show, add your hotel, and let Concerto suggest dinner and stops around the venue.
-        </p>
-
-        <!-- Event card -->
-        <article class="card" style="padding:16px; margin-bottom:14px;">
-          <h3 class="step-title" style="margin-bottom:10px;">Find your event</h3>
-          <div class="field">
-            <label>Artist, Team, or Venue</label>
-            <input id="tm-q" type="text" placeholder="e.g., Taylor Swift or Madison Square Garden" autocomplete="off" />
-          </div>
-          <div class="field">
-            <label>City</label>
-            <input id="tm-city" type="text" placeholder="e.g., New York or Los Angeles" autocomplete="off" />
-          </div>
-          <div class="field" style="margin-top:8px;">
-            <button id="tm-search" class="btn btn-primary" type="button" style="width:100%;">
-              Search Ticketmaster
-            </button>
-          </div>
-          <div id="tm-results" class="suggest-list" style="display:none; margin-top:10px;"></div>
-
-          <div class="divider" style="margin:16px 0;"></div>
-
-          <p class="muted" style="margin-bottom:8px;">Or enter details manually:</p>
-          <div class="field">
-            <label>Artist or Tour</label>
-            <input id="artist" type="text" placeholder="e.g., Olivia Rodrigo" autocomplete="off" />
-          </div>
-          <div class="field">
-            <label>Venue</label>
-            <input id="venue" type="text" placeholder="Venue name" autocomplete="off" />
-          </div>
-          <div class="form-grid two plain" style="margin-top:6px;">
-            <div class="field">
-              <label>Date</label>
-              <input id="showDate" type="date" />
-            </div>
-            <div class="field">
-              <label>Show time</label>
-              <input id="showTime" type="time" />
-            </div>
-          </div>
-
-          <div id="event-summary" class="muted" style="margin-top:10px; font-size:0.9rem;"></div>
-        </article>
-
-        <!-- Hotel card -->
-        <article class="card" style="padding:16px; margin-bottom:14px;">
-          <div class="qrow" style="align-items:center; gap:8px;">
-            <label class="switch">
-              <input id="staying" type="checkbox" checked />
-            </label>
-            <h3 class="step-title" style="margin:0;">Staying at a hotel?</h3>
-          </div>
-          <div id="hotel-fields" style="margin-top:10px;">
-            <label class="field">
-              <span>Hotel name or address</span>
-              <input id="hotel" type="text" placeholder="e.g., Marriott, Hilton, or address" autocomplete="off" />
-            </label>
-          </div>
-        </article>
-
-        <!-- Preferences card -->
-        <article class="card" style="padding:16px; margin-bottom:16px;">
-          <h3 class="step-title" style="margin-bottom:10px;">Preferences</h3>
-
-          <div class="field">
-            <label>When should Concerto start planning your day?</label>
-            <select id="pref-start">
-              <option value="09:00">9:00 AM</option>
-              <option value="10:00" selected>10:00 AM</option>
-              <option value="11:00">11:00 AM</option>
-              <option value="12:00">12:00 PM</option>
-            </select>
-          </div>
-
-          <div class="divider" style="margin:12px 0;"></div>
-
-          <div class="qrow" style="align-items:center; gap:8px; margin-bottom:10px;">
-            <label class="switch">
-              <input id="pref-dinner-on" type="checkbox" checked />
-            </label>
-            <span>Dinner before the show</span>
-          </div>
-
-          <div id="pref-dinner-fields">
-            <div class="field">
-              <label>Dinner cuisine</label>
-              <select id="pref-dinner-cuisine">
-                <option>American</option>
-                <option>Italian</option>
-                <option>Japanese/Sushi</option>
-                <option>Mexican/Tacos</option>
-                <option>Steakhouse</option>
-                <option>Seafood</option>
-                <option>Mediterranean</option>
-                <option>Vegan/Vegetarian</option>
-                <option>Pizza</option>
-                <option>BBQ</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Budget</label>
-              <div class="radio-group segmented" id="pref-dinner-budget">
-                <div class="pill active" data-val="$">$</div>
-                <div class="pill" data-val="$$">$$</div>
-                <div class="pill" data-val="$$$">$$$</div>
-                <div class="pill" data-val="$$$$">$$$$</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="divider" style="margin:12px 0;"></div>
-
-          <div class="field">
-            <label>What else do you want suggestions for?</label>
-            <div class="checks" id="pref-interests">
-              <label class="check">
-                <input type="checkbox" data-key="coffee" checked />
-                <span>Coffee</span>
-              </label>
-              <label class="check">
-                <input type="checkbox" data-key="dessert" checked />
-                <span>Dessert</span>
-              </label>
-              <label class="check">
-                <input type="checkbox" data-key="drinks" checked />
-                <span>Drinks &amp; Lounges</span>
-              </label>
-              <label class="check">
-                <input type="checkbox" data-key="nightlife" checked />
-                <span>Nightlife</span>
-              </label>
-            </div>
-          </div>
-        </article>
-
-        <button id="btn-generate" class="btn btn-primary" type="button" style="width:100%; margin-bottom:12px;">
-          Generate My Night
-        </button>
-      </div>
-    `;
-
-    resultsScreen.innerHTML = `
-      <div class="container wide">
-        <article class="card" style="padding:16px; margin-bottom:16px;">
-          <div id="results-context" style="text-align:center; margin-bottom:10px;"></div>
-          <div id="intro-line" class="muted" style="text-align:center; font-size:0.9rem; margin-bottom:10px;">
-            Your schedule will appear below.
-          </div>
-          <div id="schedule"></div>
-        </article>
-
-        <div id="rails-wrap"></div>
-      </div>
-    `;
-
-    bindFormControls();
-    bindTicketmaster();
-    bindPlacesAutocomplete();
-
-    // scroll-friendly
-    const btn = $('btn-generate');
-    if (btn) {
-      btn.addEventListener('click', () => {
-        generatePlan().catch((e) => {
-          console.error(e);
-          alert(e.message || 'Could not build your plan. Please try again.');
-        });
-      });
-    }
-  }
-
-  function setLoading(on) {
-    const loading = $('screen-loading');
-    if (!loading) return;
-    loading.classList.toggle('active', !!on);
-  }
-
-  /* --------------------------------------------------
-   * Form bindings
-   * -------------------------------------------------- */
-  function bindFormControls() {
-    const artist = $('artist');
-    const venue = $('venue');
-    const showDate = $('showDate');
-    const showTime = $('showTime');
-    const staying = $('staying');
-    const hotel = $('hotel');
-    const startSel = $('pref-start');
-    const dinnerOn = $('pref-dinner-on');
-    const dinnerCuisine = $('pref-dinner-cuisine');
-    const dinnerBudgetWrap = $('pref-dinner-budget');
-    const interestsWrap = $('pref-interests');
-
-    if (artist) artist.addEventListener('input', (e) => (state.artist = e.target.value.trim()));
-    if (venue) venue.addEventListener('input', (e) => (state.venue = e.target.value.trim()));
-    if (showDate) showDate.addEventListener('input', (e) => (state.showDate = e.target.value));
-    if (showTime) showTime.addEventListener('input', (e) => (state.showTime = e.target.value));
-
-    if (staying) {
-      staying.addEventListener('change', () => {
-        state.staying = staying.checked;
-        const fields = $('hotel-fields');
-        if (!fields) return;
-        fields.style.opacity = state.staying ? '' : '.5';
-        fields.style.pointerEvents = state.staying ? '' : 'none';
-      });
-    }
-
-    if (hotel) hotel.addEventListener('input', (e) => (state.hotel = e.target.value.trim()));
-    if (startSel) startSel.addEventListener('change', (e) => (state.startAt = e.target.value || '10:00'));
-
-    if (dinnerOn) {
-      dinnerOn.addEventListener('change', () => {
-        state.wantDinner = dinnerOn.checked;
-        const wrap = $('pref-dinner-fields');
-        if (!wrap) return;
-        wrap.style.opacity = state.wantDinner ? '' : '.5';
-        wrap.style.pointerEvents = state.wantDinner ? '' : 'none';
-      });
-    }
-
-    if (dinnerCuisine) {
-      dinnerCuisine.addEventListener('change', (e) => {
-        state.dinnerCuisine = e.target.value;
-      });
-    }
-
-    if (dinnerBudgetWrap) {
-      qsa('.pill', dinnerBudgetWrap).forEach((pill) => {
-        pill.addEventListener('click', () => {
-          qsa('.pill', dinnerBudgetWrap).forEach((p) => p.classList.remove('active'));
-          pill.classList.add('active');
-          state.dinnerBudget = pill.dataset.val || '$$';
-        });
-      });
-    }
-
-    if (interestsWrap) {
-      interestsWrap.addEventListener('change', (e) => {
-        const input = e.target;
-        if (!(input instanceof HTMLInputElement)) return;
-        const key = input.dataset.key;
-        if (!key) return;
-        state.interests[key] = input.checked;
-      });
-    }
-  }
-
-  function updateEventSummary() {
-    const el = $('event-summary');
+  function setStatus(el, msg) {
     if (!el) return;
-    if (!state.venue && !state.artist && !state.showDate) {
-      el.textContent = '';
-      return;
-    }
-    const parts = [];
-    if (state.artist) parts.push(state.artist);
-    if (state.venue) parts.push(state.venue);
-    if (state.showDate) parts.push(state.showDate);
-    el.textContent = parts.join(' • ');
+    el.textContent = msg || "";
   }
 
-  /* --------------------------------------------------
-   * Ticketmaster
-   * -------------------------------------------------- */
-  const TM_KEY = 'oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh';
-
-  function tmUrl(path, params) {
-    const u = new URL(`https://app.ticketmaster.com${path}`);
-    Object.entries(params || {}).forEach(([k, v]) => {
-      if (v == null || v === '') return;
-      u.searchParams.set(k, String(v));
-    });
-    u.searchParams.set('apikey', TM_KEY);
-    return u.toString();
-  }
-
-  async function tmSearch({ keyword, city = '', size = 10 }) {
-    if (!keyword) return [];
-    const url = tmUrl('/discovery/v2/events.json', {
-      keyword,
-      city: city || undefined,
-      size: Math.max(1, Math.min(20, size))
-    });
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const json = await res.json();
-    const list = json?._embedded?.events || [];
-    return list.map((ev) => {
-      const at = (ev?._embedded?.attractions || [])[0];
-      const vn = (ev?._embedded?.venues || [])[0] || {};
-      const dtISO = ev?.dates?.start?.dateTime || null;
-      const tz = ev?.dates?.timezone || vn?.timezone || null;
-      const loc = vn?.location || {};
-      return {
-        id: ev?.id || '',
-        name: ev?.name || '',
-        artist: at?.name || (ev?.name || '').replace(/\s+-\s+.*$/, ''),
-        venue: vn?.name || '',
-        city: [vn?.city?.name, vn?.state?.stateCode].filter(Boolean).join(', '),
-        address: [vn?.address?.line1, vn?.city?.name, vn?.state?.stateCode, vn?.postalCode]
-          .filter(Boolean)
-          .join(', '),
-        dateTime: dtISO,
-        timezone: tz || '',
-        venueLat: loc?.latitude ? Number(loc.latitude) : null,
-        venueLng: loc?.longitude ? Number(loc.longitude) : null
-      };
-    });
-  }
-
-  function bindTicketmaster() {
-    const q = $('tm-q');
-    const city = $('tm-city');
-    const btn = $('tm-search');
-    const list = $('tm-results');
-    if (!q || !btn || !list) return;
-
-    async function run() {
-      list.style.display = 'block';
-      list.innerHTML = `<div class="suggest-item muted">Searching Ticketmaster…</div>`;
-      try {
-        const events = await tmSearch({
-          keyword: q.value.trim(),
-          city: city.value.trim(),
-          size: 10
-        });
-        if (!events.length) {
-          list.innerHTML = `<div class="suggest-item muted">No events found. Try a different search.</div>`;
-          return;
-        }
-        list.innerHTML = events
-          .map((ev) => {
-            const dt = ev.dateTime
-              ? new Date(ev.dateTime).toLocaleString([], {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit'
-                })
-              : 'TBA';
-            return `
-              <div class="suggest-item" data-ev='${esc(JSON.stringify(ev))}'>
-                <div style="font-weight:600">${esc(ev.artist || ev.name)}</div>
-                <div class="muted" style="font-size:.9rem;">
-                  ${esc(ev.venue)} — ${esc(ev.city || '')} · ${esc(dt)}
-                </div>
-                <button class="btn btn-ghost" type="button" style="margin-top:6px;">Use this event</button>
-              </div>
-            `;
-          })
-          .join('');
-
-        qsa('.suggest-item', list).forEach((item) => {
-          const btnUse = item.querySelector('button');
-          if (!btnUse) return;
-          btnUse.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            try {
-              const ev = JSON.parse(item.dataset.ev || '{}');
-              applyTicketmasterEvent(ev);
-              list.style.display = 'none';
-            } catch (err) {
-              console.warn(err);
-            }
-          });
-        });
-      } catch (e) {
-        console.error(e);
-        list.innerHTML = `<div class="suggest-item muted">Error contacting Ticketmaster.</div>`;
-      }
-    }
-
-    btn.addEventListener('click', run);
-    q.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') run();
-    });
-    city.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') run();
-    });
-  }
-
-  function applyTicketmasterEvent(ev) {
-    state.artist = ev.artist || ev.name || state.artist;
-    state.venue = ev.venue || state.venue;
-    state.showTz = ev.timezone || '';
-
-    if (ev.dateTime) {
-      const d = new Date(ev.dateTime);
-      state.showDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-        d.getDate()
-      ).padStart(2, '0')}`;
-      state.showTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(
-        2,
-        '0'
-      )}`;
-    }
-
-    if (typeof ev.venueLat === 'number' && typeof ev.venueLng === 'number') {
-      state.venueLat = ev.venueLat;
-      state.venueLng = ev.venueLng;
-    }
-
-    // Reflect into inputs
-    if ($('artist')) $('artist').value = state.artist || '';
-    if ($('venue')) $('venue').value = state.venue || '';
-    if ($('showDate')) $('showDate').value = state.showDate || '';
-    if ($('showTime')) $('showTime').value = state.showTime || '';
-
-    updateEventSummary();
-  }
-
-  /* --------------------------------------------------
-   * Google Places helpers
-   * -------------------------------------------------- */
-  function mapsReady() {
-    return !!(window.google && google.maps && google.maps.places);
-  }
-
-  function waitForPlaces(maxMs = 10000) {
-    const t0 = Date.now();
-    return new Promise((resolve, reject) => {
-      (function tick() {
-        if (mapsReady()) return resolve(true);
-        if (Date.now() - t0 > maxMs) return reject(new Error('Google Places failed to load'));
-        setTimeout(tick, 120);
-      })();
-    });
-  }
-
-  function bindPlacesAutocomplete() {
-    // Venue
-    waitForPlaces()
-      .then(() => {
-        const vin = $('venue');
-        if (vin) {
-          const ac = new google.maps.places.Autocomplete(vin, { types: ['establishment'] });
-          ac.addListener('place_changed', () => {
-            const p = ac.getPlace();
-            if (!p || !p.geometry) return;
-            state.venue = p.name || vin.value.trim();
-            state.venuePlaceId = p.place_id || '';
-            state.venueLat = p.geometry.location.lat();
-            state.venueLng = p.geometry.location.lng();
-            updateEventSummary();
-          });
-        }
-
-        // Hotel
-        const hin = $('hotel');
-        if (hin) {
-          const acH = new google.maps.places.Autocomplete(hin, { types: ['establishment'] });
-          acH.addListener('place_changed', () => {
-            const p = acH.getPlace();
-            if (!p || !p.geometry) return;
-            state.hotel = p.name || hin.value.trim();
-            state.hotelPlaceId = p.place_id || '';
-            state.hotelLat = p.geometry.location.lat();
-            state.hotelLng = p.geometry.location.lng();
-          });
-        }
-      })
-      .catch(() => {});
-  }
-
-  async function ensureVenueResolved() {
-    if (state.venueLat && state.venueLng) return;
-    const query = (state.venue || '').trim();
-    if (!query) throw new Error('Please enter a venue name or pick an event from Ticketmaster.');
-    await waitForPlaces();
-    const svc = new google.maps.places.PlacesService(document.createElement('div'));
-    const place = await new Promise((resolve, reject) => {
-      svc.textSearch({ query }, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
-          resolve(results[0]);
-        } else {
-          reject(new Error('Could not find that venue. Try a more specific name.'));
-        }
-      });
-    });
-    state.venue = place.name;
-    state.venuePlaceId = place.place_id;
-    state.venueLat = place.geometry.location.lat();
-    state.venueLng = place.geometry.location.lng();
-  }
-
-  async function ensureHotelResolved() {
-    if (!state.staying) return;
-    if (state.hotelLat && state.hotelLng) return;
-    const q = (state.hotel || '').trim();
-    if (!q) return;
-    await waitForPlaces();
-    const svc = new google.maps.places.PlacesService(document.createElement('div'));
-    const place = await new Promise((resolve) => {
-      svc.textSearch({ query: q }, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
-          resolve(results[0]);
-        } else {
-          resolve(null);
-        }
-      });
-    });
-    if (place) {
-      state.hotel = place.name;
-      state.hotelPlaceId = place.place_id;
-      state.hotelLat = place.geometry.location.lat();
-      state.hotelLng = place.geometry.location.lng();
-    }
-  }
-
-  /* --------------------------------------------------
-   * Time & Map helpers
-   * -------------------------------------------------- */
-  function parseHM(hhmm) {
-    if (!hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null;
-    const [h, m] = hhmm.split(':').map((n) => parseInt(n, 10));
-    return { h, m };
-  }
-
-  function parseShowDateTimeISO() {
-    const now = new Date();
-    const hm = parseHM(state.showTime) || { h: 19, m: 0 };
-    if (state.showDate) {
-      const [Y, M, D] = state.showDate.split('-').map((n) => parseInt(n, 10));
-      return new Date(Y, M - 1, D, hm.h, hm.m).toISOString();
-    }
-    return new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      hm.h,
-      hm.m
-    ).toISOString();
-  }
-
-  function roundToNearest5(date) {
-    const d = new Date(date);
-    const mins = d.getMinutes();
-    const rounded = Math.round(mins / 5) * 5;
-    d.setMinutes(rounded, 0, 0);
-    return d;
-  }
-
-  function fmtInTz(dLike, tz, { round = false } = {}) {
-    if (!dLike) return '';
-    let d = dLike instanceof Date ? new Date(dLike) : new Date(dLike);
-    if (round) d = roundToNearest5(d);
+  function toDateSafe(iso) {
     try {
-      return d.toLocaleTimeString([], {
-        hour: 'numeric',
-        minute: '2-digit',
-        ...(tz ? { timeZone: tz } : {})
-      });
+      return iso ? new Date(iso) : null;
     } catch {
-      return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      return null;
     }
+  }
+
+  function formatTime(date) {
+    if (!date) return "";
+    return date.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
   }
 
   function milesBetween(aLat, aLng, bLat, bLng) {
-    if ([aLat, aLng, bLat, bLng].some((v) => typeof v !== 'number' || Number.isNaN(v))) return null;
-    const toRad = (x) => x * Math.PI / 180;
+    if (
+      [aLat, aLng, bLat, bLng].some(
+        (v) => typeof v !== "number" || Number.isNaN(v)
+      )
+    ) {
+      return null;
+    }
+    const toRad = (x) => (x * Math.PI) / 180;
     const R = 3958.8; // miles
     const dLat = toRad(bLat - aLat);
     const dLng = toRad(bLng - aLng);
     const sa =
       Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+      Math.cos(toRad(aLat)) *
+        Math.cos(toRad(bLat)) *
+        Math.sin(dLng / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(sa), Math.sqrt(1 - sa));
   }
 
-  function mapUrlFor(obj) {
-    const p = obj || {};
-    const placeId =
-      p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '';
-    const name = p.name || p.title || '';
-    const address = p.address || p.formatted_address || p.vicinity || '';
-    if (placeId) {
-      const q = [name, address].filter(Boolean).join(' ').trim() || 'Place';
+  function googleMapsUrlForPlace(place) {
+    const pid = place.placeId || place.place_id || "";
+    const lat = place.lat;
+    const lng = place.lng;
+    if (pid) {
+      return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(
+        pid
+      )}`;
+    }
+    if (typeof lat === "number" && typeof lng === "number") {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        `${lat},${lng}`
+      )}`;
+    }
+    const q = place.name || "";
+    if (q) {
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         q
-      )}&query_place_id=${encodeURIComponent(placeId)}`;
+      )}`;
     }
-    const q = [name, address].filter(Boolean).join(' ').trim();
-    if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-    const lat = p.lat != null ? Number(p.lat) : null;
-    const lng = p.lng != null ? Number(p.lng) : null;
-    if (typeof lat === 'number' && typeof lng === 'number') {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
-    }
-    return '';
+    return "";
   }
 
-  function normalizePlace(p) {
-    if (!p || typeof p !== 'object') return null;
-    const name = p.name || p.title || '';
-    const address = p.address || p.formatted_address || p.vicinity || '';
-    const placeId = p.placeId || p.place_id || p.googlePlaceId || p.google_place_id || '';
-    const lat =
-      typeof p.lat === 'number'
-        ? p.lat
-        : p.lat
-        ? parseFloat(p.lat)
-        : p.geometry?.location?.lat?.() ?? null;
-    const lng =
-      typeof p.lng === 'number'
-        ? p.lng
-        : p.lng
-        ? parseFloat(p.lng)
-        : p.geometry?.location?.lng?.() ?? null;
-    const mapUrl = mapUrlFor({ placeId, name, address, lat, lng });
-
-    if (!(typeof lat === 'number' && !Number.isNaN(lat) && typeof lng === 'number' && !Number.isNaN(lng))) {
-      return null;
-    }
-
-    return { name, address, placeId, lat, lng, mapUrl };
+  function initPlacesService() {
+    if (placesService) return;
+    if (!(window.google && google.maps && google.maps.places)) return;
+    placesService = new google.maps.places.PlacesService(
+      document.createElement("div")
+    );
   }
 
-  /* --------------------------------------------------
-   * Extras + fallback search
-   * -------------------------------------------------- */
-  function fallbackQueryFor(cat) {
-    switch (cat) {
-      case 'coffee':
-        return { type: 'cafe', keyword: 'coffee' };
-      case 'dessert':
-        return { type: 'bakery', keyword: 'dessert' };
-      case 'drinks':
-        return { type: 'bar', keyword: 'cocktail bar' };
-      case 'nightlife':
-        return { type: 'night_club', keyword: 'nightlife' };
-      default:
-        return { type: 'restaurant', keyword: '' };
-    }
+  /* ------------ Ticketmaster ------------ */
+
+  function buildTMUrl({ keyword, city, size = 15 }) {
+    const url = new URL("https://app.ticketmaster.com/discovery/v2/events.json");
+    if (keyword) url.searchParams.set("keyword", keyword);
+    if (city) url.searchParams.set("city", city);
+    url.searchParams.set("size", String(size));
+    url.searchParams.set("locale", "*");
+    url.searchParams.set("apikey", TM_KEY);
+    return url.toString();
   }
 
-  async function placesFallback(cat, max = 10) {
-    if (!(state.venueLat && state.venueLng)) return [];
-    await waitForPlaces();
-    const svc = new google.maps.places.PlacesService(document.createElement('div'));
-    const center = new google.maps.LatLng(state.venueLat, state.venueLng);
-    const q = fallbackQueryFor(cat);
+  async function searchTicketmasterEvents() {
+    const keyword = (eventKeywordInput.value || "").trim();
+    const city = (eventCityInput.value || "").trim();
 
-    const params = {
-      location: center,
-      rankBy: google.maps.places.RankBy.DISTANCE,
-      type: q.type || undefined,
-      keyword: q.keyword || undefined
-    };
-
-    const res = await new Promise((resolve) => {
-      svc.nearbySearch(params, (r, s) => {
-        if (s === google.maps.places.PlacesServiceStatus.OK && Array.isArray(r)) {
-          resolve(r.slice(0, max));
-        } else {
-          resolve([]);
-        }
-      });
-    });
-
-    return (res || []).map((p) => ({
-      name: p.name,
-      address: p.vicinity || p.formatted_address || '',
-      placeId: p.place_id,
-      lat: p.geometry?.location?.lat?.(),
-      lng: p.geometry?.location?.lng?.(),
-      rating: p.rating,
-      price_level: p.price_level,
-      photos: p.photos
-    }));
-  }
-
-  function categorizeExtras(extras = []) {
-    const hay = (x) =>
-      [
-        x.section,
-        x.category,
-        x.name,
-        Array.isArray(x.types) && x.types.join(' '),
-        Array.isArray(x.tags) && x.tags.join(' ')
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-    const rx = {
-      coffee: /(coffee|café|cafe|espresso|roastery|tea\s?house)/i,
-      dessert: /(dessert|sweet|ice.?cream|gelato|bak(?:e|ery)|pastry|donut|cake|choco|cookie|creamery)/i,
-      drinks: /(drink|bar|pub|lounge|wine|cocktail|taproom|speakeasy|gastropub|brewery)/i,
-      nightlife: /(nightlife|night.?club|club|karaoke|live\s?music|entertainment|dj|dance|comedy\s?club)/i
-    };
-
-    const bucket = { coffee: [], dessert: [], drinks: [], nightlife: [] };
-    extras.forEach((x) => {
-      const h = hay(x);
-      if (rx.coffee.test(h)) bucket.coffee.push(x);
-      else if (rx.dessert.test(h)) bucket.dessert.push(x);
-      else if (rx.drinks.test(h)) bucket.drinks.push(x);
-      else if (rx.nightlife.test(h)) bucket.nightlife.push(x);
-    });
-    return bucket;
-  }
-
-  /* --------------------------------------------------
-   * Rails
-   * -------------------------------------------------- */
-  function slug(s) {
-    return String(s || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  }
-
-  function ensureRail(id, title) {
-    const wrap = $('rails-wrap');
-    if (!wrap) return null;
-
-    let rail = document.getElementById(id)?.closest('.rail');
-    if (!rail) {
-      rail = document.createElement('section');
-      rail.className = 'rail';
-      rail.innerHTML = `
-        <header class="rail-head">
-          <h3 class="rail-title">${esc(title || '')}</h3>
-        </header>
-        <div id="${esc(id)}" class="h-scroll cards-rail"></div>
-      `;
-      wrap.appendChild(rail);
-    } else {
-      const head = rail.querySelector('.rail-title');
-      if (head && title) head.textContent = title;
-      rail.style.display = '';
-    }
-    return rail.querySelector(`#${CSS.escape(id)}`);
-  }
-
-  function hideRail(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const rail = el.closest('.rail');
-    if (rail) rail.style.display = 'none';
-  }
-
-  function fillRail(id, title, list) {
-    const row = ensureRail(id, title);
-    if (!row) return;
-    if (!Array.isArray(list) || !list.length) {
-      row.innerHTML = `<div class="muted" style="padding:6px 4px;">No suggestions yet.</div>`;
+    if (!keyword && !city) {
+      setStatus(eventStatusEl, "Enter an artist, team, venue, or city.");
       return;
     }
 
-    row.innerHTML = list
-      .map((p) => {
-        const norm = normalizePlace(p) || p;
-        const name = esc(norm.name || '');
-        const addr = esc(norm.address || '');
-        const dist =
-          typeof norm.lat === 'number' && typeof norm.lng === 'number'
-            ? milesBetween(state.venueLat, state.venueLng, norm.lat, norm.lng)
-            : null;
-        const distLabel = dist != null ? `${dist.toFixed(1)} mi` : '';
-        const mapHref = mapUrlFor(norm);
-        return `
-          <a class="place-card"
-             href="${esc(mapHref)}"
-             target="_blank" rel="noopener"
-             title="Open in Google Maps">
-            <div class="pc-body">
-              <div class="pc-title">${name}</div>
-              <div class="pc-meta">
-                ${distLabel ? `<span>${esc(distLabel)}</span>` : ''}
-                ${addr ? `<span>${addr}</span>` : ''}
-              </div>
-            </div>
-          </a>
-        `;
-      })
-      .join('');
+    setStatus(eventStatusEl, "Searching Ticketmaster…");
+    eventResultsEl.innerHTML = "";
+
+    try {
+      const url = buildTMUrl({ keyword, city, size: 15 });
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error("Ticketmaster error");
+      }
+      const json = await res.json();
+      const events = (json?._embedded?.events || []).map((ev) => {
+        const at = (ev._embedded?.attractions || [])[0];
+        const vn = (ev._embedded?.venues || [])[0] || {};
+        const loc = vn.location || {};
+        const dtISO = ev.dates?.start?.dateTime || null;
+        const tz = ev.dates?.timezone || vn.timezone || "";
+
+        return {
+          id: ev.id,
+          name: ev.name || "",
+          artist: at?.name || "",
+          venueName: vn.name || "",
+          venueCity: [vn.city?.name, vn.state?.stateCode]
+            .filter(Boolean)
+            .join(", "),
+          dateTime: dtISO,
+          timezone: tz,
+          venueLat: loc.latitude ? Number(loc.latitude) : null,
+          venueLng: loc.longitude ? Number(loc.longitude) : null,
+          ticketUrl: ev.url || "",
+        };
+      });
+
+      if (!events.length) {
+        setStatus(
+          eventStatusEl,
+          "No events found. Try a different keyword or city."
+        );
+        return;
+      }
+
+      renderEventResults(events);
+      setStatus(
+        eventStatusEl,
+        `Showing ${events.length} result${
+          events.length === 1 ? "" : "s"
+        }. Tap Select to choose one.`
+      );
+    } catch (err) {
+      console.error(err);
+      setStatus(
+        eventStatusEl,
+        "We couldn’t reach Ticketmaster. Please try again."
+      );
+    }
   }
 
-  async function renderRails(dinnerList, extrasList) {
-    const extras = extrasList || [];
-    const bucket = categorizeExtras(extras);
+  function renderEventResults(events) {
+    eventResultsEl.innerHTML = "";
+    selectedEvent = null;
+    updateSelectedEventSummary();
 
-    // Dinner rail
-    if (state.wantDinner && Array.isArray(dinnerList) && dinnerList.length) {
-      fillRail('rail-dinner', 'Dinner near the venue', dinnerList.slice(0, 10));
+    events.forEach((ev) => {
+      const card = document.createElement("div");
+      card.className = "event-result";
+
+      const title = document.createElement("h3");
+      title.className = "event-result-title";
+      title.textContent = ev.artist || ev.name || "Event";
+
+      const meta = document.createElement("div");
+      meta.className = "event-result-meta";
+
+      const dt = toDateSafe(ev.dateTime);
+      const dateStr = dt
+        ? dt.toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "Date TBA";
+      const timeStr = dt ? formatTime(dt) : "";
+
+      meta.textContent = `${
+        ev.venueName || "Venue TBA"
+      } · ${ev.venueCity || ""} • ${dateStr}${
+        timeStr ? " · " + timeStr : ""
+      }`;
+
+      const header = document.createElement("div");
+      header.className = "event-result-header";
+      header.appendChild(title);
+
+      const footer = document.createElement("div");
+      footer.className = "event-result-footer";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Select";
+      btn.addEventListener("click", () => {
+        document
+          .querySelectorAll(".event-result.selected")
+          .forEach((el) => el.classList.remove("selected"));
+        card.classList.add("selected");
+        selectedEvent = ev;
+        updateSelectedEventSummary();
+        generatePlanBtn.disabled = false;
+        // Scroll to Step 2
+        $("card-vibe").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      footer.appendChild(btn);
+      card.appendChild(header);
+      card.appendChild(meta);
+      card.appendChild(footer);
+      eventResultsEl.appendChild(card);
+    });
+  }
+
+  function updateSelectedEventSummary() {
+    if (!selectedEvent) {
+      selectedEventSummary.textContent =
+        "Select an event in Step 1 to continue.";
+      return;
+    }
+    const dt = toDateSafe(selectedEvent.dateTime);
+    const dateStr = dt
+      ? dt.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "Date TBA";
+    const timeStr = dt ? formatTime(dt) : "Time TBA";
+
+    selectedEventSummary.textContent = `${
+      selectedEvent.artist || selectedEvent.name
+    } • ${selectedEvent.venueName || "Venue TBA"} • ${dateStr} · ${timeStr}`;
+  }
+
+  /* ------------ Vibe selection ------------ */
+
+  function togglePill(pill, list) {
+    const vibe = pill.getAttribute("data-vibe");
+    if (!vibe) return;
+    const idx = list.indexOf(vibe);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+      pill.classList.remove("active");
     } else {
-      hideRail('rail-dinner');
-    }
-
-    // Coffee / Dessert / Drinks / Nightlife
-    const cats = [
-      { key: 'coffee', label: 'Coffee & Cafés' },
-      { key: 'dessert', label: 'Dessert' },
-      { key: 'drinks', label: 'Drinks & Lounges' },
-      { key: 'nightlife', label: 'Nightlife & Entertainment' }
-    ];
-
-    for (const { key, label } of cats) {
-      if (!state.interests[key]) {
-        hideRail(`rail-${slug(key)}`);
-        continue;
-      }
-      let list = bucket[key] || [];
-      if (!list.length) {
-        try {
-          list = await placesFallback(key, 10);
-        } catch {
-          list = [];
-        }
-      }
-      if (list.length) fillRail(`rail-${slug(key)}`, label, list.slice(0, 10));
-      else hideRail(`rail-${slug(key)}`);
+      list.push(vibe);
+      pill.classList.add("active");
     }
   }
 
-  /* --------------------------------------------------
-   * Schedule card
-   * -------------------------------------------------- */
-  function renderSchedule(showISO, dinnerPick) {
-    const ctx = $('results-context');
-    const scheduleEl = $('schedule');
-    const intro = $('intro-line');
-    if (!ctx || !scheduleEl || !intro) return;
-
-    const d = new Date(showISO);
-    const tz = state.showTz || undefined;
-
-    const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(
-      d.getDate()
-    ).padStart(2, '0')}/${d.getFullYear()}`;
-    const timeStr = fmtInTz(d, tz, { round: false });
-
-    ctx.innerHTML = `
-      <div style="font-weight:600;">${esc(state.artist || 'Your Concert')}</div>
-      <div>${esc(state.venue || '')}</div>
-      <div>
-        ${esc(dateStr)}${timeStr ? ` • ${esc(timeStr)}` : ''}
-        ${
-          tz
-            ? `<span class="muted" style="font-variant:all-small-caps; letter-spacing:.06em;"> (${esc(
-                tz
-              )})</span>`
-            : ''
+  function initVibePills() {
+    if (preVibePills) {
+      preVibePills.addEventListener("click", (e) => {
+        if (e.target instanceof HTMLButtonElement && e.target.classList.contains("pill")) {
+          togglePill(e.target, selectedPreVibes);
         }
-      </div>
-    `;
-    intro.textContent = 'Here’s a simple timeline for your night.';
-
-    const steps = [];
-    const showStart = new Date(showISO);
-    const arriveBy = new Date(showStart.getTime() - (state.arrivalBufferMin || 45) * 60000);
-
-    if (state.startAt) {
-      const hm = parseHM(state.startAt) || { h: 10, m: 0 };
-      const start = new Date(showStart);
-      start.setHours(hm.h, hm.m, 0, 0);
-      steps.push({
-        time: start,
-        label: 'Start your day',
-        detail: 'Enjoy the city at your own pace.'
       });
     }
-
-    if (state.wantDinner && dinnerPick && dinnerPick.name) {
-      const leaveForDinner = new Date(arriveBy.getTime() - 90 * 60000); // ~90 minutes before arrival
-      steps.push({
-        time: leaveForDinner,
-        label: 'Dinner before the show',
-        detail: dinnerPick.name,
-        mapUrl: dinnerPick.mapUrl || mapUrlFor(dinnerPick)
+    if (postVibePills) {
+      postVibePills.addEventListener("click", (e) => {
+        if (e.target instanceof HTMLButtonElement && e.target.classList.contains("pill")) {
+          togglePill(e.target, selectedPostVibes);
+        }
       });
     }
+    if (paceControl) {
+      paceControl.addEventListener("click", (e) => {
+        if (e.target instanceof HTMLButtonElement && e.target.classList.contains("seg-pill")) {
+          paceControl
+            .querySelectorAll(".seg-pill")
+            .forEach((b) => b.classList.remove("active"));
+          e.target.classList.add("active");
+          selectedPace = e.target.getAttribute("data-pace") || "balanced";
+        }
+      });
+    }
+  }
 
-    if (state.venue) {
-      const venuePayload = {
-        name: state.venue,
-        placeId: state.venuePlaceId,
-        lat: state.venueLat,
-        lng: state.venueLng
+  /* ------------ Places search ------------ */
+
+  function ensureVenueLatLng() {
+    if (!selectedEvent) return null;
+    if (
+      typeof selectedEvent.venueLat === "number" &&
+      typeof selectedEvent.venueLng === "number"
+    ) {
+      return {
+        lat: selectedEvent.venueLat,
+        lng: selectedEvent.venueLng,
       };
-      const leaveForVenue = new Date(arriveBy.getTime() - 15 * 60000);
-      steps.push({
-        time: leaveForVenue,
-        label: 'Head to the venue',
-        detail: state.venue,
-        mapUrl: mapUrlFor(venuePayload)
+    }
+    return null; // For v1, we assume TM gives us coordinates; can expand later.
+  }
+
+  function placesSearch({ location, type, keyword, max = 10 }) {
+    return new Promise((resolve) => {
+      initPlacesService();
+      if (!placesService || !location) return resolve([]);
+
+      placesService.nearbySearch(
+        {
+          location: new google.maps.LatLng(location.lat, location.lng),
+          rankBy: google.maps.places.RankBy.DISTANCE,
+          type: type || undefined,
+          keyword: keyword || undefined,
+        },
+        (results, status) => {
+          if (
+            status === google.maps.places.PlacesServiceStatus.OK &&
+            Array.isArray(results)
+          ) {
+            const mapped = results.slice(0, max).map((p) => {
+              const lat = p.geometry?.location?.lat?.();
+              const lng = p.geometry?.location?.lng?.();
+              return {
+                name: p.name || "",
+                placeId: p.place_id,
+                lat: typeof lat === "number" ? lat : null,
+                lng: typeof lng === "number" ? lng : null,
+                rating: typeof p.rating === "number" ? p.rating : null,
+                price_level:
+                  typeof p.price_level === "number" ? p.price_level : null,
+                address: p.vicinity || p.formatted_address || "",
+                photos: p.photos || [],
+              };
+            });
+            resolve(mapped);
+          } else {
+            resolve([]);
+          }
+        }
+      );
+    });
+  }
+
+  /* ------------ Plan generation ------------ */
+
+  function maxStopsForPace(pace) {
+    switch (pace) {
+      case "chill":
+        return 2;
+      case "packed":
+        return 6;
+      case "balanced":
+      default:
+        return 4;
+    }
+  }
+
+  async function generatePlan() {
+    if (!selectedEvent) {
+      alert("Please select an event in Step 1.");
+      return;
+    }
+
+    const preVibes = selectedPreVibes.slice();
+    const postVibes = selectedPostVibes.slice();
+
+    if (!preVibes.length && !postVibes.length) {
+      alert("Choose at least one option before or after the show.");
+      return;
+    }
+
+    const venueLoc = ensureVenueLatLng();
+    if (!venueLoc) {
+      alert(
+        "We couldn’t get the venue location from Ticketmaster yet. Try another event."
+      );
+      return;
+    }
+
+    setStatus(planStatusEl, "Building your plan…");
+
+    // Build Places requests per vibe
+    const allVibes = [...preVibes, ...postVibes];
+    const placesByVibe = {};
+
+    for (const vibe of allVibes) {
+      const cfg = VIBE_CONFIG[vibe];
+      if (!cfg) continue;
+      const { type, keyword } = cfg.places;
+      const results = await placesSearch({
+        location: venueLoc,
+        type,
+        keyword,
+        max: 10,
+      });
+      placesByVibe[vibe] = results;
+    }
+
+    const events = buildTimelineAndRails({ venueLoc, placesByVibe });
+
+    renderTimeline(events.timeline);
+    renderRails(events.rails, venueLoc);
+
+    setStatus(planStatusEl, "");
+    cardPlan.hidden = false;
+    cardPlan.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function buildTimelineAndRails({ venueLoc, placesByVibe }) {
+    const timeline = [];
+    const rails = [];
+
+    const showStart = toDateSafe(selectedEvent.dateTime);
+    if (!showStart) {
+      return { timeline, rails };
+    }
+    const showEnd = new Date(showStart.getTime() + 150 * 60000); // +2.5h
+
+    const maxStops = maxStopsForPace(selectedPace);
+
+    const preOrder = ["coffee", "lunch", "dinner", "shopping", "sightseeing"];
+    const postOrder = ["dessert", "drinks", "nightlife", "latenight"];
+
+    const selectedPre = preOrder.filter((v) => selectedPreVibes.includes(v));
+    const selectedPost = postOrder.filter((v) => selectedPostVibes.includes(v));
+
+    // Build lists of stops with one place each (if available)
+    const preStops = [];
+    const postStops = [];
+
+    for (const v of selectedPre) {
+      const list = placesByVibe[v] || [];
+      if (list.length) {
+        preStops.push({ vibe: v, place: list[0] });
+      }
+    }
+
+    for (const v of selectedPost) {
+      const list = placesByVibe[v] || [];
+      if (list.length) {
+        postStops.push({ vibe: v, place: list[0] });
+      }
+    }
+
+    // Apply pace limit
+    const allStops = [...preStops, ...postStops];
+    if (allStops.length > maxStops) {
+      const allowedPre = Math.min(preStops.length, Math.floor(maxStops / 2));
+      const allowedPost = maxStops - allowedPre;
+
+      const trimmedPre = preStops.slice(0, allowedPre);
+      const trimmedPost = postStops.slice(0, allowedPost);
+      preStops.length = 0;
+      preStops.push(...trimmedPre);
+      postStops.length = 0;
+      postStops.push(...trimmedPost);
+    }
+
+    // Pre-show timing
+    if (preStops.length) {
+      const totalPre = preStops.length;
+      const baseMinutes = totalPre * 60 + 90; // stops + 90min buffer before
+      const firstTime = new Date(showStart.getTime() - baseMinutes * 60000);
+
+      preStops.forEach((stop, idx) => {
+        const t = new Date(firstTime.getTime() + idx * 60 * 60000);
+        const label = buildTimelineLabel("pre", stop.vibe, stop.place);
+        timeline.push({
+          time: t,
+          label,
+          place: stop.place,
+        });
+      });
+
+      // Head to venue
+      const arriveBy = new Date(showStart.getTime() - 45 * 60000);
+      timeline.push({
+        time: new Date(arriveBy.getTime() - 15 * 60000),
+        label: `Head to ${selectedEvent.venueName || "the venue"}`,
+        place: {
+          name: selectedEvent.venueName || "Venue",
+          lat: venueLoc.lat,
+          lng: venueLoc.lng,
+        },
+      });
+    } else {
+      // No pre-stops: simple head to venue
+      const arriveBy = new Date(showStart.getTime() - 45 * 60000);
+      timeline.push({
+        time: new Date(arriveBy.getTime() - 15 * 60000),
+        label: `Head to ${selectedEvent.venueName || "the venue"}`,
+        place: {
+          name: selectedEvent.venueName || "Venue",
+          lat: venueLoc.lat,
+          lng: venueLoc.lng,
+        },
       });
     }
 
-    steps.push({
+    // Concert start
+    timeline.push({
       time: showStart,
-      label: 'Show starts',
-      detail: state.artist || 'Your concert'
+      label: "Concert starts",
+      place: null,
     });
 
-    steps.sort((a, b) => +a.time - +b.time);
-
-    scheduleEl.innerHTML = `
-      <div class="tour-steps">
-        ${steps
-          .map((s) => {
-            const t = fmtInTz(s.time, tz, { round: true });
-            const label = esc(s.label || '');
-            const detail = esc(s.detail || '');
-            const link =
-              s.mapUrl && s.detail
-                ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${detail}</a>`
-                : detail;
-            return `
-              <div class="tstep">
-                <div class="t-time">${esc(t)}</div>
-                <div class="t-arrow">→</div>
-                <div class="t-label">
-                  <span class="t-verb">${label}</span>
-                  ${detail ? ` <strong class="t-dest">${link}</strong>` : ''}
-                </div>
-              </div>
-            `;
-          })
-          .join('')}
-      </div>
-    `;
-  }
-
-  /* --------------------------------------------------
-   * Generate plan
-   * -------------------------------------------------- */
-  async function generatePlan() {
-    if (!state.showDate || !state.showTime) {
-      throw new Error('Please set a show date and time.');
+    // Post-show timing
+    if (postStops.length) {
+      let t = new Date(showEnd.getTime() + 15 * 60000);
+      postStops.forEach((stop) => {
+        const label = buildTimelineLabel("post", stop.vibe, stop.place);
+        timeline.push({
+          time: t,
+          label,
+          place: stop.place,
+        });
+        t = new Date(t.getTime() + 75 * 60000);
+      });
     }
 
-    setLoading(true);
+    // Rails: one rail per vibe that has results
+    const usedVibes = new Set(
+      Object.keys(placesByVibe).filter((v) => (placesByVibe[v] || []).length)
+    );
+    usedVibes.forEach((vibe) => {
+      const cfg = VIBE_CONFIG[vibe];
+      if (!cfg) return;
+      rails.push({
+        vibe,
+        title:
+          (cfg.pre ? "Before the show · " : cfg.post ? "After the show · " : "") +
+          cfg.label,
+        places: placesByVibe[vibe],
+      });
+    });
+
+    // Sort timeline chronologically
+    timeline.sort((a, b) => +a.time - +b.time);
+
+    return { timeline, rails };
+  }
+
+  function buildTimelineLabel(phase, vibe, place) {
+    const cfg = VIBE_CONFIG[vibe];
+    const name = place?.name || cfg?.label || "Stop";
+
+    if (phase === "pre") {
+      switch (vibe) {
+        case "coffee":
+          return `Coffee at ${name}`;
+        case "lunch":
+          return `Lunch at ${name}`;
+        case "dinner":
+          return `Dinner at ${name}`;
+        case "shopping":
+          return `Shopping at ${name}`;
+        case "sightseeing":
+          return `Explore ${name}`;
+        default:
+          return name;
+      }
+    } else {
+      switch (vibe) {
+        case "dessert":
+          return `Dessert at ${name}`;
+        case "drinks":
+          return `Drinks at ${name}`;
+        case "nightlife":
+          return `Nightlife at ${name}`;
+        case "latenight":
+          return `Late-night eats at ${name}`;
+        default:
+          return name;
+      }
+    }
+  }
+
+  function renderTimeline(items) {
+    timelineEl.innerHTML = "";
+    if (!items.length) {
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.textContent =
+        "We couldn’t build a timeline yet. Try adjusting your choices.";
+      timelineEl.appendChild(empty);
+      return;
+    }
+
+    items.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "timeline-item";
+
+      const time = document.createElement("div");
+      time.className = "timeline-time";
+      time.textContent = formatTime(item.time);
+
+      const label = document.createElement("div");
+      label.className = "timeline-label";
+
+      if (item.place && item.place.name) {
+        const url = googleMapsUrlForPlace(item.place);
+        const nameMatch = item.label.match(/(.+?) at (.+)$/i);
+
+        if (nameMatch && url) {
+          const prefix = nameMatch[1];
+          const placeName = nameMatch[2];
+
+          label.innerHTML = `${prefix} at <strong><a href="${url}" target="_blank" rel="noopener">${placeName}</a></strong>`;
+        } else if (url) {
+          label.innerHTML = `${item.label} <strong><a href="${url}" target="_blank" rel="noopener">Open in Maps</a></strong>`;
+        } else {
+          label.textContent = item.label;
+        }
+      } else {
+        label.textContent = item.label;
+      }
+
+      row.appendChild(time);
+      row.appendChild(label);
+      timelineEl.appendChild(row);
+    });
+  }
+
+  function renderRails(rails, venueLoc) {
+    placeRailsEl.innerHTML = "";
+    if (!rails.length) {
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.textContent = "No nearby picks yet. Try turning on more options.";
+      placeRailsEl.appendChild(empty);
+      return;
+    }
+
+    rails.forEach((rail) => {
+      const block = document.createElement("div");
+      block.className = "rail";
+
+      const title = document.createElement("div");
+      title.className = "rail-title";
+      title.textContent = rail.title;
+
+      const row = document.createElement("div");
+      row.className = "rail-row";
+
+      rail.places.forEach((p) => {
+        const card = document.createElement("a");
+        card.className = "place-card";
+        card.href = googleMapsUrlForPlace(p);
+        card.target = "_blank";
+        card.rel = "noopener";
+
+        const imgWrap = document.createElement("div");
+        imgWrap.className = "place-card-img";
+        if (p.photos && p.photos[0] && p.photos[0].getUrl) {
+          const img = document.createElement("img");
+          img.src = p.photos[0].getUrl({ maxWidth: 360, maxHeight: 240 });
+          img.alt = p.name || "";
+          imgWrap.appendChild(img);
+        }
+
+        const body = document.createElement("div");
+        body.className = "place-card-body";
+
+        const name = document.createElement("h4");
+        name.className = "place-card-name";
+        name.textContent = p.name || "Place";
+
+        const meta = document.createElement("div");
+        meta.className = "place-card-meta";
+
+        const miles = milesBetween(
+          venueLoc.lat,
+          venueLoc.lng,
+          p.lat,
+          p.lng
+        );
+        if (miles != null) {
+          const span = document.createElement("span");
+          span.textContent = `${miles.toFixed(1)} mi`;
+          meta.appendChild(span);
+        }
+
+        if (typeof p.rating === "number") {
+          const span = document.createElement("span");
+          span.textContent = `★ ${p.rating.toFixed(1)}`;
+          meta.appendChild(span);
+        }
+
+        if (typeof p.price_level === "number") {
+          const span = document.createElement("span");
+          span.textContent = "$".repeat(
+            Math.max(1, Math.min(4, p.price_level))
+          );
+          meta.appendChild(span);
+        }
+
+        body.appendChild(name);
+        body.appendChild(meta);
+        card.appendChild(imgWrap);
+        card.appendChild(body);
+        row.appendChild(card);
+      });
+
+      block.appendChild(title);
+      block.appendChild(row);
+      placeRailsEl.appendChild(block);
+    });
+  }
+
+  /* ------------ Share ------------ */
+
+  async function sharePlan() {
+    if (!selectedEvent) return;
+    const dt = toDateSafe(selectedEvent.dateTime);
+    const dateStr = dt
+      ? dt.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "Date TBA";
+    const timeStr = dt ? formatTime(dt) : "Time TBA";
+
+    const text = `My Concerto+ plan for ${
+      selectedEvent.artist || selectedEvent.name
+    } at ${
+      selectedEvent.venueName || "the venue"
+    } on ${dateStr} · ${timeStr}.`;
+
+    const url = window.location.href;
+
     try {
-      await ensureVenueResolved();
-      await ensureHotelResolved();
-
-      const showISO = parseShowDateTimeISO();
-
-      // Dinner suggestions
-      let dinnerList = [];
-      let dinnerPick = null;
-      if (state.wantDinner) {
-        const dinnerState = {
-          ...state,
-          foodStyles: [state.dinnerCuisine],
-          budget: state.dinnerBudget,
-          placeStyle: 'sitdown'
-        };
-        dinnerList =
-          (await pickRestaurants({
-            wantOpenNow: false,
-            state: dinnerState,
-            slot: 'before',
-            targetISO: showISO
-          })) || [];
-        dinnerPick = dinnerList.length ? normalizePlace(dinnerList[0]) : null;
+      if (navigator.share) {
+        await navigator.share({ title: "Concerto+ Plan", text, url });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        alert("Link copied to clipboard.");
+      } else {
+        alert("Sharing is not available in this browser.");
       }
-
-      // Extras
-      const extras = (await pickExtras({ state })) || [];
-
-      // Render schedule + rails
-      renderSchedule(showISO, dinnerPick);
-      await renderRails(dinnerList, extras);
-
-      document.body.classList.add('has-plan');
-
-      // Smooth scroll to results
-      const resultsScreen = $('screen-results');
-      if (resultsScreen) {
-        resultsScreen.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.warn("Share failed", err);
     }
   }
 
-  /* --------------------------------------------------
-   * Start
-   * -------------------------------------------------- */
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initLayout);
+  /* ------------ Init ------------ */
+
+  function init() {
+    if (searchEventsBtn) {
+      searchEventsBtn.addEventListener("click", searchTicketmasterEvents);
+    }
+    if (eventKeywordInput) {
+      eventKeywordInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") searchTicketmasterEvents();
+      });
+    }
+    if (eventCityInput) {
+      eventCityInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") searchTicketmasterEvents();
+      });
+    }
+
+    initVibePills();
+
+    if (generatePlanBtn) {
+      generatePlanBtn.addEventListener("click", generatePlan);
+    }
+    if (editChoicesBtn) {
+      editChoicesBtn.addEventListener("click", () => {
+        $("card-vibe").scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
+    if (sharePlanBtn) {
+      sharePlanBtn.addEventListener("click", sharePlan);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
   } else {
-    initLayout();
+    init();
   }
 })();

@@ -2,6 +2,7 @@
    Concerto+ — Match Events Near Me Look & Feel
    - Inter font
    - Same colors, pills, buttons, spacing rhythm
+   - Single-page flow (no multi-screen paging)
    ============================================================ */
 
 /* ===== Theme Tokens (same palette as Events Near Me) ===== */
@@ -53,29 +54,55 @@ a:hover {
   font-size: 0.85rem;
 }
 
-/* ===== Screen Switching (Concerto+ multi-screen) ===== */
+/* ===== Single-page Screen Layout (no more paging) ===== */
 .screen {
-  display: none;
-}
-.screen.active {
   display: block;
+  padding: 0 0 16px;
 }
 
-/* ===== Welcome Hero (match ENM spacing/typography) ===== */
-.hero-welcome {
-  min-height: 100vh;
+/* Loading overlay only when active */
+.screen.loading {
+  display: none;
+}
+.screen.loading.active {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0 16px 24px;
+  position: fixed;
+  inset: 0;
+  background: rgba(248, 249, 249, 0.9);
+  z-index: 999;
+}
+
+/* Optional inner container alignment for loading */
+.loading-inner {
   text-align: center;
 }
 
-/* CONCERTO+ mark — styled like ENM feature-title, just a bit bigger */
+/* ===== Header / Hero (ENM-style) ===== */
+
+.hero-welcome {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 16px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Brand logo (same treatment as Events Near Me) */
+.brand-logo {
+  max-width: 260px;
+  width: 72%;
+  display: block;
+  margin: 0 auto 10px;
+}
+
+/* CONCERTO+ mark — similar to ENM feature-title */
 .hc-mark {
-  margin: 0 0 8px;
-  font-size: 1.6rem;
+  margin: 0 0 4px;
+  font-size: 1.45rem;
   font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -91,17 +118,16 @@ a:hover {
 
 .hc-sub-kicker {
   margin-top: 4px;
-  margin-bottom: 10px;
-  font-size: 0.85rem;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .hc-sub-body {
   max-width: 440px;
-  margin: 0 auto 20px;
-  font-size: 0.92rem;
+  margin: 0 auto 18px;
+  font-size: 0.9rem;
 }
 
 /* Welcome buttons */
@@ -110,13 +136,14 @@ a:hover {
   flex-direction: column;
   gap: 10px;
   align-items: center;
+  margin-bottom: 4px;
 }
 
 /* ===== Containers (narrow/wide) ===== */
 .container {
   width: min(640px, 92vw);
   margin: 0 auto;
-  padding: 16px 0 20px;
+  padding: 4px 0 20px;
 }
 
 .container.wide {
@@ -657,11 +684,11 @@ select:focus {
   }
 
   .hero-welcome {
-    padding: 0 14px 20px;
+    padding: 16px 14px 10px;
   }
 
   .hc-mark {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
   }
 
   .form-grid,

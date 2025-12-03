@@ -19,10 +19,10 @@
 <body>
   <noscript>This app requires JavaScript to run.</noscript>
 
-  <!-- ========== WELCOME / HEADER (now just the top of the page) ========== -->
+  <!-- ========== WELCOME / HEADER ========== -->
   <section id="screen-welcome" class="screen active">
-    <div class="hero-welcome">
-      <!-- Brand logo (same as Events Near Me) -->
+    <div class="hero-welcome container narrow">
+      <!-- Brand logo -->
       <img
         src="IMG_3180.jpeg"
         alt="Concerto - From the Concert to the City"
@@ -45,7 +45,7 @@
         Create a custom itinerary with curated dining, city experiences, and more.
       </p>
 
-      <!-- Actions (optional, still wired for JS) -->
+      <!-- Actions -->
       <div class="hero-actions">
         <button id="btn-start" class="btn btn-primary">Get Started</button>
         <button id="btn-resume" class="btn btn-ghost" style="display:none;">Resume Plan</button>
@@ -53,7 +53,7 @@
     </div>
   </section>
   
-  <!-- ========== FORM SECTION (always on the same page, below hero) ========== -->
+  <!-- ========== FORM SECTION ========== -->
   <section id="screen-form" class="screen">
     <div class="container narrow">
       <div class="progress">
@@ -71,7 +71,7 @@
     </div>
   </section>
 
-  <!-- ========== LOADING OVERLAY (only shows when .active is added) ========== -->
+  <!-- ========== LOADING OVERLAY ========== -->
   <section id="screen-loading" class="screen loading">
     <div class="container narrow loading-inner">
       <div class="spinner"></div>
@@ -79,12 +79,12 @@
     </div>
   </section>
 
-  <!-- ========== RESULTS (on the same page, under the form) ========== -->
+  <!-- ========== RESULTS SECTION ========== -->
   <section id="screen-results" class="screen">
     <div class="container wide">
       <div class="results-header">
-        <div>
-          <h2 id="results-context">Your Concert Day</h2>
+        <div class="results-title-wrap">
+          <div id="results-context" class="results-title"></div>
           <p id="intro-line" class="muted"></p>
         </div>
         <div class="actions">
@@ -97,7 +97,7 @@
       <!-- Timeline-style schedule -->
       <div id="schedule" class="schedule"></div>
 
-      <!-- Horizontal rails for places (restaurants, hotels, etc.) -->
+      <!-- Horizontal rails for places -->
       <div id="rails"></div>
     </div>
   </section>

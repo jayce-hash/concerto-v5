@@ -54,10 +54,34 @@ a:hover {
   font-size: 0.85rem;
 }
 
-/* ===== Single-page Screen Layout (no more paging) ===== */
+/* ===== Screen layout (one-page) ===== */
+/* All sections stack by default */
 .screen {
   display: block;
-  padding: 0 0 16px;
+}
+
+/* Loading overlay (only shows when .active is set by JS) */
+#screen-loading {
+  display: none;
+}
+#screen-loading.active {
+  display: block;
+}
+
+/* Hide form + results until user starts / has a plan */
+#screen-form,
+#screen-results {
+  display: none;
+}
+
+/* Show form once the user has tapped Get Started */
+body.show-form #screen-form {
+  display: block;
+}
+
+/* Show results once an itinerary exists */
+body.has-plan #screen-results {
+  display: block;
 }
 
 /* Loading overlay only when active */

@@ -156,14 +156,58 @@
 
   /* ------------ Ticketmaster ------------ */
 
-  function buildTMUrl({ keyword, city, size = 15 }) {
+  function buildTMUrl({ keyword, city, size = 30 }) {
     const url = new URL("https://app.ticketmaster.com/discovery/v2/events.json");
     if (keyword) url.searchParams.set("keyword", keyword);
     if (city) url.searchParams.set("city", city);
-    url.searchParams.set("size", String(size));
+    url.searchParams.set("size", String(size)); // we ask for more, then filter
     url.searchParams.set("locale", "*");
     url.searchParams.set("apikey", TM_KEY);
     return url.toString();
+  }
+
+  // Remove junk (suites, parking, VIP, etc.) and collapse duplicates
+  function filterTicketmasterEvents(rawEvents = []) {
+    // Anything matching these words in the event name gets dropped
+    const BAD_NAME_RX =
+      /(suite|suites|parking|vip|upgrade|hospitality|package|packages|club seat|club seats|presale|platinum|add-on|add on)/i;
+
+    const map = new Map(); // key = artist|date|venue
+
+    for (const ev of rawEvents) {
+      if (!ev) continue;
+
+      const name = ev.name || "";
+      if (!name) continue;
+
+      // 1) Drop obvious non-primary events
+      if (BAD_NAME_RX.test(name)) continue;
+
+      const at = (ev._embedded?.attractions || [])[0] || {};
+      const vn = (ev._embedded?.venues || [])[0] || {};
+      const artistName =
+        (at.name || name)
+          .replace(/\s+-\s+.*$/i, "") // strip trailing “ – VIP Package” etc
+          .toLowerCase()
+          .trim() || "";
+
+      const dateKey =
+        ev.dates?.start?.dateTime ||
+        ev.dates?.start?.localDate ||
+        "";
+
+      const venueName = (vn.name || "").toLowerCase().trim();
+
+      const key = `${artistName}|${dateKey}|${venueName}`;
+      if (!key) continue;
+
+      // Only keep the **first** clean event for this artist/date/venue combo
+      if (!map.has(key)) {
+        map.set(key, ev);
+      }
+    }
+
+    return Array.from(map.values());
   }
 
   async function searchTicketmasterEvents() {
@@ -179,13 +223,18 @@
     eventResultsEl.innerHTML = "";
 
     try {
-      const url = buildTMUrl({ keyword, city, size: 15 });
+      const url = buildTMUrl({ keyword, city, size: 50 });
       const res = await fetch(url);
       if (!res.ok) {
         throw new Error("Ticketmaster error");
       }
       const json = await res.json();
-      const events = (json?._embedded?.events || []).map((ev) => {
+      const rawEvents = json?._embedded?.events || [];
+
+      // 🔹 Clean + de-dupe here
+      const filtered = filterTicketmasterEvents(rawEvents);
+
+      const events = filtered.map((ev) => {
         const at = (ev._embedded?.attractions || [])[0];
         const vn = (ev._embedded?.venues || [])[0] || {};
         const loc = vn.location || {};
@@ -204,7 +253,7 @@
           timezone: tz,
           venueLat: loc.latitude ? Number(loc.latitude) : null,
           venueLng: loc.longitude ? Number(loc.longitude) : null,
-          ticketUrl: ev.url || "",
+          ticketUrl: ev.url || "", // standard TM tickets page
         };
       });
 

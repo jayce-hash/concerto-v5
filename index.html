@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Concerto+ · Concert Day Planner</title>
 
-  <!-- Fonts: Inter (same as Events Near Me) -->
+  <!-- Fonts (same as Events Near Me vibe) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -19,93 +19,99 @@
 <body>
   <noscript>This app requires JavaScript to run.</noscript>
 
-  <!-- ========== WELCOME / HEADER ========== -->
-  <section id="screen-welcome" class="screen active">
-    <div class="hero-welcome container narrow">
-      <!-- Brand logo -->
-      <img
-        src="IMG_3180.jpeg"
-        alt="Concerto - From the Concert to the City"
-        class="brand-logo"
-      />
+  <main class="shell">
+    <!-- ========== WELCOME / HERO ========== -->
+    <section id="screen-welcome" class="screen active">
+      <div class="container narrow">
+        <div class="hero-welcome">
+          <img
+            src="IMG_3180.jpeg"
+            alt="Concerto - From the Concert to the City"
+            class="brand-logo"
+          />
 
-      <!-- Title -->
-      <h1 class="hc-mark">Concerto+</h1>
+          <h1 class="hc-mark">Concerto+</h1>
 
-      <!-- Taglines -->
-      <p class="hc-sub">
-        Plan your perfect day in the city.
-      </p>
+          <p class="hc-sub">
+            Plan your perfect day in the city.
+          </p>
 
-      <p class="hc-sub hc-sub-kicker">
-        Every Concert · Every Game · Every City
-      </p>
+          <p class="hc-sub hc-sub-kicker">
+            Every Concert · Every Game · Every City
+          </p>
 
-      <p class="hc-sub hc-sub-body">
-        Create a custom itinerary with curated dining, city experiences, and more.
-      </p>
+          <p class="hc-sub hc-sub-body">
+            Build a curated schedule with dining, coffee, nightlife, and more —
+            all around your venue.
+          </p>
 
-      <!-- Actions -->
-      <div class="hero-actions">
-        <button id="btn-start" class="btn btn-primary">Get Started</button>
-        <button id="btn-resume" class="btn btn-ghost" style="display:none;">Resume Plan</button>
-      </div>
-    </div>
-  </section>
-  
-  <!-- ========== FORM SECTION ========== -->
-  <section id="screen-form" class="screen">
-    <div class="container narrow">
-      <div class="progress">
-        <div id="progress-bar" class="progress-bar"></div>
-      </div>
-
-      <article class="card step-card">
-        <div id="step-wrapper"></div>
-
-        <div class="sticky-actions">
-          <button id="btn-prev" class="btn btn-ghost">Back</button>
-          <button id="btn-next" class="btn btn-primary">Next</button>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <!-- ========== LOADING OVERLAY ========== -->
-  <section id="screen-loading" class="screen loading">
-    <div class="container narrow loading-inner">
-      <div class="spinner"></div>
-      <p class="muted">Creating your curated itinerary…</p>
-    </div>
-  </section>
-
-  <!-- ========== RESULTS SECTION ========== -->
-  <section id="screen-results" class="screen">
-    <div class="container wide">
-      <div class="results-header">
-        <div class="results-title-wrap">
-          <div id="results-context" class="results-title"></div>
-          <p id="intro-line" class="muted"></p>
-        </div>
-        <div class="actions">
-          <button id="btn-edit" class="btn btn-ghost">Edit inputs</button>
-          <button id="btn-new" class="btn btn-ghost">New plan</button>
-          <button id="btn-share" class="btn btn-primary btn-share">Share link</button>
+          <div class="hero-actions">
+            <button id="btn-start" class="btn btn-primary">Get Started</button>
+            <button id="btn-resume" class="btn btn-ghost" style="display:none;">Resume Plan</button>
+          </div>
         </div>
       </div>
+    </section>
 
-      <!-- Timeline-style schedule -->
-      <div id="schedule" class="schedule"></div>
+    <!-- ========== FORM (multi-step UI that app.js controls) ========== -->
+    <section id="screen-form" class="screen">
+      <div class="container narrow">
+        <div class="progress">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
 
-      <!-- Horizontal rails for places -->
-      <div id="rails"></div>
-    </div>
-  </section>
+        <article class="card step-card">
+          <!-- app.js injects the current step contents here -->
+          <div id="step-wrapper"></div>
+
+          <div class="sticky-actions">
+            <button id="btn-prev" class="btn btn-ghost">Back</button>
+            <button id="btn-next" class="btn btn-primary">Next</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ========== LOADING OVERLAY ========== -->
+    <section id="screen-loading" class="screen loading">
+      <div class="container narrow loading-inner">
+        <div class="spinner"></div>
+        <p class="muted">Creating your curated itinerary…</p>
+      </div>
+    </section>
+
+    <!-- ========== RESULTS ========== -->
+    <section id="screen-results" class="screen">
+      <div class="container wide">
+        <header class="results-header">
+          <div class="results-context-wrap">
+            <!-- app.js rewrites this entire element -->
+            <div id="results-context" class="results-context">
+              Your Concert Day
+            </div>
+            <p id="intro-line" class="muted"></p>
+          </div>
+
+          <div class="results-actions">
+            <button id="btn-edit" class="btn btn-ghost">Edit inputs</button>
+            <button id="btn-new" class="btn btn-ghost">New plan</button>
+            <button id="btn-share" class="btn btn-primary btn-share">Share link</button>
+          </div>
+        </header>
+
+        <!-- Timeline-style schedule (app.js fills this) -->
+        <div id="schedule" class="schedule"></div>
+
+        <!-- Rails: app.js will inject .rail sections into this container -->
+        <div id="rails" class="rails-root"></div>
+      </div>
+    </section>
+  </main>
 
   <!-- Google Maps JS (Places API) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
 
-  <!-- App -->
+  <!-- App logic -->
   <script type="module" src="./app.js"></script>
 </body>
 </html>

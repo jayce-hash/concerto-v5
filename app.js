@@ -2,7 +2,7 @@
 // Uses Ticketmaster Discovery API + Google Places Nearby Search
 
 (function () {
-  const TM_KEY = "oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh"; // <- replace with your Ticketmaster key
+  const TM_KEY = "oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh"; // <- your Ticketmaster key
 
   const $ = (id) => document.getElementById(id);
 
@@ -156,55 +156,43 @@
 
   /* ------------ Ticketmaster ------------ */
 
-  function buildTMUrl({ keyword, city, size = 30 }) {
+  function buildTMUrl({ keyword, city, size = 15 }) {
     const url = new URL("https://app.ticketmaster.com/discovery/v2/events.json");
     if (keyword) url.searchParams.set("keyword", keyword);
     if (city) url.searchParams.set("city", city);
-    url.searchParams.set("size", String(size)); // we ask for more, then filter
+    url.searchParams.set("size", String(size));
     url.searchParams.set("locale", "*");
     url.searchParams.set("apikey", TM_KEY);
     return url.toString();
   }
 
-  // Remove junk (suites, parking, VIP, etc.) and collapse duplicates
-  function filterTicketmasterEvents(rawEvents = []) {
-    // Anything matching these words in the event name gets dropped
-    const BAD_NAME_RX =
-      /(suite|suites|parking|vip|upgrade|hospitality|package|packages|club seat|club seats|presale|platinum|add-on|add on)/i;
+  // De-duplicate events so you only see one listing per show
+  function dedupeEvents(events) {
+    const map = new Map();
 
-    const map = new Map(); // key = artist|date|venue
+    for (const ev of events) {
+      const baseName = (ev.artist || ev.name || "").toLowerCase();
+      const venue = (ev.venueName || "").toLowerCase();
+      const day = ev.dateTime ? ev.dateTime.slice(0, 10) : "";
+      const key = `${baseName}|${venue}|${day}`;
 
-    for (const ev of rawEvents) {
-      if (!ev) continue;
+      const isSuiteLike = /suite|box|club|parking|hospitality/i.test(ev.name || "");
 
-      const name = ev.name || "";
-      if (!name) continue;
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, ev);
+        continue;
+      }
 
-      // 1) Drop obvious non-primary events
-      if (BAD_NAME_RX.test(name)) continue;
+      // Prefer non-suite / main event over suite/parking/club style listings
+      const existingIsSuite = /suite|box|club|parking|hospitality/i.test(
+        existing.name || ""
+      );
 
-      const at = (ev._embedded?.attractions || [])[0] || {};
-      const vn = (ev._embedded?.venues || [])[0] || {};
-      const artistName =
-        (at.name || name)
-          .replace(/\s+-\s+.*$/i, "") // strip trailing “ – VIP Package” etc
-          .toLowerCase()
-          .trim() || "";
-
-      const dateKey =
-        ev.dates?.start?.dateTime ||
-        ev.dates?.start?.localDate ||
-        "";
-
-      const venueName = (vn.name || "").toLowerCase().trim();
-
-      const key = `${artistName}|${dateKey}|${venueName}`;
-      if (!key) continue;
-
-      // Only keep the **first** clean event for this artist/date/venue combo
-      if (!map.has(key)) {
+      if (existingIsSuite && !isSuiteLike) {
         map.set(key, ev);
       }
+      // If both look similar or both suite-like, just keep the first one we saw.
     }
 
     return Array.from(map.values());
@@ -221,20 +209,18 @@
 
     setStatus(eventStatusEl, "Searching Ticketmaster…");
     eventResultsEl.innerHTML = "";
+    selectedEvent = null;
+    updateSelectedEventSummary();
+    generatePlanBtn.disabled = true;
 
     try {
-      const url = buildTMUrl({ keyword, city, size: 50 });
+      const url = buildTMUrl({ keyword, city, size: 30 });
       const res = await fetch(url);
       if (!res.ok) {
         throw new Error("Ticketmaster error");
       }
       const json = await res.json();
-      const rawEvents = json?._embedded?.events || [];
-
-      // 🔹 Clean + de-dupe here
-      const filtered = filterTicketmasterEvents(rawEvents);
-
-      const events = filtered.map((ev) => {
+      const eventsRaw = (json?._embedded?.events || []).map((ev) => {
         const at = (ev._embedded?.attractions || [])[0];
         const vn = (ev._embedded?.venues || [])[0] || {};
         const loc = vn.location || {};
@@ -253,9 +239,11 @@
           timezone: tz,
           venueLat: loc.latitude ? Number(loc.latitude) : null,
           venueLng: loc.longitude ? Number(loc.longitude) : null,
-          ticketUrl: ev.url || "", // standard TM tickets page
+          ticketUrl: ev.url || "",
         };
       });
+
+      const events = dedupeEvents(eventsRaw);
 
       if (!events.length) {
         setStatus(
@@ -268,9 +256,7 @@
       renderEventResults(events);
       setStatus(
         eventStatusEl,
-        `Showing ${events.length} result${
-          events.length === 1 ? "" : "s"
-        }. Tap Select to choose one.`
+        `Showing ${events.length} result${events.length === 1 ? "" : "s"}. Tap Select to choose one.`
       );
     } catch (err) {
       console.error(err);
@@ -331,8 +317,14 @@
         selectedEvent = ev;
         updateSelectedEventSummary();
         generatePlanBtn.disabled = false;
-        // Scroll to Step 2
-        $("card-vibe").scrollIntoView({ behavior: "smooth", block: "start" });
+
+        // Mark Step 1 complete and open Step 2
+        const step1 = document.querySelector('.step-pill[data-step="1"]');
+        const step2 = document.querySelector('.step-pill[data-step="2"]');
+        if (step1) step1.classList.add("completed");
+        if (step1) step1.classList.remove("open");
+        if (step2) step2.classList.add("open");
+        if (step2) step2.scrollIntoView({ behavior: "smooth", block: "start" });
       });
 
       footer.appendChild(btn);
@@ -382,21 +374,30 @@
   function initVibePills() {
     if (preVibePills) {
       preVibePills.addEventListener("click", (e) => {
-        if (e.target instanceof HTMLButtonElement && e.target.classList.contains("pill")) {
+        if (
+          e.target instanceof HTMLButtonElement &&
+          e.target.classList.contains("pill")
+        ) {
           togglePill(e.target, selectedPreVibes);
         }
       });
     }
     if (postVibePills) {
       postVibePills.addEventListener("click", (e) => {
-        if (e.target instanceof HTMLButtonElement && e.target.classList.contains("pill")) {
+        if (
+          e.target instanceof HTMLButtonElement &&
+          e.target.classList.contains("pill")
+        ) {
           togglePill(e.target, selectedPostVibes);
         }
       });
     }
     if (paceControl) {
       paceControl.addEventListener("click", (e) => {
-        if (e.target instanceof HTMLButtonElement && e.target.classList.contains("seg-pill")) {
+        if (
+          e.target instanceof HTMLButtonElement &&
+          e.target.classList.contains("seg-pill")
+        ) {
           paceControl
             .querySelectorAll(".seg-pill")
             .forEach((b) => b.classList.remove("active"));
@@ -502,7 +503,6 @@
 
     setStatus(planStatusEl, "Building your plan…");
 
-    // Build Places requests per vibe
     const allVibes = [...preVibes, ...postVibes];
     const placesByVibe = {};
 
@@ -525,8 +525,14 @@
     renderRails(events.rails, venueLoc);
 
     setStatus(planStatusEl, "");
-    cardPlan.hidden = false;
-    cardPlan.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Mark Step 2 complete and open Step 3
+    const step2 = document.querySelector('.step-pill[data-step="2"]');
+    const step3 = document.querySelector('.step-pill[data-step="3"]');
+    if (step2) step2.classList.add("completed");
+    if (step2) step2.classList.remove("open");
+    if (step3) step3.classList.add("open");
+    if (step3) step3.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function buildTimelineAndRails({ venueLoc, placesByVibe }) {
@@ -866,6 +872,30 @@
     }
   }
 
+  /* ------------ Step pill accordion behavior ------------ */
+
+  function initStepPills() {
+    const pills = Array.from(document.querySelectorAll(".step-pill"));
+
+    pills.forEach((pill) => {
+      const header = pill.querySelector(".step-pill-header");
+      if (!header) return;
+      header.addEventListener("click", () => {
+        // If clicking inside card body (buttons, etc.), ignore (handled separately)
+        const isButton = header !== event.target;
+        // We still want header clicks to toggle; body buttons have their own handlers.
+
+        const isOpen = pill.classList.contains("open");
+        if (isOpen) {
+          pill.classList.remove("open");
+        } else {
+          pills.forEach((p) => p.classList.remove("open"));
+          pill.classList.add("open");
+        }
+      });
+    });
+  }
+
   /* ------------ Init ------------ */
 
   function init() {
@@ -884,16 +914,24 @@
     }
 
     initVibePills();
+    initStepPills();
 
     if (generatePlanBtn) {
       generatePlanBtn.addEventListener("click", generatePlan);
     }
     if (editChoicesBtn) {
       editChoicesBtn.addEventListener("click", () => {
-        $("card-vibe").scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        const step2 = document.querySelector('.step-pill[data-step="2"]');
+        const step3 = document.querySelector('.step-pill[data-step="3"]');
+        if (step3) step3.classList.remove("open");
+        if (step2) step2.classList.add("open");
+        const cardVibe = document.getElementById("card-vibe");
+        if (cardVibe) {
+          cardVibe.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
       });
     }
     if (sharePlanBtn) {

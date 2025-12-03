@@ -19,10 +19,17 @@
 <body>
   <noscript>This app requires JavaScript to run.</noscript>
 
-  <!-- ========== WELCOME (centered, ENM-style typography/spacing) ========== -->
+  <!-- GLOBAL CONCERTO HEADER (same style as Events Near Me) -->
+  <header class="ccp-header">
+    <div class="ccp-header-inner">
+      <img src="IMG_3180.jpeg" alt="Concerto - From the Concert to the City" class="ccp-logo">
+    </div>
+  </header>
+
+  <!-- ========== WELCOME ========== -->
   <section id="screen-welcome" class="screen active">
     <div class="hero-welcome">
-      <!-- Logo / Title -->
+      <!-- Title -->
       <h1 class="hc-mark">Concerto+</h1>
 
       <!-- Taglines -->
@@ -49,7 +56,9 @@
   <!-- ========== FORM STEPS ========== -->
   <section id="screen-form" class="screen">
     <div class="container narrow">
-      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+      <div class="progress">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
       <article class="card step-card">
         <div id="step-wrapper"></div>
         <div class="sticky-actions">
@@ -72,9 +81,11 @@
   <section id="screen-results" class="screen">
     <div class="container wide">
       <div class="results-header">
-        <div>
-          <h2 id="results-context">Your Concert Day</h2>
-          <p id="intro-line" class="muted"></p>
+        <div class="results-header-main">
+          <!-- JS: set this to "Artist • Venue" -->
+          <h2 id="results-context">Artist • Venue</h2>
+          <!-- JS: set this to "Date @ Time (TIMEZONE)" -->
+          <p id="intro-line" class="muted">Date @ Time (TIMEZONE)</p>
         </div>
         <div class="actions">
           <button id="btn-edit" class="btn btn-ghost">Edit inputs</button>
@@ -83,9 +94,10 @@
         </div>
       </div>
 
+      <!-- Your Night card + schedule get injected here -->
       <div id="schedule" class="schedule"></div>
 
-      <!-- Rails for places (restaurants, hotels, etc.) get injected here by JS -->
+      <!-- Rails (restaurants, hotels, etc.) -->
       <div id="rails"></div>
     </div>
   </section>

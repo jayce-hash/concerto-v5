@@ -1,7 +1,5 @@
 /* ============================================================
    Concerto+ — Match Events Near Me Look & Feel
-   - Inter font
-   - Same colors, pills, buttons, spacing rhythm
    ============================================================ */
 
 /* ===== Theme Tokens (same palette as Events Near Me) ===== */
@@ -53,17 +51,38 @@ a:hover {
   font-size: 0.85rem;
 }
 
+/* ===== Global Concerto Header (logo like Events Near Me) ===== */
+.ccp-header {
+  width: 100%;
+  padding: 16px 0 8px;
+  background: var(--bg);
+}
+
+.ccp-header-inner {
+  width: min(640px, 92vw);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.ccp-logo {
+  max-width: 260px;
+  width: 72%;
+  display: block;
+  margin: 0 auto 4px;
+}
+
 /* ===== Screen Switching (Concerto+ multi-screen) ===== */
 .screen {
   display: none;
+  padding-top: 4px; /* small space under logo */
 }
 .screen.active {
   display: block;
 }
 
-/* ===== Welcome Hero (match ENM spacing/typography) ===== */
+/* ===== Welcome Hero ===== */
 .hero-welcome {
-  min-height: 100vh;
+  min-height: calc(100vh - 80px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -72,7 +91,7 @@ a:hover {
   text-align: center;
 }
 
-/* CONCERTO+ mark — styled like ENM feature-title, just a bit bigger */
+/* Main Concerto+ title — ENM-style */
 .hc-mark {
   margin: 0 0 8px;
   font-size: 1.6rem;
@@ -81,7 +100,7 @@ a:hover {
   text-transform: uppercase;
 }
 
-/* Taglines below title */
+/* Taglines */
 .hc-sub {
   margin: 0;
   font-size: 0.95rem;
@@ -104,7 +123,6 @@ a:hover {
   font-size: 0.92rem;
 }
 
-/* Welcome buttons */
 .hero-actions {
   display: flex;
   flex-direction: column;
@@ -112,7 +130,7 @@ a:hover {
   align-items: center;
 }
 
-/* ===== Containers (narrow/wide) ===== */
+/* ===== Containers ===== */
 .container {
   width: min(640px, 92vw);
   margin: 0 auto;
@@ -124,7 +142,9 @@ a:hover {
 }
 
 /* ===== Headings / Section Titles (ENM-style) ===== */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   margin: 0 0 4px;
   font-size: 1rem;
   font-weight: 400;
@@ -150,12 +170,7 @@ h3 {
   text-transform: uppercase;
 }
 
-/* Results header title */
-#results-context {
-  font-size: 1rem;
-}
-
-/* Helper text under section titles */
+/* Helper text */
 .step-help {
   margin: 0 0 12px;
   font-size: 0.9rem;
@@ -163,7 +178,7 @@ h3 {
   color: var(--muted);
 }
 
-/* ===== Cards (match ENM search card/results cards) ===== */
+/* ===== Cards ===== */
 .card {
   background: var(--card);
   border-radius: var(--radius-card);
@@ -214,7 +229,7 @@ label {
   margin-bottom: 4px;
 }
 
-/* Form grid (two-column on desktop, stack on mobile) */
+/* Form grid */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -244,7 +259,7 @@ label {
   }
 }
 
-/* Inputs (match ENM City/Date pills) */
+/* Inputs (pill style) */
 input[type="text"],
 input[type="time"],
 input[type="date"],
@@ -286,10 +301,11 @@ select:focus {
   color: var(--muted);
 }
 
-/* Autocomplete list (locations, venues, etc.) */
+/* Autocomplete list */
 .suggest {
   position: relative;
 }
+
 .suggest-list {
   position: absolute;
   z-index: 2000;
@@ -303,19 +319,22 @@ select:focus {
   box-shadow: var(--shadow-soft);
   padding: 4px;
 }
+
 .suggest-list[hidden] {
   display: none;
 }
+
 .suggest-item {
   padding: 8px 10px;
   border-radius: 8px;
   cursor: pointer;
 }
+
 .suggest-item:hover {
   background: #F2F5FA;
 }
 
-/* ===== Pills (match ENM category/filter pills) ===== */
+/* ===== Pills (cuisine, budget, etc.) ===== */
 .radio-group {
   display: flex;
   flex-wrap: wrap;
@@ -346,7 +365,7 @@ select:focus {
   color: #fff;
 }
 
-/* ===== Buttons (aligned to ENM CTA button style) ===== */
+/* ===== Buttons ===== */
 .btn {
   appearance: none;
   border-radius: 999px;
@@ -386,7 +405,6 @@ select:focus {
   background: #ffffff;
 }
 
-/* Share button can be same as primary but narrower if needed */
 .btn-share {
   white-space: nowrap;
 }
@@ -418,46 +436,54 @@ select:focus {
   }
 }
 
-/* ===== Results Header ===== */
+/* ===== Results Header (final page) ===== */
 .results-header {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
+  text-align: center;
 }
 
-.results-header h2 {
-  margin: 0 0 2px;
+.results-header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.results-header .muted {
+#results-context {
   margin: 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#intro-line {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--muted);
 }
 
 .results-header .actions {
   display: flex;
   gap: 8px;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-/* Stack actions on mobile */
-@media (max-width: 600px) {
-  .results-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .results-header .actions {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
+.results-header .actions .btn {
+  min-height: 36px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
 }
 
-/* ===== Vertical Schedule Timeline (itinerary) ===== */
+/* ===== Schedule Timeline (Your Night card) ===== */
 .schedule {
   position: relative;
   padding-left: 18px;
-  margin-top: 14px;
+  margin-top: 8px;
 }
 
 .schedule::before {
@@ -527,7 +553,7 @@ select:focus {
   color: var(--muted);
 }
 
-/* ===== Rails (horizontal scrollers for places) ===== */
+/* ===== Rails (horizontal cards for places) ===== */
 .rail {
   margin-top: 20px;
 }
@@ -558,17 +584,17 @@ select:focus {
 .h-scroll::-webkit-scrollbar {
   height: 6px;
 }
+
 .h-scroll::-webkit-scrollbar-thumb {
   background: #D9E0EB;
   border-radius: 999px;
 }
 
-/* Hide rails if empty (JS can leave them in DOM) */
 .rail:empty {
   display: none;
 }
 
-/* ===== Place Cards (restaurants, hotels, etc.) ===== */
+/* ===== Place Cards ===== */
 .place-card {
   scroll-snap-align: start;
   min-width: 200px;
@@ -584,7 +610,7 @@ select:focus {
 
 .place-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(18, 30, 54, 0.10);
+  box-shadow: 0 10px 24px rgba(18, 30, 54, 0.1);
 }
 
 .pc-img {
@@ -593,6 +619,7 @@ select:focus {
   background: #F1F4F8;
   overflow: hidden;
 }
+
 .pc-img img {
   width: 100%;
   height: 100%;
@@ -626,7 +653,7 @@ select:focus {
   gap: 8px;
 }
 
-/* Small “Reserve / Directions” pill buttons inside cards */
+/* Small pill buttons inside place cards */
 .btn-reserve {
   display: inline-flex;
   align-items: center;
@@ -641,6 +668,7 @@ select:focus {
   text-decoration: none;
   cursor: pointer;
 }
+
 .btn-reserve:hover {
   box-shadow: var(--shadow-soft);
 }
@@ -698,80 +726,4 @@ select:focus {
     min-width: 180px;
     max-width: 200px;
   }
-}
-
-/* ===== Final page polish (results header + Your Night card) ===== */
-
-/* 1) Results header text: slimmer, ENM-style, centered */
-#screen-results .results-header {
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-#screen-results .results-header > div:first-child {
-  text-align: center;
-}
-
-#results-context {
-  margin: 0 0 4px;
-  font-size: 0.9rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-#intro-line {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-/* 2) Action buttons: consistent pill size, share is primary but not huge */
-#screen-results .results-header .actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-#screen-results .results-header .actions .btn {
-  min-height: 36px;
-  padding: 0.6rem 1.1rem;
-  font-size: 0.85rem;
-}
-
-/* make share link the primary pill, but keep it subtle */
-#btn-share {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 6px 14px rgba(18, 30, 54, 0.18);
-}
-
-/* 3) "YOUR NIGHT IN ORLANDO" card title — ENM section-title look */
-#schedule .card h2,
-#schedule .card h3 {
-  margin: 0 0 6px;
-  font-size: 0.9rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-align: center;
-}
-
-/* tighten the itinerary text inside that card */
-#schedule .card p {
-  margin: 0 0 6px;
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-/* optional: faint divider above the "Looking for information about your venue?" row */
-#schedule .card .venue-cta-label {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--line);
-  font-size: 0.85rem;
-  color: var(--muted);
 }

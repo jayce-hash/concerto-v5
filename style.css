@@ -699,3 +699,79 @@ select:focus {
     max-width: 200px;
   }
 }
+
+/* ===== Final page polish (results header + Your Night card) ===== */
+
+/* 1) Results header text: slimmer, ENM-style, centered */
+#screen-results .results-header {
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#screen-results .results-header > div:first-child {
+  text-align: center;
+}
+
+#results-context {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#intro-line {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* 2) Action buttons: consistent pill size, share is primary but not huge */
+#screen-results .results-header .actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+#screen-results .results-header .actions .btn {
+  min-height: 36px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+}
+
+/* make share link the primary pill, but keep it subtle */
+#btn-share {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 6px 14px rgba(18, 30, 54, 0.18);
+}
+
+/* 3) "YOUR NIGHT IN ORLANDO" card title — ENM section-title look */
+#schedule .card h2,
+#schedule .card h3 {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* tighten the itinerary text inside that card */
+#schedule .card p {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+/* optional: faint divider above the "Looking for information about your venue?" row */
+#schedule .card .venue-cta-label {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 0.85rem;
+  color: var(--muted);
+}

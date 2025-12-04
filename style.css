@@ -240,21 +240,21 @@ input:focus {
   box-shadow: none;
 }
 
-/* ===== Step Pills (Accordion) ===== */
+/* ===== Step Pills (Accordion) – de-containered ===== */
 .step-pill {
   background: transparent;
-  border-radius: var(--radius-pill);
-  margin-bottom: 14px;
-  border: 1px solid var(--line);
-  box-shadow: 0 3px 12px rgba(18, 30, 54, 0.06);
-  overflow: hidden;
+  border-radius: 0;
+  margin-bottom: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);  /* thin divider only */
+  box-shadow: none;
 }
 
 .step-pill-header {
   width: 100%;
   border: none;
-  background: #ffffff;
-  padding: 10px 14px;
+  background: transparent;
+  padding: 10px 2px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -313,25 +313,34 @@ input:focus {
   transform: rotate(180deg);
 }
 
-/* Completed state */
+/* Completed state – just tint the divider line + show check */
 .step-pill.completed {
-  border-color: var(--accent-2);
+  border-bottom-color: var(--accent-2);
 }
 
 .step-pill.completed .step-pill-check {
   display: inline-block;
 }
 
-/* Body */
+/* Body: no big outer container, just spacing + inner card */
 .step-pill-body {
-  background: var(--bg);
-  padding: 8px 10px 14px;
-  border-top: 1px solid #eef2f8;
+  background: transparent;
+  padding: 0 2px 14px;
+  border-top: none;
   display: none;
 }
 
 .step-pill.open .step-pill-body {
   display: block;
+}
+
+/* Inner card that holds the actual content */
+.step-pill-body .card {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  padding: 16px 16px 18px;
+  box-shadow: var(--shadow-soft);
 }
 
 /* ===== Search actions & status ===== */
@@ -592,11 +601,11 @@ input:focus {
   }
 }
 
-/* Fix Safari iOS making <summary> text blue */
+/* Fix Safari iOS making step headers blue */
 .step-pill-header,
 .step-pill-header *,
-.step-pill-title,
-.step-pill-sub {
-  color: #121E36 !important;  /* your dark navy */
-  -webkit-text-fill-color: #121E36 !important; /* iOS override */
+.step-title,
+.step-subtitle {
+  color: #121E36 !important;
+  -webkit-text-fill-color: #121E36 !important;
 }

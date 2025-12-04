@@ -184,7 +184,7 @@
         continue;
       }
 
-      // Prefer non-suite / main event over suite/parking/club style listings
+      // Prefer non-suite / main event over suite/parking/club-style listings
       const existingIsSuite = /suite|box|club|parking|hospitality/i.test(
         existing.name || ""
       );
@@ -192,7 +192,7 @@
       if (existingIsSuite && !isSuiteLike) {
         map.set(key, ev);
       }
-      // If both look similar or both suite-like, just keep the first one we saw.
+      // Otherwise keep the first one.
     }
 
     return Array.from(map.values());
@@ -429,39 +429,45 @@
       initPlacesService();
       if (!placesService || !location) return resolve([]);
 
-      placesService.nearbySearch(
-        {
-          location: new google.maps.LatLng(location.lat, location.lng),
-          rankBy: google.maps.places.RankBy.DISTANCE,
-          type: type || undefined,
-          keyword: keyword || undefined,
-        },
-        (results, status) => {
-          if (
-            status === google.maps.places.PlacesServiceStatus.OK &&
-            Array.isArray(results)
-          ) {
-            const mapped = results.slice(0, max).map((p) => {
-              const lat = p.geometry?.location?.lat?.();
-              const lng = p.geometry?.location?.lng?.();
-              return {
-                name: p.name || "",
-                placeId: p.place_id,
-                lat: typeof lat === "number" ? lat : null,
-                lng: typeof lng === "number" ? lng : null,
-                rating: typeof p.rating === "number" ? p.rating : null,
-                price_level:
-                  typeof p.price_level === "number" ? p.price_level : null,
-                address: p.vicinity || p.formatted_address || "",
-                photos: p.photos || [],
-              };
-            });
-            resolve(mapped);
-          } else {
-            resolve([]);
+      try {
+        placesService.nearbySearch(
+          {
+            location: new google.maps.LatLng(location.lat, location.lng),
+            rankBy: google.maps.places.RankBy.DISTANCE,
+            type: type || undefined,
+            keyword: keyword || undefined,
+          },
+          (results, status) => {
+            if (
+              status === google.maps.places.PlacesServiceStatus.OK &&
+              Array.isArray(results)
+            ) {
+              const mapped = results.slice(0, max).map((p) => {
+                const lat = p.geometry?.location?.lat?.();
+                const lng = p.geometry?.location?.lng?.();
+                return {
+                  name: p.name || "",
+                  placeId: p.place_id,
+                  lat: typeof lat === "number" ? lat : null,
+                  lng: typeof lng === "number" ? lng : null,
+                  rating: typeof p.rating === "number" ? p.rating : null,
+                  price_level:
+                    typeof p.price_level === "number" ? p.price_level : null,
+                  address: p.vicinity || p.formatted_address || "",
+                  photos: p.photos || [],
+                };
+              });
+              resolve(mapped);
+            } else {
+              console.warn("Places search status:", status);
+              resolve([]);
+            }
           }
-        }
-      );
+        );
+      } catch (err) {
+        console.error("Places search error:", err);
+        resolve([]);
+      }
     });
   }
 
@@ -503,36 +509,49 @@
 
     setStatus(planStatusEl, "Building your plan…");
 
-    const allVibes = [...preVibes, ...postVibes];
-    const placesByVibe = {};
+    try {
+      const allVibes = [...preVibes, ...postVibes];
+      const placesByVibe = {};
 
-    for (const vibe of allVibes) {
-      const cfg = VIBE_CONFIG[vibe];
-      if (!cfg) continue;
-      const { type, keyword } = cfg.places;
-      const results = await placesSearch({
-        location: venueLoc,
-        type,
-        keyword,
-        max: 10,
-      });
-      placesByVibe[vibe] = results;
+      for (const vibe of allVibes) {
+        const cfg = VIBE_CONFIG[vibe];
+        if (!cfg) continue;
+        const { type, keyword } = cfg.places;
+        const results = await placesSearch({
+          location: venueLoc,
+          type,
+          keyword,
+          max: 10,
+        });
+        placesByVibe[vibe] = results;
+      }
+
+      const events = buildTimelineAndRails({ venueLoc, placesByVibe });
+
+      renderTimeline(events.timeline);
+      renderRails(events.rails, venueLoc);
+
+      // Mark Step 2 complete and open Step 3
+      const step2 = document.querySelector('.step-pill[data-step="2"]');
+      const step3 = document.querySelector('.step-pill[data-step="3"]');
+      if (step2) step2.classList.add("completed");
+      if (step2) step2.classList.remove("open");
+      if (step3) step3.classList.add("open");
+      if (step3) step3.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (err) {
+      console.error("Error while building plan:", err);
+      setStatus(
+        planStatusEl,
+        "We couldn’t finish your plan. Please try again or adjust your choices."
+      );
+      return;
+    } finally {
+      // Always clear the "Building your plan…" message if we didn’t override it above.
+      if (planStatusEl.textContent === "Building your plan…") {
+        setStatus(planStatusEl, "");
+      }
+      cardPlan && cardPlan.classList.add("completed");
     }
-
-    const events = buildTimelineAndRails({ venueLoc, placesByVibe });
-
-    renderTimeline(events.timeline);
-    renderRails(events.rails, venueLoc);
-
-    setStatus(planStatusEl, "");
-
-    // Mark Step 2 complete and open Step 3
-    const step2 = document.querySelector('.step-pill[data-step="2"]');
-    const step3 = document.querySelector('.step-pill[data-step="3"]');
-    if (step2) step2.classList.add("completed");
-    if (step2) step2.classList.remove("open");
-    if (step3) step3.classList.add("open");
-    if (step3) step3.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function buildTimelineAndRails({ venueLoc, placesByVibe }) {
@@ -880,11 +899,8 @@
     pills.forEach((pill) => {
       const header = pill.querySelector(".step-pill-header");
       if (!header) return;
-      header.addEventListener("click", () => {
-        // If clicking inside card body (buttons, etc.), ignore (handled separately)
-        const isButton = header !== event.target;
-        // We still want header clicks to toggle; body buttons have their own handlers.
 
+      header.addEventListener("click", () => {
         const isOpen = pill.classList.contains("open");
         if (isOpen) {
           pill.classList.remove("open");

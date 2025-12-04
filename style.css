@@ -591,3 +591,12 @@ input:focus {
     flex: 0 0 150px;
   }
 }
+
+/* Fix Safari iOS making <summary> text blue */
+.step-pill-header,
+.step-pill-header *,
+.step-pill-title,
+.step-pill-sub {
+  color: #121E36 !important;  /* your dark navy */
+  -webkit-text-fill-color: #121E36 !important; /* iOS override */
+}

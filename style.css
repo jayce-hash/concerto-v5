@@ -1,611 +1,674 @@
 /* ============================================================
    Concerto+ · Day Planner
-   Clean, mobile-first, Events Near Me–style
+   Visual alignment to Concerto Festivals (LIGHT MODE)
+   NO functionality changes
    ============================================================ */
 
-:root {
-  --bg: #F8F9F9;
-  --ink: #121E36;
-  --muted: #5E6B86;
-  --accent: #1F2B4A;
-  --accent-2: #2A3A63;
-  --line: #E2E7F0;
-  --card: #FFFFFF;
-  --shadow-soft: 0 4px 16px rgba(18, 30, 54, 0.10);
-  --radius-pill: 18px;
+:root{
+  --bg:#F8F9F9;
+  --ink:#121E36;
+  --muted:#5E6B86;
+  --line:#E2E7F0;
+  --card:#FFFFFF;
+  --accent:#1F2B4A;
+  --accent-2:#2A3A63;
+
+  --shadow:0 10px 30px rgba(18,30,54,.10);
+  --shadow2:0 3px 12px rgba(18,30,54,.10);
+
+  --radius-card:18px;
+  --radius-soft:16px;
+
+  --font:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* Festivals-like type scale */
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-22: 22px;
 }
 
-/* ===== Reset ===== */
 *,
 *::before,
-*::after {
-  box-sizing: border-box;
+*::after{ box-sizing:border-box; }
+
+html,body{ height:100%; }
+
+/* Prevent iOS Safari “auto zoom / font inflate” weirdness */
+html{
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
-    sans-serif;
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+
+/* Links */
+a{ color:inherit; text-decoration:none; }
+
+/* ============================================================
+   Layout shell (match Festivals width/spacing)
+   ============================================================ */
+
+.page{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+.page-header{
   background: var(--bg);
-  color: var(--ink);
-  -webkit-font-smoothing: antialiased;
-}
-
-/* ===== Layout ===== */
-.page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.page-header {
-  padding: 16px 0 8px;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(18,30,54,.04);
+  padding: 10px 0 14px;
 }
 
 .page-header-inner,
 .page-main,
-.page-footer {
-  width: min(640px, 92vw);
+.page-footer{
+  width:min(680px, 92vw);
+  margin:0 auto;
+}
+
+.page-header-inner{
+  padding:0 16px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:6px;
+}
+
+.page-main{
+  padding: 12px 0 20px;
+}
+
+.page-footer{
+  margin-top:auto;
+  padding: 14px 0 18px;
+  font-size: var(--fs-13);
+  text-align:center;
+}
+
+/* ============================================================
+   Branding (match Festivals)
+   ============================================================ */
+
+.brand-logo{
+  max-width: 320px;
+  width: 86%;
+  height:auto;
+  display:block;
   margin: 0 auto;
 }
 
-.page-main {
-  padding-bottom: 20px;
+.feature-title{
+  margin: 2px 0 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: none; /* Festivals uses normal case */
 }
 
-.page-footer {
-  margin-top: auto;
-  padding: 14px 0 18px;
-  font-size: 0.82rem;
-  text-align: center;
-}
-
-/* ===== Branding ===== */
-.brand-logo {
-  max-width: 260px;
-  width: 70%;
-  display: block;
-  margin: 0 auto 10px;
-}
-
-.feature-title {
-  margin: 0 0 4px;
-  font-size: 1.45rem;
-  font-weight: 400;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-align: center;
-}
-
-.tagline {
-  margin: 0 0 16px;
-  text-align: center;
-  font-size: 0.9rem;
-  line-height: 1.5;
+.tagline{
+  margin: 0;
+  font-size: var(--fs-15);
   color: var(--muted);
+  line-height: 1.45;
 }
 
-/* ===== Typography ===== */
-.section-title {
-  margin: 0 0 4px;
-  font-size: 0.86rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
+/* ============================================================
+   Typography (match Festivals feel)
+   ============================================================ */
+
+.section-title{
+  margin:0 0 4px;
+  font-size: var(--fs-13);
+  font-weight: 600;
+  letter-spacing: .16em;
   text-transform: uppercase;
 }
 
-.section-help {
-  margin: 0 0 12px;
-  font-size: 0.9rem;
-  line-height: 1.5;
+.section-help{
+  margin:0 0 12px;
+  font-size: var(--fs-15);
+  line-height:1.45;
   color: var(--muted);
 }
 
-.subsection-title {
+.subsection-title{
   margin: 18px 0 6px;
-  font-size: 0.84rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  font-size: var(--fs-12);
+  font-weight: 700;
+  letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.muted {
-  color: var(--muted);
-  font-size: 0.84rem;
+.muted{
+  color:var(--muted);
+  font-size: var(--fs-13);
 }
 
-/* ===== Generic layout helpers ===== */
-.stack {
-  display: flex;
-  flex-direction: column;
-}
+/* Helpers */
+.stack{ display:flex; flex-direction:column; }
+.gap-6{ gap:6px; }
+.gap-16{ gap:16px; }
 
-.gap-6 {
-  gap: 6px;
-}
-.gap-16 {
-  gap: 16px;
-}
+/* ============================================================
+   Card (Festivals-style)
+   ============================================================ */
 
-/* ===== Card ===== */
-.card {
+.card{
   background: var(--card);
-  border-radius: 18px;
-  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow2);
   padding: 16px 16px 18px;
 }
 
-/* ===== Form ===== */
-.field {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 12px;
+/* ============================================================
+   Form (match Festivals inputs)
+   ============================================================ */
+
+.field{
+  display:flex;
+  flex-direction:column;
+  margin-bottom:12px;
 }
 
-label {
-  font-size: 0.78rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
+.field:last-child{ margin-bottom:0; }
+
+label{
+  font-size: var(--fs-11);
+  letter-spacing: .14em;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
 }
 
-.form-grid {
-  display: grid;
+.form-grid{
+  display:grid;
   grid-template-columns: 1.2fr 1fr;
   gap: 12px;
 }
 
-.form-grid > .field {
-  min-width: 0;
-}
+.form-grid > .field{ min-width:0; }
 
-@media (max-width: 640px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 640px){
+  .form-grid{ grid-template-columns: 1fr; }
 }
 
 input[type="text"],
-input[type="date"] {
-  width: 100%;
-  border-radius: 999px;
+input[type="date"]{
+  width:100%;
+  border-radius: 14px; /* Festivals */
   border: 1px solid var(--line);
-  padding: 0.65rem 0.95rem;
-  font-size: 15px;
-  background: #fff;
+  padding: 12px 12px;
+  font-size: var(--fs-14);
+  background:#fff;
   color: var(--ink);
-  outline: none;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  outline:none;
+  box-shadow: var(--shadow2);
+  transition: border-color .16s ease, box-shadow .16s ease, transform .12s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-input::placeholder {
-  color: #9aa3b5;
-  font-size: 0.9rem;
+input::placeholder{
+  color: rgba(94,107,134,.60);
 }
 
-input:focus {
+input:focus{
   border-color: var(--accent-2);
-  box-shadow: 0 0 0 2px rgba(31, 43, 74, 0.18);
+  box-shadow: 0 0 0 2px rgba(31,43,74,.14), var(--shadow2);
 }
 
-.tiny {
-  margin-top: 4px;
-  font-size: 0.78rem;
+.tiny{
+  margin-top: 6px;
+  font-size: var(--fs-13);
   color: var(--muted);
+  line-height: 1.35;
 }
 
-/* ===== Buttons ===== */
+/* ============================================================
+   Buttons (Festivals-ish)
+   ============================================================ */
+
 .btn-primary,
 .btn-secondary,
-.btn-ghost {
+.btn-ghost{
   border-radius: 999px;
-  border: none;
-  padding: 0.78rem 1.3rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  border: 1px solid var(--line);
+  padding: 10px 14px;
+  font-size: var(--fs-13);
+  cursor:pointer;
+  letter-spacing: .06em;
   text-transform: uppercase;
-  cursor: pointer;
+  font-weight: 600;
   -webkit-tap-highlight-color: transparent;
 }
 
-.btn-primary {
-  width: 100%;
+.btn-primary{
+  width:100%;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff;
-  box-shadow: 0 8px 18px rgba(18, 30, 54, 0.16);
+  color:#fff;
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(18,30,54,.16);
 }
 
-.btn-secondary {
-  background: #ffffff;
+.btn-secondary{
+  background:#fff;
   color: var(--accent-2);
-  border: 1px solid var(--accent-2);
+  border-color: var(--accent-2);
+  box-shadow: var(--shadow2);
 }
 
-.btn-ghost {
-  background: transparent;
-  color: var(--accent-2);
-  border: 1px solid transparent;
+.btn-ghost{
+  background:#fff;
+  color: var(--ink);
+  box-shadow: var(--shadow2);
 }
 
-.btn-primary:disabled {
-  opacity: 0.45;
-  cursor: default;
-  box-shadow: none;
+.btn-ghost:hover,
+.btn-secondary:hover{
+  background:#F5F7FB;
 }
 
-/* ===== Step Pills (Accordion) – de-containered ===== */
-.step-pill {
+.btn-primary:disabled{
+  opacity:.45;
+  cursor:default;
+  box-shadow:none;
+}
+
+/* ============================================================
+   Step Pills (Accordion) — keep your clean divider system
+   ============================================================ */
+
+.step-pill{
   background: transparent;
   border-radius: 0;
   margin-bottom: 10px;
   border: 0;
-  border-bottom: 1px solid var(--line);  /* thin divider only */
+  border-bottom: 1px solid var(--line);
   box-shadow: none;
 }
 
-.step-pill-header {
-  width: 100%;
-  border: none;
-  background: transparent;
+.step-pill-header{
+  width:100%;
+  border:none;
+  background:transparent;
   padding: 10px 2px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  cursor:pointer;
 }
 
-.step-pill-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: left;
+.step-pill-label{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-align:left;
 }
 
-.step-number {
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
+.step-number{
+  font-size: var(--fs-12);
+  font-weight: 700;
+  letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.step-text-block {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.step-text-block{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
 }
 
-.step-title {
-  font-size: 0.96rem;
-  font-weight: 500;
+.step-title{
+  font-size: var(--fs-16);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-.step-subtitle {
-  font-size: 0.82rem;
+.step-subtitle{
+  font-size: var(--fs-13);
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.step-pill-status{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size: var(--fs-14);
   color: var(--muted);
 }
 
-.step-pill-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
+.step-pill-check{ display:none; }
 
-.step-pill-check {
-  display: none;
-}
-
-.step-pill-caret {
-  transition: transform 0.18s ease;
+.step-pill-caret{
+  transition: transform .18s ease;
 }
 
 /* Open state */
-.step-pill.open .step-pill-caret {
-  transform: rotate(180deg);
-}
+.step-pill.open .step-pill-caret{ transform: rotate(180deg); }
 
-/* Completed state – just tint the divider line + show check */
-.step-pill.completed {
+/* Completed state */
+.step-pill.completed{
   border-bottom-color: var(--accent-2);
 }
 
-.step-pill.completed .step-pill-check {
-  display: inline-block;
+.step-pill.completed .step-pill-check{
+  display:inline-block;
 }
 
-/* Body: no big outer container, just spacing + inner card */
-.step-pill-body {
+/* Body */
+.step-pill-body{
   background: transparent;
   padding: 0 2px 14px;
-  border-top: none;
-  display: none;
+  border-top:none;
+  display:none;
 }
 
-.step-pill.open .step-pill-body {
-  display: block;
-}
+.step-pill.open .step-pill-body{ display:block; }
 
-/* Inner card that holds the actual content */
-.step-pill-body .card {
-  background: #ffffff;
-  border-radius: 18px;
+/* Make the inner content card match Festivals */
+.step-pill-body .card{
+  background:#fff;
+  border-radius: var(--radius-card);
   border: 1px solid var(--line);
   padding: 16px 16px 18px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow2);
 }
 
-/* ===== Search actions & status ===== */
-.search-actions {
-  margin-top: 6px;
-}
+/* ============================================================
+   Status blocks
+   ============================================================ */
 
-.status {
-  margin-top: 6px;
-}
+.search-actions{ margin-top: 6px; }
+.status{ margin-top: 6px; }
 
-/* ===== Event search results ===== */
-.event-results {
+/* ============================================================
+   Event search results
+   ============================================================ */
+
+.event-results{
   margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
 }
 
-.event-result {
-  border-radius: 14px;
+.event-result{
+  border-radius: 16px;
   border: 1px solid var(--line);
-  background: #ffffff;
-  padding: 10px 12px;
-  box-shadow: 0 2px 6px rgba(18, 30, 54, 0.05);
+  background:#fff;
+  padding: 12px 12px;
+  box-shadow: var(--shadow2);
 }
 
-.event-result-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
+.event-result-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
 }
 
-.event-result-title {
-  margin: 0;
-  font-size: 0.98rem;
-  font-weight: 500;
+.event-result-title{
+  margin:0;
+  font-size: var(--fs-15);
+  font-weight: 750;
+  letter-spacing: .01em;
 }
 
-.event-result-meta {
-  margin-top: 4px;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-.event-result-footer {
-  margin-top: 8px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.event-result button {
-  border-radius: 999px;
-  border: none;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.82rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: var(--ink);
-  color: #fff;
-  cursor: pointer;
-}
-
-/* Selected state */
-.event-result.selected {
-  border-color: var(--accent-2);
-  box-shadow: 0 4px 12px rgba(31, 43, 74, 0.18);
-}
-
-/* ===== Vibes & Pace ===== */
-.pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.event-result-meta{
   margin-top: 6px;
+  font-size: var(--fs-13);
+  color: var(--muted);
+  line-height: 1.35;
 }
 
-.pill {
+.event-result-footer{
+  margin-top: 10px;
+  display:flex;
+  justify-content:flex-end;
+}
+
+.event-result button{
   border-radius: 999px;
-  padding: 7px 14px;
   border: 1px solid var(--line);
-  background: #fff;
-  font-size: 0.86rem;
+  padding: 10px 14px;
+  font-size: var(--fs-13);
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: var(--accent);
+  color:#fff;
+  cursor:pointer;
+  box-shadow: var(--shadow2);
+}
+
+.event-result.selected{
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+/* ============================================================
+   Vibes + Pace
+   ============================================================ */
+
+.pill-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top: 8px;
+}
+
+.pill{
+  border-radius: 999px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background:#fff;
+  font-size: var(--fs-13);
   color: var(--ink);
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease,
-    box-shadow 0.12s ease, transform 0.12s ease;
+  cursor:pointer;
+  box-shadow: var(--shadow2);
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
 }
 
-.pill:hover {
+.pill:hover{
   transform: translateY(-1px);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow);
 }
 
-.pill.active {
+.pill.active{
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   border-color: transparent;
-  color: #fff;
+  color:#fff;
+  box-shadow: var(--shadow);
 }
 
-.seg-row {
-  display: inline-flex;
+.seg-row{
+  display:inline-flex;
   padding: 3px;
   border-radius: 999px;
-  background: #e9edf6;
-  gap: 4px;
+  background: rgba(18,30,54,.06);
+  gap:4px;
 }
 
-.seg-pill {
+.seg-pill{
   border-radius: 999px;
-  border: none;
-  background: transparent;
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  cursor: pointer;
+  border:none;
+  background:transparent;
+  padding: 8px 12px;
+  font-size: var(--fs-13);
+  cursor:pointer;
   color: var(--muted);
 }
 
-.seg-pill.active {
-  background: #ffffff;
+.seg-pill.active{
+  background:#fff;
   color: var(--ink);
-  box-shadow: 0 2px 6px rgba(18, 30, 54, 0.15);
+  box-shadow: var(--shadow2);
 }
 
-/* ===== Plan (Timeline & Rails) ===== */
-.plan-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
+/* ============================================================
+   Plan (Timeline + Rails)
+   ============================================================ */
+
+.plan-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
   margin-bottom: 10px;
 }
 
-.plan-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.plan-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
 }
 
-.timeline {
-  border-radius: 14px;
+.timeline{
+  border-radius: 16px;
   border: 1px solid var(--line);
-  background: #ffffff;
-  padding: 10px 12px;
+  background:#fff;
+  padding: 12px 12px;
+  box-shadow: var(--shadow2);
 }
 
-.timeline-item {
-  display: grid;
+.timeline-item{
+  display:grid;
   grid-template-columns: 80px 1fr;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid #eef2f8;
-  font-size: 0.86rem;
+  gap:10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(18,30,54,.08);
+  font-size: var(--fs-14);
 }
 
-.timeline-item:last-child {
-  border-bottom: none;
-}
+.timeline-item:last-child{ border-bottom:none; }
 
-.timeline-time {
-  font-weight: 500;
+.timeline-time{
+  font-weight: 750;
   color: var(--ink);
 }
 
-.timeline-label a {
+.timeline-label a{
   color: inherit;
   text-decoration: underline;
 }
 
-.rails-wrapper {
-  margin-top: 16px;
+.rails-wrapper{ margin-top: 16px; }
+
+.rails{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
 }
 
-.rails {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.rail {
-  border-radius: 14px;
+.rail{
+  border-radius: 16px;
   border: 1px solid var(--line);
-  background: #ffffff;
-  padding: 10px 12px 12px;
+  background:#fff;
+  padding: 12px 12px 12px;
+  box-shadow: var(--shadow2);
 }
 
-.rail-title {
-  font-size: 0.84rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+.rail-title{
+  font-size: var(--fs-12);
+  font-weight: 700;
+  letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.rail-row {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
+.rail-row{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
   padding-bottom: 2px;
 }
 
-.place-card {
+.place-card{
   flex: 0 0 160px;
-  border-radius: 12px;
-  border: 1px solid #ecf0f7;
-  background: #ffffff;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: 0 2px 8px rgba(18, 30, 54, 0.06);
-  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background:#fff;
+  text-decoration:none;
+  color:inherit;
+  box-shadow: var(--shadow2);
+  overflow:hidden;
 }
 
-.place-card-img {
+.place-card-img{
   height: 96px;
-  background: #dfe4f0;
-  overflow: hidden;
+  background: rgba(18,30,54,.06);
+  overflow:hidden;
 }
 
-.place-card-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.place-card-img img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
 }
 
-.place-card-body {
-  padding: 6px 8px 8px;
+.place-card-body{
+  padding: 10px 10px 10px;
 }
 
-.place-card-name {
-  margin: 0 0 4px;
-  font-size: 0.86rem;
-  font-weight: 500;
+.place-card-name{
+  margin:0 0 6px;
+  font-size: var(--fs-14);
+  font-weight: 750;
+  letter-spacing: .01em;
 }
 
-.place-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: 0.78rem;
+.place-card-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 
-/* ===== Mobile tweaks ===== */
-@media (max-width: 480px) {
-  .feature-title {
-    font-size: 1.35rem;
-  }
+/* ============================================================
+   Responsive
+   ============================================================ */
 
-  .timeline-item {
-    grid-template-columns: 72px 1fr;
-  }
-
-  .place-card {
-    flex: 0 0 150px;
-  }
+@media (max-width: 520px){
+  .brand-logo{ width: 92%; max-width: 340px; }
+  .feature-title{ font-size: 26px; }
 }
 
-/* Fix Safari iOS making step headers blue */
+@media (max-width: 480px){
+  .timeline-item{ grid-template-columns: 72px 1fr; }
+  .place-card{ flex: 0 0 150px; }
+}
+
+/* ============================================================
+   iOS Safari fix: prevent step headers turning blue
+   ============================================================ */
+
 .step-pill-header,
 .step-pill-header *,
 .step-title,
-.step-subtitle {
+.step-subtitle{
   color: #121E36 !important;
   -webkit-text-fill-color: #121E36 !important;
 }

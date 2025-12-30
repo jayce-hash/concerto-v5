@@ -953,6 +953,33 @@
     if (sharePlanBtn) {
       sharePlanBtn.addEventListener("click", sharePlan);
     }
+
+  /* ===============================
+     How it works modal (Festivals-style)
+     =============================== */
+
+  const modal = document.getElementById("modal");
+  const openHelp = document.getElementById("openHelp");
+  const modalClose = document.getElementById("modalClose");
+  const modalOk = document.getElementById("modalOk");
+
+  function openModal() {
+    if (modal) modal.hidden = false;
+  }
+
+  function closeModal() {
+    if (modal) modal.hidden = true;
+  }
+
+  if (openHelp) {
+    openHelp.addEventListener("click", (e) => {
+      e.preventDefault();
+      openModal();
+    });
+  }
+
+  if (modalClose) modalClose.addEventListener("click", closeModal);
+  if (modalOk) modalOk.addEventListener("click", closeModal);    
   }
 
   if (document.readyState === "loading") {

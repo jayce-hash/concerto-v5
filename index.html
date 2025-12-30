@@ -29,6 +29,11 @@
         <p class="tagline">
           Build a curated day around your show — before and after the main event.
         </p>
+
+        <!-- How it works (Festivals-style) -->
+        <div class="header-actions">
+          <a class="btn-ghost" href="#" id="openHelp">How it works</a>
+        </div>
       </div>
     </header>
 
@@ -208,6 +213,25 @@
     <footer class="page-footer">
       <p class="muted">From the Concert to the City · Powered by Concerto+</p>
     </footer>
+  </div>
+
+  <!-- How it works modal -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-backdrop" id="modalClose"></div>
+    <div class="modal-card">
+      <div class="modal-title">How Concerto+ Works</div>
+      <div class="modal-body">
+        <ul class="bullets">
+          <li>Search Ticketmaster and select your show.</li>
+          <li>Pick a few “before” and “after” vibes.</li>
+          <li>Concerto+ builds a timeline plus nearby picks around the venue.</li>
+          <li>Tap any place to open directions in Maps.</li>
+        </ul>
+      </div>
+      <div class="modal-actions">
+        <button class="primary-btn" id="modalOk">Got it</button>
+      </div>
+    </div>
   </div>
 
   <!-- Google Maps JS (Places API) -->

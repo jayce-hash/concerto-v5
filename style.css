@@ -117,6 +117,22 @@ a{ color:inherit; text-decoration:none; }
   line-height:1.45;
 }
 
+/* How it works button row */
+.header-actions{ margin-top: 6px; }
+.header-actions .btn-ghost{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  padding:10px 14px;
+  font-size: var(--fs-14);
+  border:1px solid var(--line);
+  background:#fff;
+  color:var(--ink);
+  box-shadow: var(--shadow2);
+}
+.header-actions .btn-ghost:hover{ background:#F5F7FB; }
+
 /* ===== Typography ===== */
 .section-title{
   margin:0 0 4px;
@@ -192,7 +208,7 @@ label{
 input[type="text"],
 input[type="date"]{
   width:100%;
-  border-radius:14px;                  /* Festivals: not fully pill */
+  border-radius:14px;
   border:1px solid var(--line);
   background:#fff;
   color:var(--ink);
@@ -269,18 +285,34 @@ input:focus{
   box-shadow:none;
 }
 
-/* ===== Step Pills (Accordion) — de-containered but consistent ===== */
+/* Modal primary button */
+.primary-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  padding:10px 14px;
+  font-size: var(--fs-13);
+  border:1px solid var(--accent);
+  cursor:pointer;
+  background: var(--accent);
+  color:#fff;
+  box-shadow: var(--shadow2);
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  font-weight:700;
+}
+
+/* ===== Step Pills (Accordion) ===== */
 .step-pill{
   margin-top:14px;
 }
 
-/* Top line divider between steps like Festivals sections */
 .step-pill + .step-pill{
   border-top:1px solid var(--line);
   padding-top:14px;
 }
 
-/* Header row */
 .step-pill-header{
   width:100%;
   border:none;
@@ -293,7 +325,6 @@ input:focus{
   cursor:pointer;
 }
 
-/* Left label block */
 .step-pill-label{
   display:flex;
   align-items:center;
@@ -329,7 +360,6 @@ input:focus{
   line-height:1.35;
 }
 
-/* Right status area */
 .step-pill-status{
   display:flex;
   align-items:center;
@@ -365,7 +395,6 @@ input:focus{
   transition: transform .18s ease;
 }
 
-/* Open/close */
 .step-pill-body{
   margin-top:12px;
   display:none;
@@ -376,7 +405,6 @@ input:focus{
   transform: rotate(180deg);
 }
 
-/* Completed */
 .step-pill.completed .step-pill-check{
   display:inline-flex;
 }
@@ -399,6 +427,13 @@ input:focus{
   border-radius:16px;
   box-shadow:var(--shadow2);
   padding:12px;
+}
+
+.event-result-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
 }
 
 .event-result-title{
@@ -600,6 +635,45 @@ input:focus{
   font-size:var(--fs-12);
   color:var(--muted);
 }
+
+/* ============================================================
+   Modal (Festivals pattern)
+   ============================================================ */
+
+.modal[hidden]{display:none}
+.modal{
+  position:fixed;inset:0;z-index:80;
+  display:grid;place-items:center;
+}
+
+.modal-backdrop{position:absolute;inset:0;background:rgba(18,30,54,.35)}
+
+.modal-card{
+  position:relative;
+  width:min(520px, calc(100% - 26px));
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  padding:18px;
+}
+
+.modal-title{
+  font-size: var(--fs-18);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.modal-body{
+  color:var(--muted);
+  margin-top:10px;
+  line-height:1.45;
+  font-size: var(--fs-14);
+}
+
+.modal-actions{display:flex;justify-content:flex-end;margin-top:14px}
+.bullets{margin:0;padding-left:18px}
+.bullets li{margin:8px 0}
 
 /* ===== Responsive ===== */
 @media (max-width:520px){

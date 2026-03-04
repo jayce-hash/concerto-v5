@@ -1,243 +1,1589 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Concerto+ · Day Planner</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta charset="UTF-8"/>
+<title>Concerto+</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════
+   TOKENS — Concerto Brand
+═══════════════════════════════════════════ */
+:root {
+  --void:    #0B1120;
+  --deep:    #0F1828;
+  --surface: #121E36;
+  --raise:   #1A2844;
+  --border:  rgba(192,192,192,.1);
+  --border2: rgba(192,192,192,.22);
+  --snow:    #F8F9F9;
+  --mist:    rgba(248,249,249,.55);
+  --fog:     rgba(248,249,249,.3);
+  --silver:  #C0C0C0;
+  --silver2: rgba(192,192,192,.15);
+  --accent:  rgba(192,192,192,.08);
 
-  <!-- Fonts: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-    rel="stylesheet"
-  >
+–serif: ‘Cormorant Garamond’, Georgia, serif;
+–sans:  ‘DM Sans’, system-ui, sans-serif;
 
-  <link rel="stylesheet" href="style.css" />
+–ease-out: cubic-bezier(.16,1,.3,1);
+–ease-in-out: cubic-bezier(.65,0,.35,1);
+}
+
+/* ═══════════════════════════════════════════
+RESET + BASE
+═══════════════════════════════════════════ */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { height:100%; -webkit-tap-highlight-color:transparent; }
+body {
+height:100%;
+background:var(–deep);
+color:var(–snow);
+font-family:var(–sans);
+font-weight:400;
+-webkit-font-smoothing:antialiased;
+overflow:hidden;
+position:fixed;
+width:100%;
+}
+input, button, textarea { font-family:var(–sans); }
+button { cursor:pointer; border:none; background:none; color:inherit; }
+a { color:inherit; text-decoration:none; }
+
+/* ═══════════════════════════════════════════
+BACKGROUND ATMOSPHERE
+═══════════════════════════════════════════ */
+.atmosphere {
+position:fixed; inset:0; z-index:0;
+pointer-events:none;
+overflow:hidden;
+}
+.atm-orb {
+position:absolute;
+border-radius:50%;
+filter:blur(80px);
+opacity:.35;
+transition:all 1.5s var(–ease-out);
+}
+.atm-orb-1 {
+width:300px; height:300px;
+background:radial-gradient(circle, #1F3060 0%, transparent 70%);
+top:-80px; right:-60px;
+}
+.atm-orb-2 {
+width:250px; height:250px;
+background:radial-gradient(circle, #1a2850 0%, transparent 70%);
+bottom:100px; left:-80px;
+}
+.atm-orb-3 {
+width:200px; height:200px;
+background:radial-gradient(circle, #0d1a30 0%, transparent 70%);
+bottom:200px; right:-40px;
+opacity:.2;
+}
+.atm-grain {
+position:fixed; inset:-50%;
+width:200%; height:200%;
+background-image:url(“data:image/svg+xml,%3Csvg viewBox=‘0 0 512 512’ xmlns=‘http://www.w3.org/2000/svg’%3E%3Cfilter id=‘n’%3E%3CfeTurbulence type=‘fractalNoise’ baseFrequency=’.75’ numOctaves=‘4’ stitchTiles=‘stitch’/%3E%3C/filter%3E%3Crect width=‘100%25’ height=‘100%25’ filter=‘url(%23n)’ opacity=‘1’/%3E%3C/svg%3E”);
+opacity:.025;
+pointer-events:none;
+}
+
+/* ═══════════════════════════════════════════
+APP SHELL — SCREEN SYSTEM
+═══════════════════════════════════════════ */
+.app {
+position:fixed; inset:0; z-index:1;
+display:flex; flex-direction:column;
+}
+
+.screens {
+flex:1;
+position:relative;
+overflow:hidden;
+}
+
+.screen {
+position:absolute; inset:0;
+display:flex; flex-direction:column;
+overflow-y:auto;
+overflow-x:hidden;
+-webkit-overflow-scrolling:touch;
+opacity:0;
+pointer-events:none;
+transform:translateX(100%);
+transition:opacity .45s var(–ease-out), transform .45s var(–ease-out);
+padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.screen.active {
+opacity:1;
+pointer-events:all;
+transform:translateX(0);
+}
+.screen.exit-left {
+opacity:0;
+transform:translateX(-40px);
+pointer-events:none;
+}
+
+/* ═══════════════════════════════════════════
+TOP BAR
+═══════════════════════════════════════════ */
+.topbar {
+position:relative; z-index:10;
+display:flex; align-items:center; justify-content:space-between;
+padding:16px 20px 0;
+flex-shrink:0;
+}
+.topbar-logo {
+font-family:var(–serif);
+font-size:15px;
+font-weight:700;
+letter-spacing:.18em;
+text-transform:uppercase;
+color:var(–snow);
+line-height:1;
+}
+.topbar-plus {
+font-family:var(–sans);
+font-size:9px;
+font-weight:500;
+letter-spacing:.25em;
+color:var(–silver);
+display:block;
+margin-top:2px;
+}
+.topbar-back {
+display:flex; align-items:center; gap:6px;
+font-size:13px;
+font-weight:500;
+color:var(–mist);
+letter-spacing:.04em;
+padding:8px 0;
+opacity:0;
+pointer-events:none;
+transition:opacity .3s;
+}
+.topbar-back.visible { opacity:1; pointer-events:all; }
+.topbar-back svg { width:16px; height:16px; }
+
+/* ═══════════════════════════════════════════
+PROGRESS DOTS
+═══════════════════════════════════════════ */
+.progress {
+display:flex; align-items:center; justify-content:center; gap:6px;
+padding:14px 0 0;
+flex-shrink:0;
+}
+.prog-dot {
+width:5px; height:5px;
+border-radius:50%;
+background:var(–border2);
+transition:all .3s var(–ease-out);
+}
+.prog-dot.active {
+background:var(–silver);
+width:18px;
+border-radius:3px;
+}
+.prog-dot.done {
+background:rgba(192,192,192,.4);
+}
+
+/* ═══════════════════════════════════════════
+SCREEN 1 — FIND YOUR SHOW
+═══════════════════════════════════════════ */
+.s1-hero {
+padding:28px 24px 20px;
+flex-shrink:0;
+}
+.s1-eyebrow {
+font-size:10px;
+font-weight:600;
+letter-spacing:.3em;
+text-transform:uppercase;
+color:var(–silver);
+margin-bottom:10px;
+}
+.s1-heading {
+font-family:var(–serif);
+font-size:clamp(36px,10vw,48px);
+font-weight:900;
+line-height:.95;
+color:var(–snow);
+letter-spacing:-.01em;
+}
+.s1-heading em {
+font-style:italic;
+color:var(–silver);
+}
+.s1-sub {
+margin-top:12px;
+font-size:14px;
+font-weight:300;
+color:var(–mist);
+line-height:1.5;
+}
+
+/* Search box */
+.search-wrap {
+padding:0 20px;
+flex-shrink:0;
+}
+.search-box {
+display:flex;
+align-items:center;
+background:var(–surface);
+border:1px solid var(–border2);
+border-radius:16px;
+padding:14px 16px;
+gap:12px;
+transition:border-color .2s;
+}
+.search-box:focus-within {
+border-color:rgba(192,192,192,.4);
+}
+.search-icon { color:var(–silver); flex-shrink:0; }
+.search-field {
+flex:1;
+background:transparent;
+border:none;
+outline:none;
+color:var(–snow);
+font-size:16px;
+font-weight:400;
+letter-spacing:.01em;
+}
+.search-field::placeholder { color:var(–fog); }
+.search-city {
+background:var(–raise);
+border:1px solid var(–border);
+border-radius:999px;
+color:var(–mist);
+font-size:12px;
+font-weight:500;
+padding:5px 12px;
+white-space:nowrap;
+letter-spacing:.03em;
+flex-shrink:0;
+}
+.search-city.has-val { color:var(–snow); border-color:var(–border2); }
+
+.city-input-row {
+margin-top:10px;
+padding:0 20px;
+display:none;
+}
+.city-input-row.open { display:block; }
+.city-input {
+width:100%;
+background:var(–surface);
+border:1px solid var(–border2);
+border-radius:12px;
+color:var(–snow);
+font-size:14px;
+padding:11px 14px;
+outline:none;
+}
+.city-input::placeholder { color:var(–fog); }
+
+.search-btn-row {
+padding:12px 20px 0;
+flex-shrink:0;
+}
+.btn-search {
+width:100%;
+background:var(–snow);
+color:var(–surface);
+border-radius:14px;
+padding:15px;
+font-size:14px;
+font-weight:600;
+letter-spacing:.08em;
+text-transform:uppercase;
+transition:opacity .15s, transform .1s;
+}
+.btn-search:active { opacity:.85; transform:scale(.98); }
+
+.search-status {
+text-align:center;
+font-size:13px;
+color:var(–fog);
+padding:10px 20px 0;
+min-height:32px;
+flex-shrink:0;
+}
+
+/* Event results */
+.event-results {
+padding:10px 20px 24px;
+display:flex;
+flex-direction:column;
+gap:10px;
+flex:1;
+}
+
+.event-card {
+background:var(–surface);
+border:1px solid var(–border);
+border-radius:16px;
+padding:16px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:14px;
+transition:border-color .2s, background .2s;
+animation:slideUp .4s var(–ease-out) both;
+}
+@keyframes slideUp {
+from { opacity:0; transform:translateY(16px); }
+to   { opacity:1; transform:translateY(0); }
+}
+.event-card:nth-child(1){animation-delay:.04s}
+.event-card:nth-child(2){animation-delay:.08s}
+.event-card:nth-child(3){animation-delay:.12s}
+.event-card:nth-child(4){animation-delay:.16s}
+.event-card:nth-child(5){animation-delay:.20s}
+.event-card:nth-child(n+6){animation-delay:.24s}
+
+.event-card.selected {
+border-color:rgba(192,192,192,.5);
+background:rgba(192,192,192,.06);
+}
+.event-card-info { flex:1; min-width:0; }
+.event-artist {
+font-family:var(–serif);
+font-size:18px;
+font-weight:700;
+color:var(–snow);
+line-height:1.2;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
+}
+.event-meta {
+margin-top:4px;
+font-size:12px;
+font-weight:400;
+color:var(–fog);
+line-height:1.5;
+}
+.event-date-badge {
+font-size:11px;
+font-weight:600;
+color:var(–silver);
+letter-spacing:.05em;
+}
+.btn-pick {
+flex-shrink:0;
+border:1px solid var(–border2);
+border-radius:999px;
+padding:8px 16px;
+font-size:12px;
+font-weight:600;
+letter-spacing:.08em;
+text-transform:uppercase;
+color:var(–mist);
+transition:all .2s;
+}
+.btn-pick:active { background:var(–raise); }
+.event-card.selected .btn-pick {
+background:var(–snow);
+color:var(–surface);
+border-color:var(–snow);
+}
+
+/* ═══════════════════════════════════════════
+SCREEN 2 — YOUR VIBE
+═══════════════════════════════════════════ */
+.s2-content {
+flex:1;
+padding:24px 20px 40px;
+display:flex;
+flex-direction:column;
+gap:0;
+}
+
+.show-pill {
+display:flex;
+align-items:center;
+gap:10px;
+background:var(–silver2);
+border:1px solid rgba(192,192,192,.2);
+border-radius:12px;
+padding:12px 14px;
+margin-bottom:24px;
+}
+.show-pill-dot {
+width:8px; height:8px;
+border-radius:50%;
+background:var(–silver);
+flex-shrink:0;
+box-shadow:0 0 8px rgba(192,192,192,.4);
+}
+.show-pill-text { font-size:13px; font-weight:500; color:var(–snow); line-height:1.3; }
+
+.vibe-section { margin-bottom:28px; }
+
+.vibe-heading {
+font-size:10px;
+font-weight:600;
+letter-spacing:.28em;
+text-transform:uppercase;
+color:var(–silver);
+margin-bottom:14px;
+}
+
+.vibe-grid {
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px;
+}
+.vibe-grid.three { grid-template-columns:1fr 1fr 1fr; }
+
+.vibe-btn {
+background:var(–surface);
+border:1px solid var(–border);
+border-radius:14px;
+padding:14px 12px;
+text-align:left;
+transition:all .2s var(–ease-out);
+position:relative;
+overflow:hidden;
+}
+.vibe-btn.active {
+border-color:rgba(192,192,192,.45);
+background:rgba(192,192,192,.07);
+}
+.vibe-btn-icon {
+font-size:20px;
+line-height:1;
+margin-bottom:6px;
+display:block;
+}
+.vibe-btn-label {
+font-size:13px;
+font-weight:500;
+color:var(–snow);
+display:block;
+line-height:1.2;
+}
+.vibe-btn-sub {
+font-size:11px;
+color:var(–fog);
+display:block;
+margin-top:2px;
+line-height:1.3;
+}
+.vibe-check {
+position:absolute;
+top:10px; right:10px;
+width:18px; height:18px;
+border-radius:50%;
+background:var(–silver);
+display:flex; align-items:center; justify-content:center;
+font-size:10px;
+color:var(–surface);
+opacity:0;
+transform:scale(.6);
+transition:all .2s var(–ease-out);
+}
+.vibe-btn.active .vibe-check { opacity:1; transform:scale(1); }
+
+/* Pace selector */
+.pace-row {
+display:grid;
+grid-template-columns:1fr 1fr 1fr;
+gap:8px;
+}
+.pace-btn {
+background:var(–surface);
+border:1px solid var(–border);
+border-radius:14px;
+padding:14px 8px;
+text-align:center;
+transition:all .2s;
+}
+.pace-btn.active {
+border-color:rgba(192,192,192,.45);
+background:rgba(192,192,192,.07);
+}
+.pace-emoji { font-size:18px; display:block; margin-bottom:4px; }
+.pace-label { font-size:12px; font-weight:500; color:var(–snow); }
+.pace-sub { font-size:10px; color:var(–fog); margin-top:2px; }
+
+/* Arrival selector */
+.arrival-row {
+display:grid;
+grid-template-columns:1fr 1fr 1fr;
+gap:8px;
+}
+.arrival-btn {
+background:var(–surface);
+border:1px solid var(–border);
+border-radius:14px;
+padding:12px 8px;
+text-align:center;
+transition:all .2s;
+font-size:12px;
+font-weight:500;
+color:var(–mist);
+}
+.arrival-btn.active {
+border-color:rgba(192,192,192,.45);
+background:rgba(192,192,192,.07);
+color:var(–silver);
+}
+
+/* Hotel input */
+.hotel-input {
+width:100%;
+background:var(–surface);
+border:1px solid var(–border);
+border-radius:14px;
+color:var(–snow);
+font-size:15px;
+font-weight:400;
+padding:14px 16px;
+outline:none;
+transition:border-color .2s;
+}
+.hotel-input::placeholder { color:var(–fog); }
+.hotel-input:focus { border-color:rgba(192,192,192,.35); }
+
+.btn-generate {
+width:100%;
+background:var(–snow);
+color:var(–surface);
+border-radius:16px;
+padding:17px;
+font-size:15px;
+font-weight:700;
+letter-spacing:.06em;
+text-transform:uppercase;
+margin-top:28px;
+transition:opacity .15s, transform .1s;
+box-shadow:0 8px 32px rgba(18,30,54,.4);
+}
+.btn-generate:active { opacity:.85; transform:scale(.98); }
+.btn-generate:disabled { opacity:.35; cursor:default; box-shadow:none; }
+
+/* ═══════════════════════════════════════════
+SCREEN 3 — THE PLAN
+═══════════════════════════════════════════ */
+.s3-content {
+flex:1;
+padding:0 0 60px;
+}
+
+/* Loading */
+.plan-loading {
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+padding:60px 30px;
+gap:20px;
+text-align:center;
+}
+.plan-loading.hidden { display:none; }
+.loading-spinner {
+width:40px; height:40px;
+border:2px solid var(–border2);
+border-top-color:var(–silver);
+border-radius:50%;
+animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-label {
+font-family:var(–serif);
+font-size:22px;
+font-weight:400;
+font-style:italic;
+color:var(–snow);
+}
+.loading-sub { font-size:13px; color:var(–fog); }
+
+/* Plan hero */
+.plan-hero {
+padding:24px 20px 20px;
+border-bottom:1px solid var(–border);
+}
+.plan-hero-kicker {
+font-size:10px;
+font-weight:600;
+letter-spacing:.3em;
+text-transform:uppercase;
+color:var(–silver);
+margin-bottom:8px;
+}
+.plan-hero-name {
+font-family:var(–serif);
+font-size:clamp(30px,8vw,40px);
+font-weight:900;
+line-height:.95;
+color:var(–snow);
+letter-spacing:-.01em;
+}
+.plan-hero-where {
+margin-top:8px;
+font-size:13px;
+color:var(–mist);
+line-height:1.5;
+}
+.plan-date-row {
+margin-top:10px;
+display:flex;
+align-items:center;
+gap:8px;
+}
+.plan-date-badge {
+background:var(–silver2);
+border:1px solid rgba(192,192,192,.2);
+border-radius:999px;
+padding:5px 12px;
+font-size:12px;
+font-weight:600;
+color:var(–silver);
+letter-spacing:.04em;
+}
+
+/* Timeline */
+.timeline-wrap {
+padding:24px 20px 0;
+}
+.timeline-heading {
+font-size:10px;
+font-weight:600;
+letter-spacing:.28em;
+text-transform:uppercase;
+color:var(–silver);
+margin-bottom:20px;
+}
+
+.tl-list {
+display:flex;
+flex-direction:column;
+position:relative;
+}
+.tl-list::before {
+content:’’;
+position:absolute;
+left:14px; top:8px; bottom:8px;
+width:1px;
+background:linear-gradient(to bottom, transparent, var(–border2) 10%, var(–border2) 90%, transparent);
+}
+
+.tl-item {
+display:grid;
+grid-template-columns:30px 1fr;
+gap:16px;
+padding:0 0 24px;
+position:relative;
+animation:fadeIn .4s var(–ease-out) both;
+}
+@keyframes fadeIn {
+from { opacity:0; transform:translateY(10px); }
+to   { opacity:1; transform:translateY(0); }
+}
+
+.tl-dot-col {
+display:flex;
+flex-direction:column;
+align-items:center;
+padding-top:3px;
+}
+.tl-dot {
+width:10px; height:10px;
+border-radius:50%;
+background:var(–raise);
+border:1px solid var(–border2);
+flex-shrink:0;
+transition:all .3s;
+position:relative;
+z-index:1;
+}
+.tl-item.is-show .tl-dot {
+width:14px; height:14px;
+background:var(–silver);
+border-color:var(–silver);
+box-shadow:0 0 12px rgba(192,192,192,.5);
+}
+
+.tl-body {}
+.tl-time {
+font-size:11px;
+font-weight:600;
+letter-spacing:.1em;
+color:var(–fog);
+margin-bottom:3px;
+text-transform:uppercase;
+}
+.tl-item.is-show .tl-time { color:var(–silver); }
+.tl-label {
+font-family:var(–serif);
+font-size:19px;
+font-weight:700;
+color:var(–snow);
+line-height:1.2;
+}
+.tl-item.is-show .tl-label {
+font-size:22px;
+color:var(–silver);
+}
+.tl-label a {
+text-decoration:underline;
+text-decoration-color:var(–border2);
+text-underline-offset:3px;
+}
+.tl-note {
+margin-top:5px;
+font-size:13px;
+font-weight:300;
+color:var(–mist);
+line-height:1.55;
+}
+
+/* Picks */
+.picks-wrap {
+padding:28px 20px 0;
+border-top:1px solid var(–border);
+margin-top:8px;
+}
+.picks-heading {
+font-size:10px;
+font-weight:600;
+letter-spacing:.28em;
+text-transform:uppercase;
+color:var(–silver);
+margin-bottom:20px;
+}
+.picks-category { margin-bottom:24px; }
+.picks-cat-label {
+font-size:12px;
+font-weight:500;
+color:var(–mist);
+margin-bottom:10px;
+letter-spacing:.05em;
+}
+.picks-rail {
+display:flex;
+gap:10px;
+overflow-x:auto;
+padding-bottom:4px;
+scrollbar-width:none;
+margin:0 -20px;
+padding:0 20px 4px;
+}
+.picks-rail::-webkit-scrollbar { display:none; }
+
+.pick-card {
+flex:0 0 155px;
+background:var(–surface);
+border:1px solid var(–border);
+border-radius:16px;
+overflow:hidden;
+display:flex;
+flex-direction:column;
+transition:border-color .2s;
+}
+.pick-card:active { border-color:var(–border2); }
+.pick-img {
+height:88px;
+background:var(–raise);
+overflow:hidden;
+flex-shrink:0;
+}
+.pick-img img { width:100%; height:100%; object-fit:cover; display:block; }
+.pick-body { padding:10px 11px 12px; flex:1; }
+.pick-name {
+font-family:var(–serif);
+font-size:14px;
+font-weight:700;
+color:var(–snow);
+line-height:1.2;
+margin-bottom:4px;
+}
+.pick-why {
+font-size:11px;
+font-weight:300;
+color:var(–mist);
+line-height:1.45;
+}
+.pick-meta {
+display:flex;
+flex-wrap:wrap;
+gap:6px;
+margin-top:6px;
+}
+.pick-badge {
+font-size:10px;
+font-weight:600;
+color:var(–fog);
+letter-spacing:.04em;
+}
+
+/* Plan actions */
+.plan-action-row {
+display:flex;
+gap:10px;
+padding:24px 20px 0;
+}
+.btn-action {
+flex:1;
+background:var(–surface);
+border:1px solid var(–border);
+border-radius:14px;
+padding:13px 10px;
+font-size:12px;
+font-weight:600;
+letter-spacing:.08em;
+text-transform:uppercase;
+color:var(–mist);
+text-align:center;
+transition:all .2s;
+}
+.btn-action:active { background:var(–raise); color:var(–snow); }
+
+/* ═══════════════════════════════════════════
+UTILITIES
+═══════════════════════════════════════════ */
+.hidden { display:none !important; }
+.divider {
+height:1px;
+background:var(–border);
+margin:24px 0;
+}
+
+/* Safe area bottom padding for fixed elements */
+.screen { padding-bottom:calc(env(safe-area-inset-bottom) + 16px); }
+</style>
+
 </head>
 <body>
-  <div class="page">
-    <!-- Header -->
-    <header class="page-header">
-      <div class="page-header-inner">
-        <img
-          src="IMG_3180.jpeg"
-          alt="Concerto - From the Concert to the City"
-          class="brand-logo"
-        />
-        <h1 class="feature-title">Concerto+</h1>
-        <p class="tagline">
-          Build a Curated Day Around Your Show — Before and After the Main Event.
-        </p>
 
-        <!-- How it works (Festivals-style) -->
-        <div class="header-actions">
-          <a class="btn-ghost" href="#" id="openHelp">How it works</a>
-        </div>
-      </div>
-    </header>
+<!-- Atmosphere -->
 
-    <!-- Main content -->
-    <main class="page-main">
-      <!-- STEP 1: Choose Your Show -->
-      <section class="step-pill open" data-step="1">
-        <button type="button" class="step-pill-header">
-          <div class="step-pill-label">
-            <span class="step-number">01</span>
-            <div class="step-text-block">
-              <div class="step-title">Choose Your Show</div>
-              <div class="step-subtitle">Search Ticketmaster for your event.</div>
-            </div>
-          </div>
-          <div class="step-pill-status">
-            <span class="step-pill-check" aria-hidden="true">✓</span>
-            <span class="step-pill-caret" aria-hidden="true">⌄</span>
-          </div>
-        </button>
+<div class="atmosphere">
+  <div class="atm-orb atm-orb-1"></div>
+  <div class="atm-orb atm-orb-2"></div>
+  <div class="atm-orb atm-orb-3"></div>
+  <div class="atm-grain"></div>
+</div>
 
-        <div class="step-pill-body">
-          <div class="card">
-            <div class="stack gap-16">
-              <div class="stack gap-6">
-                <h2 class="section-title">Find your event</h2>
-                <p class="section-help">
-                  Search by Artist, Team, Tour, Venue, or City.
-                </p>
-              </div>
+<!-- App -->
 
-              <div class="form-grid">
-                <div class="field">
-                  <label for="eventKeyword">Artist / Team / Tour</label>
-                  <input
-                    type="text"
-                    id="eventKeyword"
-                    placeholder="e.g. Billie Eilish, Lakers, The Eras Tour"
-                    autocomplete="off"
-                  />
-                </div>
-                <div class="field">
-                  <label for="eventCity">City (optional)</label>
-                  <input
-                    type="text"
-                    id="eventCity"
-                    placeholder="e.g. Los Angeles, CA"
-                    autocomplete="off"
-                  />
-                  <p class="tiny">Add a city to narrow results, or leave blank.</p>
-                </div>
-              </div>
-
-              <div class="search-actions">
-                <button type="button" id="searchEventsBtn" class="btn-primary">
-                  Search Ticketmaster
-                </button>
-                <div id="eventStatus" class="status muted"></div>
-              </div>
-
-              <div id="eventResults" class="event-results"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- STEP 2: Plan Your Vibe -->
-      <section class="step-pill" data-step="2" id="card-vibe">
-        <button type="button" class="step-pill-header">
-          <div class="step-pill-label">
-            <span class="step-number">02</span>
-            <div class="step-text-block">
-              <div class="step-title">Plan Your Vibe</div>
-              <div class="step-subtitle">Before &amp; after the show, what are you in the mood for?</div>
-            </div>
-          </div>
-          <div class="step-pill-status">
-            <span class="step-pill-check" aria-hidden="true">✓</span>
-            <span class="step-pill-caret" aria-hidden="true">⌄</span>
-          </div>
-        </button>
-
-        <div class="step-pill-body">
-          <div class="card">
-            <p id="selectedEventSummary" class="muted">
-              Select an event in Step 1 to continue.
-            </p>
-
-            <div class="field">
-              <label>Before the show</label>
-              <p class="tiny">Pick a couple of things you’d love to do before doors.</p>
-              <div id="preVibePills" class="pill-row">
-                <button type="button" class="pill" data-vibe="coffee">Coffee</button>
-                <button type="button" class="pill" data-vibe="lunch">Lunch</button>
-                <button type="button" class="pill" data-vibe="dinner">Dinner</button>
-                <button type="button" class="pill" data-vibe="shopping">Shopping</button>
-                <button type="button" class="pill" data-vibe="sightseeing">Sightseeing</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>After the show</label>
-              <p class="tiny">Keep the night going or wind down with something chill.</p>
-              <div id="postVibePills" class="pill-row">
-                <button type="button" class="pill" data-vibe="dessert">Dessert</button>
-                <button type="button" class="pill" data-vibe="drinks">Drinks</button>
-                <button type="button" class="pill" data-vibe="nightlife">Nightlife</button>
-                <button type="button" class="pill" data-vibe="latenight">Late-night eats</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>How packed should the day feel?</label>
-              <div id="paceControl" class="seg-row">
-                <button type="button" class="seg-pill" data-pace="chill">Chill</button>
-                <button type="button" class="seg-pill active" data-pace="balanced">Balanced</button>
-                <button type="button" class="seg-pill" data-pace="packed">Packed</button>
-              </div>
-            </div>
-
-            <div class="search-actions">
-              <button type="button" id="generatePlanBtn" class="btn-primary" disabled>
-                Build my Concerto plan
-              </button>
-              <div id="planStatus" class="status muted"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- STEP 3: Your Concerto Plan -->
-      <section class="step-pill" data-step="3" id="card-plan">
-        <button type="button" class="step-pill-header">
-          <div class="step-pill-label">
-            <span class="step-number">03</span>
-            <div class="step-text-block">
-              <div class="step-title">Your Concerto Plan</div>
-              <div class="step-subtitle">A step-by-step schedule with nearby picks.</div>
-            </div>
-          </div>
-          <div class="step-pill-status">
-            <span class="step-pill-check" aria-hidden="true">✓</span>
-            <span class="step-pill-caret" aria-hidden="true">⌄</span>
-          </div>
-        </button>
-
-        <div class="step-pill-body">
-          <div class="card">
-            <div class="plan-header">
-              <div>
-                <h2 class="section-title">Timeline</h2>
-                <p class="section-help">
-                  From first stop to final encore, all in one scroll.
-                </p>
-              </div>
-              <div class="plan-actions">
-                <button type="button" id="editChoicesBtn" class="btn-ghost">
-                  Edit choices
-                </button>
-                <button type="button" id="sharePlanBtn" class="btn-secondary">
-                  Share plan
-                </button>
-              </div>
-            </div>
-
-            <div id="timeline" class="timeline"></div>
-
-            <div class="rails-wrapper">
-              <h3 class="subsection-title">Nearby picks</h3>
-              <div id="placeRails" class="rails"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="page-footer">
-      <p class="muted">From the Concert to the City · Powered by Concerto+</p>
-    </footer>
+<div class="app">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div>
+      <div class="topbar-logo">Concerto<span class="topbar-plus">Premium</span></div>
+    </div>
+    <button class="topbar-back" id="backBtn">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M10 3L5 8l5 5"/>
+      </svg>
+      Back
+    </button>
   </div>
 
-  <!-- How it works modal -->
-  <div class="modal" id="modal" hidden>
-    <div class="modal-backdrop" id="modalClose"></div>
-    <div class="modal-card">
-      <div class="modal-title">How Concerto+ Works</div>
-      <div class="modal-body">
-        <ul class="bullets">
-          <li>Search Ticketmaster and select your show.</li>
-          <li>Pick a few “before” and “after” vibes.</li>
-          <li>Concerto+ builds a timeline plus nearby picks around the venue.</li>
-          <li>Tap any place to open directions in Maps.</li>
-        </ul>
-      </div>
-      <div class="modal-actions">
-        <button class="primary-btn" id="modalOk">Got it</button>
-      </div>
+  <!-- Progress -->
+
+  <div class="progress" id="progress">
+    <div class="prog-dot active" data-n="0"></div>
+    <div class="prog-dot" data-n="1"></div>
+    <div class="prog-dot" data-n="2"></div>
+  </div>
+
+  <!-- Screens -->
+
+  <div class="screens">
+
+```
+<!-- ── SCREEN 1: Find Your Show ── -->
+<div class="screen active" id="screen1">
+  <div class="s1-hero">
+    <div class="s1-eyebrow">Concerto+</div>
+    <h1 class="s1-heading">Plan your<br/><em>perfect</em><br/>night out.</h1>
+    <p class="s1-sub">Search for your show. We'll handle the rest.</p>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="7.5" cy="7.5" r="5.5"/>
+        <path d="M13.5 13.5l3 3"/>
+      </svg>
+      <input class="search-field" id="kwInput" type="text" placeholder="Artist, team, or venue…" autocomplete="off" autocorrect="off"/>
+      <button class="search-city" id="cityToggle">+ City</button>
     </div>
   </div>
 
-  <!-- Google Maps JS (Places API) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
+  <div class="city-input-row" id="cityRow">
+    <input class="city-input" id="cityInput" type="text" placeholder="City, e.g. Los Angeles" autocomplete="off"/>
+  </div>
 
-  <!-- App -->
-  <script src="app.js"></script>
+  <div class="search-btn-row">
+    <button class="btn-search" id="searchBtn">Search Events</button>
+  </div>
+
+  <div class="search-status" id="searchStatus"></div>
+  <div class="event-results" id="eventResults"></div>
+</div>
+
+<!-- ── SCREEN 2: Your Vibe ── -->
+<div class="screen" id="screen2">
+  <div class="s2-content">
+
+    <!-- Show pill -->
+    <div class="show-pill" id="showPill">
+      <div class="show-pill-dot"></div>
+      <div class="show-pill-text" id="showPillText">Your show</div>
+    </div>
+
+    <!-- Food -->
+    <div class="vibe-section">
+      <div class="vibe-heading">Food</div>
+      <div class="vibe-grid" id="foodGrid">
+        <button class="vibe-btn" data-vibe="coffee">
+          <span class="vibe-btn-icon">☕</span>
+          <span class="vibe-btn-label">Coffee</span>
+          <span class="vibe-btn-sub">Before doors</span>
+          <span class="vibe-check">✓</span>
+        </button>
+        <button class="vibe-btn" data-vibe="lunch">
+          <span class="vibe-btn-icon">🥗</span>
+          <span class="vibe-btn-label">Lunch</span>
+          <span class="vibe-btn-sub">Casual afternoon</span>
+          <span class="vibe-check">✓</span>
+        </button>
+        <button class="vibe-btn" data-vibe="dinner">
+          <span class="vibe-btn-icon">🍽️</span>
+          <span class="vibe-btn-label">Dinner</span>
+          <span class="vibe-btn-sub">Pre-show meal</span>
+          <span class="vibe-check">✓</span>
+        </button>
+        <button class="vibe-btn" data-vibe="latenight">
+          <span class="vibe-btn-icon">🌮</span>
+          <span class="vibe-btn-label">Late-night</span>
+          <span class="vibe-btn-sub">Post-show eats</span>
+          <span class="vibe-check">✓</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Drinks -->
+    <div class="vibe-section">
+      <div class="vibe-heading">Drinks &amp; Nightlife</div>
+      <div class="vibe-grid" id="drinksGrid">
+        <button class="vibe-btn" data-vibe="drinks">
+          <span class="vibe-btn-icon">🍸</span>
+          <span class="vibe-btn-label">Cocktails</span>
+          <span class="vibe-btn-sub">Before or after</span>
+          <span class="vibe-check">✓</span>
+        </button>
+        <button class="vibe-btn" data-vibe="wine">
+          <span class="vibe-btn-icon">🍷</span>
+          <span class="vibe-btn-label">Wine bar</span>
+          <span class="vibe-btn-sub">Relaxed vibe</span>
+          <span class="vibe-check">✓</span>
+        </button>
+        <button class="vibe-btn" data-vibe="nightlife">
+          <span class="vibe-btn-icon">🎉</span>
+          <span class="vibe-btn-label">Nightlife</span>
+          <span class="vibe-btn-sub">Keep it going</span>
+          <span class="vibe-check">✓</span>
+        </button>
+        <button class="vibe-btn" data-vibe="dessert">
+          <span class="vibe-btn-icon">🍦</span>
+          <span class="vibe-btn-label">Dessert</span>
+          <span class="vibe-btn-sub">Sweet finish</span>
+          <span class="vibe-check">✓</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pace -->
+    <div class="vibe-section">
+      <div class="vibe-heading">Pace</div>
+      <div class="pace-row" id="paceRow">
+        <button class="pace-btn" data-pace="chill">
+          <span class="pace-emoji">🌿</span>
+          <div class="pace-label">Chill</div>
+          <div class="pace-sub">1–2 stops</div>
+        </button>
+        <button class="pace-btn active" data-pace="balanced">
+          <span class="pace-emoji">⚡</span>
+          <div class="pace-label">Balanced</div>
+          <div class="pace-sub">3–4 stops</div>
+        </button>
+        <button class="pace-btn" data-pace="packed">
+          <span class="pace-emoji">🔥</span>
+          <div class="pace-label">Full day</div>
+          <div class="pace-sub">5–6 stops</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Arrival -->
+    <div class="vibe-section">
+      <div class="vibe-heading">Arrive at venue</div>
+      <div class="arrival-row" id="arrivalRow">
+        <button class="arrival-btn" data-arrival="30">30 min early</button>
+        <button class="arrival-btn active" data-arrival="60">1 hr early</button>
+        <button class="arrival-btn" data-arrival="120">2 hrs early</button>
+      </div>
+    </div>
+
+    <!-- Hotel -->
+    <div class="vibe-section">
+      <div class="vibe-heading">Your hotel <span style="color:var(--fog);font-weight:300;text-transform:none;letter-spacing:.05em;font-size:10px;">(optional)</span></div>
+      <input class="hotel-input" id="hotelInput" type="text" placeholder="e.g. The Beverly Hilton" autocomplete="off"/>
+    </div>
+
+    <button class="btn-generate" id="generateBtn">Build My Plan</button>
+
+  </div>
+</div>
+
+<!-- ── SCREEN 3: The Plan ── -->
+<div class="screen" id="screen3">
+  <div class="s3-content">
+    <!-- Loading -->
+    <div class="plan-loading" id="planLoading">
+      <div class="loading-spinner"></div>
+      <div class="loading-label">Curating your night…</div>
+      <div class="loading-sub">Finding the best spots near the venue.</div>
+    </div>
+
+    <!-- Plan output -->
+    <div id="planOut" class="hidden">
+      <div class="plan-hero">
+        <div class="plan-hero-kicker">Your Night Out</div>
+        <div class="plan-hero-name" id="planName"></div>
+        <div class="plan-hero-where" id="planWhere"></div>
+        <div class="plan-date-row">
+          <div class="plan-date-badge" id="planDate"></div>
+        </div>
+      </div>
+
+      <div class="timeline-wrap">
+        <div class="timeline-heading">Your Timeline</div>
+        <div class="tl-list" id="tlList"></div>
+      </div>
+
+      <div class="picks-wrap" id="picksWrap"></div>
+
+      <div class="plan-action-row">
+        <button class="btn-action" id="editBtn">← Edit</button>
+        <button class="btn-action" id="shareBtn">Share Plan</button>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+  </div><!-- /screens -->
+</div><!-- /app -->
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
+
+<script>
+(function(){
+'use strict';
+
+/* ── Keys ─────────────────────────────── */
+const TM_KEY = 'oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh';
+
+/* ── State ────────────────────────────── */
+let currentScreen = 0;
+let selectedEvent = null;
+let selectedPace  = 'balanced';
+let selectedArrival = 60;
+let selectedVibes = [];
+let placesService = null;
+
+/* ── Vibe config ──────────────────────── */
+const VIBES = {
+  coffee:    { label:'Coffee',       placeType:'cafe',              keyword:'coffee shop' },
+  lunch:     { label:'Lunch',        placeType:'restaurant',        keyword:'lunch spot' },
+  dinner:    { label:'Dinner',       placeType:'restaurant',        keyword:'dinner restaurant' },
+  latenight: { label:'Late-night',   placeType:'restaurant',        keyword:'late night food' },
+  drinks:    { label:'Cocktails',    placeType:'bar',               keyword:'cocktail bar' },
+  wine:      { label:'Wine bar',     placeType:'bar',               keyword:'wine bar' },
+  nightlife: { label:'Nightlife',    placeType:'night_club',        keyword:'nightclub' },
+  dessert:   { label:'Dessert',      placeType:'bakery',            keyword:'dessert sweets' },
+};
+
+/* ── DOM ──────────────────────────────── */
+const $ = id => document.getElementById(id);
+
+/* ── Helpers ──────────────────────────── */
+function fmt(d){ return d ? d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : ''; }
+function fmtDate(d){ return d ? d.toLocaleDateString(undefined,{weekday:'short',month:'long',day:'numeric',year:'numeric'}) : 'Date TBA'; }
+function toDate(s){ try{ return s ? new Date(s) : null }catch{ return null } }
+function miles(aLat,aLng,bLat,bLng){
+  const r=x=>x*Math.PI/180,R=3958.8,
+    dL=r(bLat-aLat),dG=r(bLng-aLng),
+    a=Math.sin(dL/2)**2+Math.cos(r(aLat))*Math.cos(r(bLat))*Math.sin(dG/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function mapsUrl(p){
+  if(p.placeId) return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(p.placeId)}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name||'')}`;
+}
+
+/* ── Screen nav ───────────────────────── */
+function goTo(n){
+  const screens = document.querySelectorAll('.screen');
+  const dots = document.querySelectorAll('.prog-dot');
+
+  // Exit current
+  screens[currentScreen].classList.remove('active');
+  if(n > currentScreen) screens[currentScreen].classList.add('exit-left');
+
+  // Enter new
+  setTimeout(()=>{
+    screens.forEach((s,i)=>{
+      s.classList.remove('active','exit-left');
+      if(i===n){ s.classList.add('active'); s.scrollTop=0; }
+    });
+    currentScreen = n;
+    // Update dots
+    dots.forEach((d,i)=>{
+      d.classList.remove('active','done');
+      if(i===n) d.classList.add('active');
+      else if(i<n) d.classList.add('done');
+    });
+    // Back button
+    $('backBtn').classList.toggle('visible', n>0);
+  }, n>currentScreen ? 0 : 10);
+}
+
+/* ── Back button ──────────────────────── */
+$('backBtn').addEventListener('click',()=>{
+  if(currentScreen > 0) goTo(currentScreen-1);
+});
+
+/* ── City toggle ──────────────────────── */
+$('cityToggle').addEventListener('click',()=>{
+  const row = $('cityRow');
+  const open = row.classList.toggle('open');
+  $('cityToggle').textContent = open ? '— City' : '+ City';
+  if(open) $('cityInput').focus();
+});
+
+/* ── Ticketmaster search ──────────────── */
+async function searchEvents(){
+  const kw   = ($('kwInput').value||'').trim();
+  const city = ($('cityInput').value||'').trim();
+  if(!kw && !city){ $('searchStatus').textContent='Enter an artist, team, or venue.'; return; }
+
+  $('searchStatus').textContent = 'Searching…';
+  $('eventResults').innerHTML = '';
+  selectedEvent = null;
+
+  try{
+    const url = new URL('https://app.ticketmaster.com/discovery/v2/events.json');
+    url.searchParams.set('apikey',TM_KEY);
+    url.searchParams.set('size','30');
+    url.searchParams.set('locale','*');
+    if(kw)   url.searchParams.set('keyword',kw);
+    if(city) url.searchParams.set('city',city);
+
+    const json = await fetch(url).then(r=>r.json());
+    const raw  = (json?._embedded?.events||[]).map(ev=>{
+      const att = (ev._embedded?.attractions||[])[0];
+      const ven = (ev._embedded?.venues||[])[0]||{};
+      const loc = ven.location||{};
+      return {
+        id:        ev.id,
+        name:      ev.name||'',
+        artist:    att?.name||'',
+        venueName: ven.name||'',
+        venueCity: [ven.city?.name,ven.state?.stateCode].filter(Boolean).join(', '),
+        dateTime:  ev.dates?.start?.dateTime||null,
+        venueLat:  loc.latitude  ? Number(loc.latitude)  : null,
+        venueLng:  loc.longitude ? Number(loc.longitude) : null,
+        ticketUrl: ev.url||'',
+      };
+    });
+
+    // Dedupe
+    const seen=new Map();
+    const events=raw.filter(ev=>{
+      const key=`${(ev.artist||ev.name).toLowerCase()}|${ev.venueName.toLowerCase()}|${(ev.dateTime||'').slice(0,10)}`;
+      const suite=/suite|box|parking|hospitality/i.test(ev.name);
+      if(seen.has(key)){
+        if(!suite && /suite|box|parking|hospitality/i.test(seen.get(key).name)) seen.set(key,ev);
+        return false;
+      }
+      seen.set(key,ev); return true;
+    });
+
+    if(!events.length){ $('searchStatus').textContent='No events found. Try a different search.'; return; }
+    $('searchStatus').textContent=`${events.length} event${events.length===1?'':'s'} found`;
+    renderEvents(events);
+  }catch(e){
+    console.error(e);
+    $('searchStatus').textContent='Couldn\'t reach Ticketmaster. Please try again.';
+  }
+}
+
+function renderEvents(events){
+  const container = $('eventResults');
+  container.innerHTML='';
+  events.forEach((ev,i)=>{
+    const dt=toDate(ev.dateTime);
+    const card=document.createElement('div');
+    card.className='event-card';
+    card.style.animationDelay=`${Math.min(i*.05,.3)}s`;
+    card.innerHTML=`
+      <div class="event-card-info">
+        <div class="event-artist">${ev.artist||ev.name||'Event'}</div>
+        <div class="event-meta">
+          ${ev.venueName||'Venue TBA'}${ev.venueCity?' · '+ev.venueCity:''}
+        </div>
+        ${dt?`<div class="event-date-badge">${fmtDate(dt)} · ${fmt(dt)}</div>`:''}
+      </div>
+      <button class="btn-pick">Pick</button>
+    `;
+    card.querySelector('.btn-pick').addEventListener('click',()=>{
+      document.querySelectorAll('.event-card').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedEvent=ev;
+      // Brief delay then go to screen 2
+      setTimeout(()=>{
+        updateShowPill();
+        goTo(1);
+      },220);
+    });
+    container.appendChild(card);
+  });
+}
+
+function updateShowPill(){
+  if(!selectedEvent) return;
+  const dt=toDate(selectedEvent.dateTime);
+  $('showPillText').textContent=`${selectedEvent.artist||selectedEvent.name} · ${selectedEvent.venueName}${dt?' · '+fmt(dt):''}`;
+}
+
+/* ── Vibe selection ───────────────────── */
+function initVibes(){
+  document.querySelectorAll('.vibe-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      btn.classList.toggle('active');
+      const v=btn.dataset.vibe;
+      const idx=selectedVibes.indexOf(v);
+      if(idx>=0) selectedVibes.splice(idx,1);
+      else selectedVibes.push(v);
+    });
+  });
+
+  $('paceRow').addEventListener('click',e=>{
+    const b=e.target.closest('.pace-btn');
+    if(!b) return;
+    document.querySelectorAll('.pace-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    selectedPace=b.dataset.pace;
+  });
+
+  $('arrivalRow').addEventListener('click',e=>{
+    const b=e.target.closest('.arrival-btn');
+    if(!b) return;
+    document.querySelectorAll('.arrival-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    selectedArrival=Number(b.dataset.arrival);
+  });
+}
+
+/* ── Places API ───────────────────────── */
+function ensurePlaces(){
+  if(placesService||!window.google?.maps?.places) return;
+  placesService=new google.maps.places.PlacesService(document.createElement('div'));
+}
+
+function nearbySearch({location,placeType,keyword,max=8}){
+  return new Promise(resolve=>{
+    ensurePlaces();
+    if(!placesService||!location) return resolve([]);
+    try{
+      placesService.nearbySearch({
+        location:new google.maps.LatLng(location.lat,location.lng),
+        rankBy:google.maps.places.RankBy.DISTANCE,
+        type:placeType, keyword,
+      },(results,status)=>{
+        if(status===google.maps.places.PlacesServiceStatus.OK&&Array.isArray(results)){
+          resolve(results.slice(0,max).map(p=>({
+            name:p.name||'',
+            placeId:p.place_id,
+            lat:p.geometry?.location?.lat()??null,
+            lng:p.geometry?.location?.lng()??null,
+            rating:typeof p.rating==='number'?p.rating:null,
+            priceLevel:typeof p.price_level==='number'?p.price_level:null,
+            address:p.vicinity||'',
+            photos:p.photos||[],
+          })));
+        } else resolve([]);
+      });
+    }catch(e){ resolve([]); }
+  });
+}
+
+/* ── Claude ───────────────────────────── */
+async function callClaude({event, vibes, pace, arrival, hotel, placesByVibe, venueLoc}){
+  const dt=toDate(event.dateTime);
+
+  const placesSummary={};
+  for(const [v,places] of Object.entries(placesByVibe)){
+    placesSummary[v]=places.slice(0,6).map(p=>({
+      name:p.name, address:p.address, rating:p.rating, priceLevel:p.priceLevel,
+      distanceMiles:p.lat&&p.lng&&venueLoc ? parseFloat(miles(venueLoc.lat,venueLoc.lng,p.lat,p.lng).toFixed(2)) : null,
+    }));
+  }
+
+  const system=`You are Concerto's AI concierge — knowledgeable, specific, and warm. You craft perfect concert nights. Your voice is like a trusted friend who knows every city's best kept secrets. Never be generic. Every recommendation has a specific reason. Respond ONLY with valid JSON.`;
+
+  const prompt=`Build a curated full-day plan for this concert-goer.
+
+EVENT: ${event.artist||event.name}
+VENUE: ${event.venueName}, ${event.venueCity}
+DATE: ${dt?fmtDate(dt):'TBA'}
+SHOW TIME: ${dt?fmt(dt):'TBA'}
+PACE: ${pace} (chill=2 stops max, balanced=3-4, packed=5-6)
+ARRIVE AT VENUE: ${arrival} minutes before show time
+HOTEL: ${hotel||'not specified'}
+SELECTED VIBES: ${vibes.join(', ')||'none specified'}
+
+NEARBY PLACES (Google Places data):
+${JSON.stringify(placesSummary,null,2)}
+
+Build a complete day timeline from morning/afternoon until end of night.
+
+RULES:
+- Only use places from the provided data. Pick the BEST ones by rating, distance fit, and vibe match — not just the closest.
+- The timeline should feel like a real concierge itinerary — specific, considered, personal.
+- Each note should be 1-2 sentences with a genuine specific reason (mention something unique about the place, what to order, or practical tip).
+- If hotel is specified, include getting ready / departing from hotel in the timeline.
+- Show entry is always present with isShow:true.
+- Time all stops to work backwards from show time. Account for ${arrival} min early arrival buffer.
+- Post-show: assume show ends 2.5hrs after start time.
+
+RESPOND ONLY with this exact JSON (no markdown, no preamble):
+{
+  "timeline": [
+    {
+      "time": "6:30 PM",
+      "label": "Dinner at Osteria Mozza",
+      "note": "Book ahead — the burrata here is legendary and it's a 5-minute walk from the venue.",
+      "placeName": "Osteria Mozza",
+      "vibe": "dinner",
+      "isShow": false
+    }
+  ],
+  "picks": {
+    "dinner": [
+      { "name": "Osteria Mozza", "why": "Nancy Silverton's flagship — handmade pasta and the best wine list in the neighborhood." }
+    ]
+  }
+}`;
+
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1500,
+      system,
+      messages:[{role:'user',content:prompt}]
+    })
+  });
+  const data=await res.json();
+  const raw=data?.content?.[0]?.text||'{}';
+  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+}
+
+/* ── Generate plan ────────────────────── */
+async function generatePlan(){
+  if(!selectedEvent){ alert('Please select a show first.'); goTo(0); return; }
+  if(!selectedVibes.length){ alert('Choose at least one vibe.'); return; }
+
+  const venueLoc=(typeof selectedEvent.venueLat==='number'&&typeof selectedEvent.venueLng==='number')
+    ?{lat:selectedEvent.venueLat,lng:selectedEvent.venueLng}:null;
+  if(!venueLoc){ alert("We couldn't get the venue location. Try selecting a different event."); return; }
+
+  const hotel=($('hotelInput').value||'').trim();
+
+  // Go to screen 3, show loading
+  goTo(2);
+  $('planLoading').classList.remove('hidden');
+  $('planOut').classList.add('hidden');
+
+  try{
+    // Fetch places in parallel
+    const placesByVibe={};
+    await Promise.all(selectedVibes.map(async vibe=>{
+      const cfg=VIBES[vibe]; if(!cfg) return;
+      placesByVibe[vibe]=await nearbySearch({
+        location:venueLoc,
+        placeType:cfg.placeType,
+        keyword:cfg.keyword,
+        max:8
+      });
+    }));
+
+    // Call Claude
+    const plan=await callClaude({
+      event:selectedEvent, vibes:selectedVibes,
+      pace:selectedPace, arrival:selectedArrival,
+      hotel, placesByVibe, venueLoc
+    });
+
+    renderPlan(plan,placesByVibe,venueLoc);
+
+  }catch(e){
+    console.error(e);
+    $('planLoading').classList.add('hidden');
+    alert('Something went wrong. Please try again.');
+    goTo(1);
+  }
+}
+
+/* ── Render plan ──────────────────────── */
+function renderPlan(plan,placesByVibe,venueLoc){
+  $('planLoading').classList.add('hidden');
+
+  const dt=toDate(selectedEvent.dateTime);
+  $('planName').textContent=selectedEvent.artist||selectedEvent.name||'Your Show';
+  $('planWhere').textContent=[selectedEvent.venueName,selectedEvent.venueCity].filter(Boolean).join(' · ');
+  $('planDate').textContent=dt?fmtDate(dt):'Date TBA';
+
+  // Timeline
+  const tl=$('tlList');
+  tl.innerHTML='';
+  const flatPlaces=Object.values(placesByVibe).flat();
+
+  (plan.timeline||[]).forEach((item,i)=>{
+    const row=document.createElement('div');
+    row.className='tl-item'+(item.isShow?' is-show':'');
+    row.style.animationDelay=`${i*.07}s`;
+
+    const place=flatPlaces.find(p=>p.name===item.placeName);
+    const url=place?mapsUrl(place):null;
+
+    let labelHtml=item.label||'';
+    if(url&&item.placeName&&!item.isShow){
+      labelHtml=labelHtml.replace(item.placeName,`<a href="${url}" target="_blank" rel="noopener">${item.placeName}</a>`);
+    }
+
+    row.innerHTML=`
+      <div class="tl-dot-col"><div class="tl-dot"></div></div>
+      <div class="tl-body">
+        <div class="tl-time">${item.time||''}</div>
+        <div class="tl-label">${labelHtml}</div>
+        ${!item.isShow&&item.note?`<div class="tl-note">${item.note}</div>`:''}
+      </div>
+    `;
+    tl.appendChild(row);
+  });
+
+  // Picks
+  const picksWrap=$('picksWrap');
+  picksWrap.innerHTML='';
+  const picksData=plan.picks||{};
+  const hasAny=selectedVibes.some(v=>(picksData[v]||[]).length>0);
+
+  if(hasAny){
+    const heading=document.createElement('div');
+    heading.className='picks-heading';
+    heading.textContent='Nearby Picks';
+    picksWrap.appendChild(heading);
+
+    selectedVibes.forEach(vibe=>{
+      const picks=picksData[vibe];
+      if(!picks?.length) return;
+      const cfg=VIBES[vibe];
+
+      const cat=document.createElement('div');
+      cat.className='picks-category';
+
+      const label=document.createElement('div');
+      label.className='picks-cat-label';
+      label.textContent=cfg?.label||vibe;
+      cat.appendChild(label);
+
+      const rail=document.createElement('div');
+      rail.className='picks-rail';
+
+      picks.forEach(pick=>{
+        const rawPlace=flatPlaces.find(p=>p.name===pick.name);
+        const url=rawPlace?mapsUrl(rawPlace):'#';
+        const dist=(rawPlace?.lat&&rawPlace?.lng&&venueLoc)
+          ?miles(venueLoc.lat,venueLoc.lng,rawPlace.lat,rawPlace.lng):null;
+
+        const card=document.createElement('a');
+        card.className='pick-card';
+        card.href=url; card.target='_blank'; card.rel='noopener';
+
+        const meta=[
+          dist!=null?`${dist.toFixed(1)} mi`:null,
+          rawPlace?.rating!=null?`★ ${rawPlace.rating.toFixed(1)}`:null,
+          rawPlace?.priceLevel!=null?'$'.repeat(Math.max(1,Math.min(4,rawPlace.priceLevel))):null,
+        ].filter(Boolean).join(' · ');
+
+        card.innerHTML=`
+          <div class="pick-img"></div>
+          <div class="pick-body">
+            <div class="pick-name">${pick.name}</div>
+            <div class="pick-why">${pick.why||''}</div>
+            ${meta?`<div class="pick-meta"><span class="pick-badge">${meta}</span></div>`:''}
+          </div>
+        `;
+
+        if(rawPlace?.photos?.[0]?.getUrl){
+          const img=document.createElement('img');
+          img.src=rawPlace.photos[0].getUrl({maxWidth:310,maxHeight:180});
+          img.alt=pick.name;
+          card.querySelector('.pick-img').appendChild(img);
+        }
+
+        rail.appendChild(card);
+      });
+
+      cat.appendChild(rail);
+      picksWrap.appendChild(cat);
+    });
+  }
+
+  $('planOut').classList.remove('hidden');
+}
+
+/* ── Plan actions ─────────────────────── */
+$('editBtn').addEventListener('click',()=>goTo(1));
+$('shareBtn').addEventListener('click',async()=>{
+  const ev=selectedEvent; if(!ev) return;
+  const dt=toDate(ev.dateTime);
+  const text=`My Concerto+ plan for ${ev.artist||ev.name} at ${ev.venueName}${dt?' on '+fmtDate(dt):''}.`;
+  try{
+    if(navigator.share) await navigator.share({title:'Concerto+ Plan',text,url:location.href});
+    else if(navigator.clipboard){ await navigator.clipboard.writeText(location.href); alert('Link copied!'); }
+  }catch(e){ console.warn(e); }
+});
+
+/* ── Search triggers ──────────────────── */
+$('searchBtn').addEventListener('click',searchEvents);
+$('kwInput').addEventListener('keydown',e=>{ if(e.key==='Enter') searchEvents(); });
+$('cityInput').addEventListener('keydown',e=>{ if(e.key==='Enter') searchEvents(); });
+$('generateBtn').addEventListener('click',generatePlan);
+
+/* ── Init vibes ───────────────────────── */
+initVibes();
+
+})();
+</script>
+
 </body>
 </html>

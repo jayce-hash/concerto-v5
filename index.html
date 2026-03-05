@@ -1,599 +1,1547 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Concerto+ · Day Planner</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<title>Concerto+ · Day Planner</title>
+  <style>
+    :root{
+      --navy:#121E36;
+      --bg:#F8F9F9;
+      --card:#ffffff;
+      --ink:#0f172a;
+      --muted:#6b7280;
+      --line:rgba(15,23,42,.10);
+      --shadow: 0 16px 50px rgba(2,6,23,.10);
+      --shadow2: 0 10px 28px rgba(2,6,23,.08);
+      --radius: 18px;
+      --radius2: 14px;
+      --ease: cubic-bezier(.22,.9,.22,1);
+      --ring: 0 0 0 4px rgba(18,30,54,.12);
+    }
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 50% -200px, rgba(18,30,54,.12), transparent 60%),
+                  radial-gradient(900px 600px at 0% 20%, rgba(18,30,54,.08), transparent 55%),
+                  var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    a{ color:inherit; text-decoration:none; }
+    button, input{ font:inherit; }
+    button{ cursor:pointer; }
+    .page{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 22px 16px 42px;
+    }
 
-<style>
+    /* Header */
+    .page-header{
+      text-align:center;
+      padding: 18px 0 10px;
+    }
+    .brand-row{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      margin-bottom: 10px;
+    }
+    .brand-logo{
+      width: 54px; height:54px;
+      border-radius: 14px;
+      object-fit: cover;
+      box-shadow: 0 10px 22px rgba(2,6,23,.12);
+      background:#fff;
+    }
+    .feature-title{
+      margin:0;
+      font-size: 34px;
+      letter-spacing: -0.02em;
+      color: var(--navy);
+      line-height: 1.05;
+    }
+    .tagline{
+      margin:8px auto 0;
+      max-width: 720px;
+      color: var(--muted);
+      line-height: 1.35;
+      font-size: 14.5px;
+    }
 
-/* GLOBAL */
+    .header-actions{
+      margin-top: 12px;
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
 
-body{
-margin:0;
-font-family:Inter,system-ui;
-background:#F8F9F9;
-color:#121E36;
-}
+    /* Buttons */
+    .btn{
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 600;
+      transition: transform .18s var(--ease), box-shadow .18s var(--ease), background .18s var(--ease);
+      box-shadow: 0 10px 24px rgba(2,6,23,.06);
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 14px 30px rgba(2,6,23,.10); }
+    .btn:active{ transform: translateY(0); }
+    .btn-primary{
+      background: linear-gradient(180deg, #1a2a4a, var(--navy));
+      border-color: rgba(255,255,255,.14);
+      color:#fff;
+      box-shadow: 0 18px 45px rgba(18,30,54,.28);
+    }
+    .btn-primary[disabled]{
+      opacity:.55;
+      cursor:not-allowed;
+      transform:none !important;
+      box-shadow: 0 10px 24px rgba(2,6,23,.06);
+    }
+    .btn-ghost{
+      background: transparent;
+      border-color: rgba(15,23,42,.14);
+      box-shadow: none;
+    }
+    .btn-secondary{
+      background:#fff;
+    }
+    .icon-dot{
+      width:8px;height:8px;border-radius:99px;background:rgba(255,255,255,.75);
+    }
 
-.page{
-max-width:900px;
-margin:auto;
-padding:20px;
-}
+    /* Sticky Concierge Bar */
+    .concierge-bar{
+      position: sticky;
+      top: 10px;
+      z-index: 30;
+      margin: 14px 0 18px;
+      padding: 12px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.74);
+      border: 1px solid rgba(15,23,42,.10);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: var(--shadow2);
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .cb-left{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .cb-badge{
+      width: 34px; height:34px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(18,30,54,.10), rgba(18,30,54,.04));
+      border: 1px solid rgba(18,30,54,.12);
+      display:grid;
+      place-items:center;
+      color: var(--navy);
+      font-weight:700;
+      flex: 0 0 auto;
+    }
+    .cb-title{
+      font-weight: 700;
+      color: var(--navy);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 52vw;
+    }
+    .cb-sub{
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 52vw;
+      margin-top: 2px;
+    }
+    .cb-meta{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      flex: 0 0 auto;
+      flex-wrap: wrap;
+      justify-content:flex-end;
+    }
+    .chip{
+      border: 1px solid rgba(15,23,42,.10);
+      background: rgba(255,255,255,.65);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      color: rgba(15,23,42,.76);
+      display:inline-flex;
+      align-items:center;
+      gap: 6px;
+    }
+    .chip strong{ color: var(--navy); font-weight: 700; }
 
-/* HEADER */
+    /* Steps */
+    .page-main{ display:flex; flex-direction:column; gap: 14px; }
+    .step-pill{
+      border-radius: var(--radius);
+      overflow:hidden;
+      background: rgba(255,255,255,.70);
+      border: 1px solid rgba(15,23,42,.10);
+      box-shadow: var(--shadow2);
+      transition: transform .22s var(--ease), box-shadow .22s var(--ease), opacity .22s var(--ease);
+    }
+    .step-pill:hover{
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+    }
+    .step-pill.locked{
+      opacity: .70;
+    }
+    .step-pill.locked .step-pill-header{ cursor:not-allowed; }
+    .step-pill-header{
+      width:100%;
+      padding: 16px 16px;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      border: none;
+      background: transparent;
+    }
+    .step-pill-label{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      min-width:0;
+    }
+    .step-number{
+      width: 40px; height:40px;
+      border-radius: 12px;
+      display:grid;
+      place-items:center;
+      background: linear-gradient(180deg, rgba(18,30,54,.10), rgba(18,30,54,.04));
+      border: 1px solid rgba(18,30,54,.12);
+      color: var(--navy);
+      font-weight:800;
+      letter-spacing:.02em;
+      flex: 0 0 auto;
+    }
+    .step-text-block{ min-width:0; }
+    .step-title{
+      font-weight: 750;
+      color: var(--navy);
+      letter-spacing: -0.01em;
+    }
+    .step-subtitle{
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 72vw;
+    }
+    .step-pill-status{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .caret{
+      width: 34px; height:34px;
+      border-radius: 999px;
+      border: 1px solid rgba(15,23,42,.10);
+      background: rgba(255,255,255,.60);
+      display:grid;
+      place-items:center;
+      transition: transform .24s var(--ease);
+      color: rgba(15,23,42,.68);
+    }
+    .step-pill.open .caret{ transform: rotate(180deg); }
+    .check{
+      width: 34px; height:34px;
+      border-radius: 999px;
+      border: 1px solid rgba(15,23,42,.10);
+      background: rgba(255,255,255,.60);
+      display:grid;
+      place-items:center;
+      color: rgba(15,23,42,.30);
+      transition: all .24s var(--ease);
+    }
+    .step-pill.completed .check{
+      background: rgba(18,30,54,.10);
+      color: var(--navy);
+      border-color: rgba(18,30,54,.18);
+    }
 
-.page-header{
-text-align:center;
-padding:30px 10px;
-}
+    .step-pill-body{
+      display:none;
+      padding: 0 16px 16px;
+    }
+    .step-pill.open .step-pill-body{ display:block; }
 
-.brand-logo{
-width:60px;
-margin-bottom:10px;
-}
+    /* Card */
+    .card{
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(15,23,42,.10);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 12px 35px rgba(2,6,23,.08);
+    }
 
-.feature-title{
-font-size:34px;
-margin:0;
-}
+    .stack{ display:flex; flex-direction:column; }
+    .gap-16{ gap: 16px; }
+    .gap-10{ gap: 10px; }
+    .gap-6{ gap: 6px; }
+    .muted{ color: var(--muted); }
 
-.tagline{
-color:#6b7280;
-margin-top:6px;
-}
+    /* Form */
+    .form-grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 720px){
+      .form-grid{ grid-template-columns: 1.2fr .8fr; }
+      .cb-title, .cb-sub{ max-width: 420px; }
+    }
+    label{
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(15,23,42,.78);
+      letter-spacing:.02em;
+    }
+    .field{ display:flex; flex-direction:column; gap: 8px; }
+    input{
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(15,23,42,.12);
+      outline: none;
+      background: rgba(255,255,255,.92);
+      transition: box-shadow .18s var(--ease), border-color .18s var(--ease);
+    }
+    input:focus{
+      border-color: rgba(18,30,54,.28);
+      box-shadow: var(--ring);
+    }
+    .tiny{ font-size: 12px; color: var(--muted); line-height: 1.35; }
 
-/* BUTTONS */
+    .search-actions{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .status{
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 16px;
+    }
 
-button{
-font-family:inherit;
-cursor:pointer;
-}
+    /* Results */
+    .event-results{
+      display:grid;
+      gap: 10px;
+    }
+    .event-card{
+      border-radius: 16px;
+      border: 1px solid rgba(15,23,42,.10);
+      background: rgba(255,255,255,.90);
+      padding: 12px;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: transform .18s var(--ease), box-shadow .18s var(--ease);
+    }
+    .event-card:hover{ transform: translateY(-1px); box-shadow: 0 14px 32px rgba(2,6,23,.10); }
+    .event-left{ min-width:0; }
+    .event-title{ font-weight: 800; color: var(--navy); letter-spacing:-0.01em; }
+    .event-sub{ font-size: 12px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; max-width: 66vw; }
+    .event-cta{ flex: 0 0 auto; }
 
-.btn-primary{
-background:#121E36;
-color:white;
-border:none;
-padding:12px 18px;
-border-radius:10px;
-font-weight:600;
-}
+    /* Pills */
+    .pill-row{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .pill{
+      border-radius: 999px;
+      border: 1px solid rgba(15,23,42,.12);
+      background: rgba(255,255,255,.70);
+      padding: 10px 12px;
+      font-weight: 700;
+      font-size: 13px;
+      color: rgba(15,23,42,.80);
+      transition: transform .16s var(--ease), box-shadow .16s var(--ease), background .16s var(--ease), border-color .16s var(--ease);
+    }
+    .pill:hover{ transform: translateY(-1px); box-shadow: 0 12px 28px rgba(2,6,23,.10); }
+    .pill.active{
+      background: linear-gradient(180deg, rgba(18,30,54,.14), rgba(18,30,54,.08));
+      border-color: rgba(18,30,54,.26);
+      color: var(--navy);
+    }
 
-.btn-secondary{
-background:white;
-border:1px solid #ddd;
-padding:10px 16px;
-border-radius:10px;
-}
+    /* Segmented */
+    .seg-row{ display:flex; gap:10px; flex-wrap: wrap; }
+    .seg-pill{
+      border-radius: 999px;
+      border: 1px solid rgba(15,23,42,.12);
+      background: rgba(255,255,255,.70);
+      padding: 10px 12px;
+      font-weight: 800;
+      font-size: 13px;
+      color: rgba(15,23,42,.78);
+      transition: transform .16s var(--ease), box-shadow .16s var(--ease);
+    }
+    .seg-pill.active{
+      background: linear-gradient(180deg, #1a2a4a, var(--navy));
+      color:#fff;
+      border-color: rgba(255,255,255,.14);
+      box-shadow: 0 16px 40px rgba(18,30,54,.24);
+    }
 
-.btn-ghost{
-background:none;
-border:none;
-color:#121E36;
-}
+    /* Concierge Briefing */
+    .brief{
+      border-radius: var(--radius);
+      border: 1px solid rgba(18,30,54,.16);
+      background:
+        radial-gradient(800px 200px at 20% 0%, rgba(18,30,54,.10), transparent 55%),
+        rgba(255,255,255,.70);
+      padding: 14px;
+      box-shadow: 0 12px 30px rgba(2,6,23,.08);
+    }
+    .brief-top{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .brief-title{
+      font-weight: 900;
+      color: var(--navy);
+      letter-spacing: -0.01em;
+    }
+    .brief-text{
+      color: rgba(15,23,42,.76);
+      line-height: 1.45;
+      font-size: 13.5px;
+    }
 
-/* CARD STACK */
+    /* Plan */
+    .plan-header{
+      display:flex;
+      align-items:flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .section-title{
+      margin:0;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+      color: var(--navy);
+    }
+    .section-help{
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .plan-actions{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
 
-.step-pill{
-margin-bottom:18px;
-transition:all .35s ease;
-}
+    /* Timeline */
+    .timeline{ margin-top: 14px; display:grid; gap: 10px; }
+    .titem{
+      display:flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+    .ttime{
+      width: 92px;
+      flex: 0 0 auto;
+      border-radius: 14px;
+      background: rgba(18,30,54,.06);
+      border: 1px solid rgba(18,30,54,.12);
+      padding: 10px 10px;
+      color: var(--navy);
+      font-weight: 900;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      letter-spacing: -0.01em;
+    }
+    .tcard{
+      flex: 1 1 auto;
+      border-radius: 16px;
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(15,23,42,.10);
+      padding: 12px;
+      box-shadow: 0 12px 30px rgba(2,6,23,.08);
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+    .tmain{ min-width:0; }
+    .ttitle{ font-weight: 900; color: var(--navy); letter-spacing:-0.01em; }
+    .tsub{ font-size: 12px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; max-width: 58vw; }
+    .tmeta{ display:flex; gap: 8px; align-items:center; flex: 0 0 auto; }
+    .tbtn{
+      border-radius: 999px;
+      border: 1px solid rgba(15,23,42,.12);
+      background: rgba(255,255,255,.70);
+      padding: 9px 10px;
+      font-weight: 800;
+      font-size: 12px;
+      transition: transform .16s var(--ease), box-shadow .16s var(--ease);
+      white-space: nowrap;
+    }
+    .tbtn:hover{ transform: translateY(-1px); box-shadow: 0 12px 26px rgba(2,6,23,.10); }
+    .tbtn.primary{
+      background: linear-gradient(180deg, #1a2a4a, var(--navy));
+      color:#fff;
+      border-color: rgba(255,255,255,.14);
+    }
 
-.step-pill-header{
+    /* Rails */
+    .rails-wrapper{ margin-top: 16px; }
+    .subsection-title{
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: rgba(15,23,42,.76);
+      letter-spacing: .01em;
+      font-weight: 900;
+    }
+    .rails{
+      display:flex;
+      gap: 10px;
+      overflow-x:auto;
+      padding-bottom: 6px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .rails::-webkit-scrollbar{ height: 8px; }
+    .rails::-webkit-scrollbar-thumb{ background: rgba(15,23,42,.16); border-radius: 99px; }
+    .place-card{
+      min-width: 240px;
+      scroll-snap-align: start;
+      border-radius: 16px;
+      border: 1px solid rgba(15,23,42,.10);
+      background: rgba(255,255,255,.92);
+      padding: 12px;
+      box-shadow: 0 12px 30px rgba(2,6,23,.08);
+    }
+    .place-top{
+      display:flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items:flex-start;
+    }
+    .place-name{
+      font-weight: 900;
+      color: var(--navy);
+      letter-spacing:-0.01em;
+      margin:0;
+    }
+    .place-tag{
+      font-size: 11px;
+      font-weight: 900;
+      color: rgba(15,23,42,.64);
+      border: 1px solid rgba(15,23,42,.10);
+      background: rgba(255,255,255,.70);
+      padding: 6px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .place-sub{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .place-actions{
+      margin-top: 10px;
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
 
-width:100%;
-background:white;
-border-radius:16px;
-border:none;
-padding:20px;
+    /* Footer */
+    .page-footer{
+      text-align:center;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
 
-display:flex;
-justify-content:space-between;
-align-items:center;
+    /* Modal (glass) */
+    .modal[hidden]{ display:none; }
+    .modal{
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display:grid;
+      place-items:center;
+      padding: 18px;
+    }
+    .modal-backdrop{
+      position:absolute;
+      inset:0;
+      background: rgba(2,6,23,.50);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .modal-card{
+      position: relative;
+      width: min(520px, 94vw);
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 30px 80px rgba(2,6,23,.35);
+      padding: 18px;
+      animation: pop .22s var(--ease) both;
+    }
+    @keyframes pop{
+      from{ transform: translateY(12px) scale(.98); opacity:0; }
+      to{ transform: translateY(0) scale(1); opacity:1; }
+    }
+    .modal-title{
+      font-weight: 950;
+      color: var(--navy);
+      letter-spacing:-0.02em;
+      font-size: 16px;
+    }
+    .bullets{
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: rgba(15,23,42,.78);
+      line-height: 1.45;
+      font-size: 13px;
+    }
+    .modal-actions{ margin-top: 14px; display:flex; justify-content:flex-end; gap:10px; }
 
-box-shadow:0 10px 30px rgba(0,0,0,.06);
-}
+    /* Shimmer */
+    .shimmer{
+      border-radius: 16px;
+      height: 72px;
+      border: 1px solid rgba(15,23,42,.10);
+      background: linear-gradient(90deg, rgba(255,255,255,.70), rgba(18,30,54,.08), rgba(255,255,255,.70));
+      background-size: 200% 100%;
+      animation: shimmer 1.1s linear infinite;
+    }
+    @keyframes shimmer{
+      0%{ background-position: 0% 0; }
+      100%{ background-position: 200% 0; }
+    }
 
-.step-pill-header:hover{
-transform:translateY(-2px);
-box-shadow:0 16px 40px rgba(0,0,0,.08);
-}
-
-.step-pill-body{
-overflow:hidden;
-max-height:0;
-opacity:0;
-transition:all .4s ease;
-}
-
-.step-pill.open .step-pill-body{
-max-height:2000px;
-opacity:1;
-margin-top:12px;
-}
-
-.step-pill.completed .step-pill-header{
-border-left:5px solid #121E36;
-}
-
-/* TEXT */
-
-.step-number{
-font-weight:700;
-margin-right:10px;
-}
-
-.step-pill-label{
-display:flex;
-align-items:center;
-}
-
-.step-text-block{
-display:flex;
-flex-direction:column;
-}
-
-.step-title{
-font-weight:600;
-}
-
-.step-subtitle{
-font-size:13px;
-color:#6b7280;
-}
-
-/* CARD */
-
-.card{
-background:white;
-padding:20px;
-border-radius:14px;
-box-shadow:0 6px 18px rgba(0,0,0,.06);
-}
-
-/* FORM */
-
-input{
-padding:10px;
-border-radius:8px;
-border:1px solid #ddd;
-width:100%;
-}
-
-.form-grid{
-display:grid;
-grid-template-columns:1fr;
-gap:16px;
-}
-
-.tiny{
-font-size:12px;
-color:#6b7280;
-}
-
-/* PILLS */
-
-.pill-row{
-display:flex;
-flex-wrap:wrap;
-gap:10px;
-}
-
-.pill{
-
-padding:8px 14px;
-border-radius:999px;
-border:1px solid #ddd;
-background:white;
-
-}
-
-.pill.active{
-background:#121E36;
-color:white;
-}
-
-/* SEGMENT */
-
-.seg-row{
-display:flex;
-gap:10px;
-}
-
-.seg-pill{
-padding:8px 14px;
-border-radius:999px;
-border:1px solid #ddd;
-background:white;
-}
-
-.seg-pill.active{
-background:#121E36;
-color:white;
-}
-
-/* TIMELINE */
-
-.timeline{
-margin-top:20px;
-}
-
-.timeline-item{
-display:flex;
-gap:14px;
-margin-bottom:18px;
-}
-
-.timeline-time{
-width:80px;
-font-weight:600;
-}
-
-.timeline-card{
-flex:1;
-background:white;
-padding:14px;
-border-radius:12px;
-box-shadow:0 6px 18px rgba(0,0,0,.06);
-}
-
-/* MODAL */
-
-.modal{
-position:fixed;
-inset:0;
-display:flex;
-align-items:center;
-justify-content:center;
-}
-
-.modal-backdrop{
-position:absolute;
-inset:0;
-background:rgba(0,0,0,.5);
-}
-
-.modal-card{
-background:white;
-padding:24px;
-border-radius:14px;
-width:90%;
-max-width:420px;
-z-index:2;
-}
-
-</style>
-
+    /* Toast */
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      z-index: 120;
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(15,23,42,.10);
+      border-radius: 999px;
+      padding: 10px 12px;
+      box-shadow: 0 20px 50px rgba(2,6,23,.18);
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      min-width: 260px;
+      max-width: 92vw;
+      animation: toastIn .22s var(--ease) both;
+    }
+    @keyframes toastIn{
+      from{ transform: translateX(-50%) translateY(10px); opacity:0; }
+      to{ transform: translateX(-50%) translateY(0); opacity:1; }
+    }
+    .toast .tstrong{ font-weight: 900; color: var(--navy); }
+    .toast .tmsg{ font-size: 12px; color: rgba(15,23,42,.70); }
+  </style>
 </head>
 
 <body>
-
-<div class="page">
-
-<header class="page-header">
-
-<img src="IMG_3180.jpeg" class="brand-logo">
-
-<h1 class="feature-title">Concerto+</h1>
-
-<p class="tagline">
-Build a curated concert day from coffee to encore.
-</p>
-
-<button class="btn-ghost" id="openHelp">
-How it works
-</button>
-
-</header>
-
-
-<!-- STEP 1 -->
-
-<section class="step-pill open" data-step="1">
-
-<button class="step-pill-header">
-
-<div class="step-pill-label">
-
-<span class="step-number">01</span>
-
-<div class="step-text-block">
-
-<div class="step-title">Choose Your Show</div>
-
-<div class="step-subtitle">
-Search Ticketmaster for your event
-</div>
-
-</div>
-
-</div>
-
-<span>⌄</span>
-
-</button>
-
-<div class="step-pill-body">
-
-<div class="card">
-
-<input placeholder="Artist / Team / Tour">
-
-<br><br>
-
-<input placeholder="City (optional)">
-
-<br><br>
-
-<button class="btn-primary" id="selectEvent">
-Select Example Event
-</button>
-
-</div>
-
-</div>
-
-</section>
-
-
-
-<!-- STEP 2 -->
-
-<section class="step-pill" data-step="2">
-
-<button class="step-pill-header">
-
-<div class="step-pill-label">
-
-<span class="step-number">02</span>
-
-<div class="step-text-block">
-
-<div class="step-title">Plan Your Vibe</div>
-
-<div class="step-subtitle">
-Before & after the show
-</div>
-
-</div>
-
-</div>
-
-<span>⌄</span>
-
-</button>
-
-
-<div class="step-pill-body">
-
-<div class="card">
-
-<p>Before the show</p>
-
-<div class="pill-row">
-
-<button class="pill">Coffee</button>
-<button class="pill">Lunch</button>
-<button class="pill">Dinner</button>
-<button class="pill">Shopping</button>
-
-</div>
-
-<br>
-
-<p>After the show</p>
-
-<div class="pill-row">
-
-<button class="pill">Dessert</button>
-<button class="pill">Drinks</button>
-<button class="pill">Nightlife</button>
-
-</div>
-
-<br>
-
-<button class="btn-primary" id="generatePlan">
-Build My Concerto Plan
-</button>
-
-</div>
-
-</div>
-
-</section>
-
-
-
-<!-- STEP 3 -->
-
-<section class="step-pill" data-step="3">
-
-<button class="step-pill-header">
-
-<div class="step-pill-label">
-
-<span class="step-number">03</span>
-
-<div class="step-text-block">
-
-<div class="step-title">Your Concerto Plan</div>
-
-<div class="step-subtitle">
-A smart timeline around your show
-</div>
-
-</div>
-
-</div>
-
-<span>⌄</span>
-
-</button>
-
-
-<div class="step-pill-body">
-
-<div class="card">
-
-<div class="timeline" id="timeline"></div>
-
-</div>
-
-</div>
-
-</section>
-
-
-</div>
-
-
-
-<!-- MODAL -->
-
-<div class="modal" id="modal" hidden>
-
-<div class="modal-backdrop"></div>
-
-<div class="modal-card">
-
-<h3>How Concerto+ Works</h3>
-
-<p>
-
-Select your event → choose your vibe → Concerto builds a curated plan around your venue.
-
-</p>
-
-<button id="closeModal" class="btn-primary">Got it</button>
-
-</div>
-
-</div>
-
-
-
-<script>
-
-/* STEP LOGIC */
-
-function openStep(n){
-
-document.querySelectorAll(".step-pill").forEach(step=>{
-step.classList.remove("open")
-})
-
-document.querySelector(`[data-step="${n}"]`).classList.add("open")
-
-}
-
-function completeStep(n){
-
-document.querySelector(`[data-step="${n}"]`).classList.add("completed")
-
-}
-
-/* STEP EVENTS */
-
-document.getElementById("selectEvent").onclick=()=>{
-
-completeStep(1)
-
-openStep(2)
-
-}
-
-document.getElementById("generatePlan").onclick=()=>{
-
-completeStep(2)
-
-openStep(3)
-
-generateTimeline()
-
-}
-
-
-/* TIMELINE */
-
-function generateTimeline(){
-
-const timeline=document.getElementById("timeline")
-
-timeline.innerHTML=`
-
-<div class="timeline-item">
-
-<div class="timeline-time">4:30 PM</div>
-
-<div class="timeline-card">
-Coffee at Blue Bottle
-</div>
-
-</div>
-
-<div class="timeline-item">
-
-<div class="timeline-time">6:00 PM</div>
-
-<div class="timeline-card">
-Dinner near the venue
-</div>
-
-</div>
-
-<div class="timeline-item">
-
-<div class="timeline-time">7:45 PM</div>
-
-<div class="timeline-card">
-Arrive at the venue
-</div>
-
-</div>
-
-<div class="timeline-item">
-
-<div class="timeline-time">10:30 PM</div>
-
-<div class="timeline-card">
-Drinks after the show
-</div>
-
-</div>
-
-`
-
-}
-
-
-/* MODAL */
-
-const modal=document.getElementById("modal")
-
-document.getElementById("openHelp").onclick=()=>{
-
-modal.hidden=false
-
-}
-
-document.getElementById("closeModal").onclick=()=>{
-
-modal.hidden=true
-
-}
-
-</script>
-
-
+  <div class="page">
+    <header class="page-header">
+      <div class="brand-row">
+        <img src="IMG_3180.jpeg" alt="Concerto - From the Concert to the City" class="brand-logo">
+        <div style="text-align:left;">
+          <h1 class="feature-title" style="margin:0;">Concerto+</h1>
+          <div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:2px;">From the concert, to the city.</div>
+        </div>
+      </div>
+
+      <p class="tagline">
+        A concierge-built schedule around your show — timed for doors, traffic, and the post-encore mood.
+      </p>
+
+      <div class="header-actions">
+        <button class="btn btn-ghost" id="openHelp" type="button">How it works</button>
+        <button class="btn" id="resetAll" type="button" title="Reset planner">Reset</button>
+      </div>
+    </header>
+
+    <!-- Sticky Concierge Summary -->
+    <div class="concierge-bar" aria-live="polite">
+      <div class="cb-left">
+        <div class="cb-badge">+</div>
+        <div style="min-width:0;">
+          <div class="cb-title" id="cbTitle">Choose a show to start your concierge plan</div>
+          <div class="cb-sub" id="cbSub">Step 1 is open — search and select your event.</div>
+        </div>
+      </div>
+      <div class="cb-meta" id="cbMeta">
+        <span class="chip"><strong>Concierge</strong> Mode</span>
+      </div>
+    </div>
+
+    <main class="page-main">
+      <!-- STEP 1 -->
+      <section class="step-pill open" data-step="1" id="step1">
+        <button type="button" class="step-pill-header" id="step1Btn">
+          <div class="step-pill-label">
+            <span class="step-number">01</span>
+            <div class="step-text-block">
+              <div class="step-title">Choose Your Show</div>
+              <div class="step-subtitle">Search and select the exact event — we’ll time everything around doors & start.</div>
+            </div>
+          </div>
+          <div class="step-pill-status">
+            <span class="check" aria-hidden="true">✓</span>
+            <span class="caret" aria-hidden="true">⌄</span>
+          </div>
+        </button>
+
+        <div class="step-pill-body">
+          <div class="card">
+            <div class="stack gap-16">
+              <div class="stack gap-6">
+                <h2 class="section-title">Find your event</h2>
+                <p class="section-help">Search by artist, team, tour, venue, or city.</p>
+              </div>
+
+              <div class="form-grid">
+                <div class="field">
+                  <label for="eventKeyword">Artist / Team / Tour</label>
+                  <input id="eventKeyword" type="text" placeholder="e.g. Billie Eilish, Lakers, The Eras Tour" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="eventCity">City (optional)</label>
+                  <input id="eventCity" type="text" placeholder="e.g. Los Angeles, CA" autocomplete="off" />
+                  <div class="tiny">Add a city to narrow results, or leave blank.</div>
+                </div>
+              </div>
+
+              <div class="search-actions">
+                <button type="button" id="searchEventsBtn" class="btn btn-primary">
+                  <span class="icon-dot"></span> Search Events
+                </button>
+                <div id="eventStatus" class="status">Tip: Start broad, then narrow with city.</div>
+              </div>
+
+              <div id="eventResults" class="event-results" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step-pill locked" data-step="2" id="step2">
+        <button type="button" class="step-pill-header" id="step2Btn">
+          <div class="step-pill-label">
+            <span class="step-number">02</span>
+            <div class="step-text-block">
+              <div class="step-title">Plan Your Vibe</div>
+              <div class="step-subtitle">Tell us the mood. We’ll build the flow.</div>
+            </div>
+          </div>
+          <div class="step-pill-status">
+            <span class="check" aria-hidden="true">✓</span>
+            <span class="caret" aria-hidden="true">⌄</span>
+          </div>
+        </button>
+
+        <div class="step-pill-body">
+          <div class="card">
+            <div class="stack gap-16">
+              <div class="brief" id="briefBox">
+                <div class="brief-top">
+                  <div class="brief-title">Concerto Concierge Briefing</div>
+                  <span class="chip" id="briefChip"><strong>Awaiting</strong> show</span>
+                </div>
+                <div class="brief-text" id="briefText">
+                  Select an event in Step 1 — then we’ll tailor the day around your venue, doors, and start time.
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Before the show</label>
+                <div class="tiny">Pick 1–3 things you want before doors.</div>
+                <div id="preVibePills" class="pill-row">
+                  <button type="button" class="pill" data-vibe="coffee">Coffee</button>
+                  <button type="button" class="pill" data-vibe="lunch">Lunch</button>
+                  <button type="button" class="pill" data-vibe="dinner">Dinner</button>
+                  <button type="button" class="pill" data-vibe="shopping">Shopping</button>
+                  <button type="button" class="pill" data-vibe="sightseeing">Sightseeing</button>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>After the show</label>
+                <div class="tiny">Choose what the post-encore should feel like.</div>
+                <div id="postVibePills" class="pill-row">
+                  <button type="button" class="pill" data-vibe="dessert">Dessert</button>
+                  <button type="button" class="pill" data-vibe="drinks">Drinks</button>
+                  <button type="button" class="pill" data-vibe="nightlife">Nightlife</button>
+                  <button type="button" class="pill" data-vibe="latenight">Late-night eats</button>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>How packed should the day feel?</label>
+                <div id="paceControl" class="seg-row">
+                  <button type="button" class="seg-pill" data-pace="chill">Chill</button>
+                  <button type="button" class="seg-pill active" data-pace="balanced">Balanced</button>
+                  <button type="button" class="seg-pill" data-pace="packed">Packed</button>
+                </div>
+              </div>
+
+              <div class="search-actions">
+                <button type="button" id="generatePlanBtn" class="btn btn-primary" disabled>
+                  Build my Concerto plan
+                </button>
+                <div id="planStatus" class="status">Pick a vibe (or two) — then build.</div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step-pill locked" data-step="3" id="step3">
+        <button type="button" class="step-pill-header" id="step3Btn">
+          <div class="step-pill-label">
+            <span class="step-number">03</span>
+            <div class="step-text-block">
+              <div class="step-title">Your Concerto Plan</div>
+              <div class="step-subtitle">A time-locked itinerary + nearby picks.</div>
+            </div>
+          </div>
+          <div class="step-pill-status">
+            <span class="check" aria-hidden="true">✓</span>
+            <span class="caret" aria-hidden="true">⌄</span>
+          </div>
+        </button>
+
+        <div class="step-pill-body">
+          <div class="card">
+            <div class="plan-header">
+              <div>
+                <h2 class="section-title">Concerto Concierge Plan</h2>
+                <p class="section-help" id="planSub">
+                  Built around your showtime — tuned for pace, doors, and the post-show move.
+                </p>
+              </div>
+              <div class="plan-actions">
+                <button type="button" id="editChoicesBtn" class="btn btn-ghost">Edit choices</button>
+                <button type="button" id="sharePlanBtn" class="btn btn-secondary">Share plan</button>
+              </div>
+            </div>
+
+            <div id="timeline" class="timeline" aria-live="polite"></div>
+
+            <div class="rails-wrapper">
+              <h3 class="subsection-title">Nearby picks</h3>
+              <div id="placeRails" class="rails"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="page-footer">
+      From the Concert to the City · Powered by Concerto+
+    </footer>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-backdrop" id="modalClose" aria-hidden="true"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-title" id="modalTitle">How Concerto+ Works</div>
+      <ul class="bullets">
+        <li>Search and select your exact event.</li>
+        <li>Pick “before” and “after” vibes + your pace.</li>
+        <li>Concerto+ builds a timed itinerary around doors and start.</li>
+        <li>Tap any stop to open directions in Maps.</li>
+      </ul>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modalOk" type="button">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***************************************************************
+     *  Concerto+ Concierge Planner (Single-file)
+     *  - MOCK mode makes this feel real immediately.
+     *  - Later you can swap in Ticketmaster/Places fetches here.
+     ***************************************************************/
+    const CONFIG = {
+      MOCK: true,                     // Set false when wiring real APIs
+      DEFAULT_DOORS_OFFSET_MIN: 90,    // If doors time unknown, estimate doors = start - 90
+      SHOW_DURATION_MIN: 135,          // Used to estimate end time
+      POST_BUFFER_MIN: 20,             // Buffer after show before first post stop
+      PRE_TRAVEL_BUFFER_MIN: 25,       // Buffer to arrive before show start
+    };
+
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+    // State
+    const state = {
+      event: null,         // { title, venue, city, dateISO, startTimeISO, doorsTimeISO? }
+      preVibes: new Set(),
+      postVibes: new Set(),
+      pace: "balanced"
+    };
+
+    // Elements
+    const eventStatus = $("#eventStatus");
+    const eventResults = $("#eventResults");
+    const searchBtn = $("#searchEventsBtn");
+    const keywordInput = $("#eventKeyword");
+    const cityInput = $("#eventCity");
+
+    const generateBtn = $("#generatePlanBtn");
+    const planStatus = $("#planStatus");
+    const timelineEl = $("#timeline");
+    const placeRailsEl = $("#placeRails");
+
+    const cbTitle = $("#cbTitle");
+    const cbSub = $("#cbSub");
+    const cbMeta = $("#cbMeta");
+
+    const briefChip = $("#briefChip");
+    const briefText = $("#briefText");
+
+    // Steps
+    const step1 = $("#step1");
+    const step2 = $("#step2");
+    const step3 = $("#step3");
+
+    const step1Btn = $("#step1Btn");
+    const step2Btn = $("#step2Btn");
+    const step3Btn = $("#step3Btn");
+
+    // Modal
+    const modal = $("#modal");
+    const openHelp = $("#openHelp");
+    const modalClose = $("#modalClose");
+    const modalOk = $("#modalOk");
+
+    // Actions
+    const editChoicesBtn = $("#editChoicesBtn");
+    const sharePlanBtn = $("#sharePlanBtn");
+    const resetAllBtn = $("#resetAll");
+
+    // Utils
+    const pad2 = n => String(n).padStart(2, "0");
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    function toast(title, message, ms=2200){
+      const el = document.createElement("div");
+      el.className = "toast";
+      el.innerHTML = `<div><div class="tstrong">${escapeHtml(title)}</div><div class="tmsg">${escapeHtml(message)}</div></div>`;
+      document.body.appendChild(el);
+      setTimeout(()=> el.remove(), ms);
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function fmtDateTime(iso){
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "";
+      return d.toLocaleString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    function fmtTime(iso){
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "";
+      return d.toLocaleString(undefined, { hour:"numeric", minute:"2-digit" });
+    }
+
+    function addMinutes(iso, min){
+      const d = new Date(iso);
+      d.setMinutes(d.getMinutes() + min);
+      return d.toISOString();
+    }
+
+    function setStepOpen(stepEl){
+      [step1, step2, step3].forEach(s => s.classList.remove("open"));
+      stepEl.classList.add("open");
+    }
+
+    function markCompleted(stepEl, completed=true){
+      stepEl.classList.toggle("completed", completed);
+    }
+
+    function setLocked(stepEl, locked=true){
+      stepEl.classList.toggle("locked", locked);
+    }
+
+    function canGenerate(){
+      return !!state.event && (state.preVibes.size + state.postVibes.size) >= 1;
+    }
+
+    function updateGenerateEnabled(){
+      generateBtn.disabled = !canGenerate();
+      planStatus.textContent = canGenerate()
+        ? "Ready. Build the itinerary."
+        : "Pick at least one vibe to build your plan.";
+    }
+
+    function updateConciergeBar(){
+      if(!state.event){
+        cbTitle.textContent = "Choose a show to start your concierge plan";
+        cbSub.textContent = "Step 1 is open — search and select your event.";
+        cbMeta.innerHTML = `<span class="chip"><strong>Concierge</strong> Mode</span>`;
+        return;
+      }
+
+      const e = state.event;
+      const start = e.startTimeISO ? fmtTime(e.startTimeISO) : "TBD";
+      const doors = e.doorsTimeISO ? fmtTime(e.doorsTimeISO) : "Estimated";
+      cbTitle.textContent = `${e.title}`;
+      cbSub.textContent = `${e.venue} · ${e.city} · ${fmtDateTime(e.startTimeISO || e.dateISO)}`;
+      cbMeta.innerHTML = `
+        <span class="chip"><strong>Doors</strong> ${doors}</span>
+        <span class="chip"><strong>Start</strong> ${start}</span>
+        <span class="chip"><strong>Pace</strong> ${state.pace}</span>
+      `;
+    }
+
+    function updateBriefing(){
+      if(!state.event){
+        briefChip.innerHTML = `<strong>Awaiting</strong> show`;
+        briefText.textContent = "Select an event in Step 1 — then we’ll tailor the day around your venue, doors, and start time.";
+        return;
+      }
+
+      const e = state.event;
+      const pre = [...state.preVibes].join(", ") || "a light warm-up";
+      const post = [...state.postVibes].join(", ") || "a clean exit";
+      const paceCopy = state.pace === "chill" ? "low-friction and unhurried"
+                    : state.pace === "packed" ? "high-energy with minimal downtime"
+                    : "balanced with smart buffers";
+
+      briefChip.innerHTML = `<strong>Locked</strong> on`;
+      briefText.textContent =
+        `We’re building a ${paceCopy} plan around ${e.venue}. Before doors: ${pre}. After the encore: ${post}. We’ll time arrivals to keep you ahead of lines and traffic.`;
+    }
+
+    function togglePill(btn, set){
+      const key = btn.dataset.vibe;
+      if(set.has(key)){ set.delete(key); btn.classList.remove("active"); }
+      else{ set.add(key); btn.classList.add("active"); }
+      updateGenerateEnabled();
+      updateBriefing();
+      updateConciergeBar();
+    }
+
+    // Step header clicks (only if unlocked)
+    step1Btn.addEventListener("click", ()=> setStepOpen(step1));
+    step2Btn.addEventListener("click", ()=> { if(!step2.classList.contains("locked")) setStepOpen(step2); });
+    step3Btn.addEventListener("click", ()=> { if(!step3.classList.contains("locked")) setStepOpen(step3); });
+
+    // Modal
+    openHelp.addEventListener("click", ()=> { modal.hidden = false; });
+    modalClose.addEventListener("click", ()=> { modal.hidden = true; });
+    modalOk.addEventListener("click", ()=> { modal.hidden = true; });
+
+    // Pace control
+    $$("#paceControl .seg-pill").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        $$("#paceControl .seg-pill").forEach(b=> b.classList.remove("active"));
+        btn.classList.add("active");
+        state.pace = btn.dataset.pace;
+        updateBriefing();
+        updateConciergeBar();
+      });
+    });
+
+    // Vibe pills
+    $$("#preVibePills .pill").forEach(btn=> btn.addEventListener("click", ()=> togglePill(btn, state.preVibes)));
+    $$("#postVibePills .pill").forEach(btn=> btn.addEventListener("click", ()=> togglePill(btn, state.postVibes)));
+
+    // Reset
+    resetAllBtn.addEventListener("click", ()=>{
+      state.event = null;
+      state.preVibes.clear();
+      state.postVibes.clear();
+      state.pace = "balanced";
+
+      // reset UI
+      keywordInput.value = "";
+      cityInput.value = "";
+      eventResults.innerHTML = "";
+      eventStatus.textContent = "Tip: Start broad, then narrow with city.";
+      timelineEl.innerHTML = "";
+      placeRailsEl.innerHTML = "";
+
+      $$("#preVibePills .pill, #postVibePills .pill").forEach(p=> p.classList.remove("active"));
+      $$("#paceControl .seg-pill").forEach(p=> p.classList.remove("active"));
+      $(`#paceControl .seg-pill[data-pace="balanced"]`).classList.add("active");
+
+      setLocked(step2, true);
+      setLocked(step3, true);
+      markCompleted(step1, false);
+      markCompleted(step2, false);
+      markCompleted(step3, false);
+
+      setStepOpen(step1);
+      updateGenerateEnabled();
+      updateConciergeBar();
+      updateBriefing();
+      toast("Reset", "Planner cleared and ready.");
+    });
+
+    /********************
+     * Event Search (MOCK)
+     ********************/
+    function mockSearchEvents(keyword, city){
+      const now = new Date();
+      const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 14, 19, 30, 0); // 2 weeks out ~7:30pm
+      const mk = (title, venue, city, deltaDays, hour=19, min=30) => {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + deltaDays);
+        d.setHours(hour, min, 0, 0);
+        const startISO = d.toISOString();
+        return {
+          id: crypto?.randomUUID?.() || String(Math.random()).slice(2),
+          title,
+          venue,
+          city,
+          startTimeISO: startISO,
+          doorsTimeISO: addMinutes(startISO, -90),
+          dateISO: startISO
+        };
+      };
+
+      const pool = [
+        mk("Billie Eilish · HIT ME HARD AND SOFT", "Kia Forum", "Inglewood, CA", 0, 19, 30),
+        mk("Lakers vs. Warriors", "Crypto.com Arena", "Los Angeles, CA", 2, 19, 0),
+        mk("J. Cole · The Fall-Off Tour", "Spectrum Center", "Charlotte, NC", 4, 20, 0),
+        mk("Sabrina Carpenter", "Madison Square Garden", "New York, NY", 6, 19, 30),
+        mk("Olivia Rodrigo", "United Center", "Chicago, IL", 8, 19, 30),
+      ];
+
+      const kw = (keyword||"").toLowerCase().trim();
+      const ct = (city||"").toLowerCase().trim();
+
+      return pool.filter(e=>{
+        const hitKw = !kw || (e.title.toLowerCase().includes(kw) || e.venue.toLowerCase().includes(kw));
+        const hitCity = !ct || e.city.toLowerCase().includes(ct);
+        return hitKw && hitCity;
+      });
+    }
+
+    function renderEventResults(events){
+      if(!events.length){
+        eventResults.innerHTML = "";
+        eventStatus.textContent = "No matches. Try a broader keyword or remove city.";
+        return;
+      }
+
+      eventStatus.textContent = `Showing ${events.length} result${events.length===1?"":"s"} — select one to continue.`;
+      eventResults.innerHTML = events.map(e=>`
+        <div class="event-card">
+          <div class="event-left">
+            <div class="event-title">${escapeHtml(e.title)}</div>
+            <div class="event-sub">${escapeHtml(e.venue)} · ${escapeHtml(e.city)} · ${escapeHtml(fmtDateTime(e.startTimeISO || e.dateISO))}</div>
+          </div>
+          <div class="event-cta">
+            <button type="button" class="btn btn-primary" data-select="${escapeHtml(e.id)}">Select</button>
+          </div>
+        </div>
+      `).join("");
+
+      // Bind selects
+      $$(`[data-select]`, eventResults).forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const id = btn.getAttribute("data-select");
+          const selected = events.find(x => x.id === id);
+          if(!selected) return;
+          selectEvent(selected);
+        });
+      });
+    }
+
+    function selectEvent(e){
+      state.event = e;
+
+      // Unlock next step + move
+      setLocked(step2, false);
+      setStepOpen(step2);
+      markCompleted(step1, true);
+
+      updateConciergeBar();
+      updateBriefing();
+      updateGenerateEnabled();
+
+      toast("Event selected", `${e.venue} · ${fmtTime(e.startTimeISO)}`);
+    }
+
+    searchBtn.addEventListener("click", async ()=>{
+      const keyword = keywordInput.value.trim();
+      const city = cityInput.value.trim();
+
+      if(!keyword){
+        eventStatus.textContent = "Enter an artist, team, tour, or venue to search.";
+        keywordInput.focus();
+        return;
+      }
+
+      eventStatus.textContent = "Searching…";
+      eventResults.innerHTML = `<div class="shimmer"></div><div class="shimmer"></div>`;
+
+      try{
+        // MOCK path
+        if(CONFIG.MOCK){
+          await new Promise(r=> setTimeout(r, 550));
+          const events = mockSearchEvents(keyword, city);
+          renderEventResults(events);
+          return;
+        }
+
+        // REAL path placeholder:
+        // - You can implement Ticketmaster fetch here using their discovery API,
+        //   then normalize to {id,title,venue,city,startTimeISO,doorsTimeISO?,dateISO}
+        // throw new Error("Real API not wired yet.");
+      }catch(err){
+        eventResults.innerHTML = "";
+        eventStatus.textContent = "Search failed. Try again.";
+      }
+    });
+
+    /********************
+     * Plan Generation
+     ********************/
+    function vibeToStops(){
+      // In a real build, these categories map to Places types/keywords.
+      const pre = [...state.preVibes];
+      const post = [...state.postVibes];
+
+      // pace affects number of stops
+      const maxPre = state.pace === "chill" ? 1 : state.pace === "packed" ? 3 : 2;
+      const maxPost = state.pace === "chill" ? 1 : state.pace === "packed" ? 2 : 1;
+
+      return {
+        pre: pre.slice(0, maxPre),
+        post: post.slice(0, maxPost)
+      };
+    }
+
+    function buildTimeline(){
+      const e = state.event;
+      if(!e?.startTimeISO) return [];
+
+      // derive doors if missing
+      const doorsISO = e.doorsTimeISO || addMinutes(e.startTimeISO, -CONFIG.DEFAULT_DOORS_OFFSET_MIN);
+      const arriveISO = addMinutes(e.startTimeISO, -CONFIG.PRE_TRAVEL_BUFFER_MIN);
+      const endISO = addMinutes(e.startTimeISO, CONFIG.SHOW_DURATION_MIN);
+      const postStartISO = addMinutes(endISO, CONFIG.POST_BUFFER_MIN);
+
+      const { pre, post } = vibeToStops();
+
+      // cadence depends on pace
+      const preSpacing = state.pace === "packed" ? 55 : state.pace === "chill" ? 90 : 70;
+      const postSpacing = state.pace === "packed" ? 60 : 75;
+
+      // anchor: first pre stop ends before doors-ish
+      // We schedule backwards from doors for pre-stops (premium feel).
+      let cursor = addMinutes(doorsISO, -(pre.length * preSpacing));
+      const items = [];
+
+      const vibeLabel = (v) => ({
+        coffee: "Coffee",
+        lunch: "Lunch",
+        dinner: "Dinner",
+        shopping: "Shopping",
+        sightseeing: "Sightseeing",
+        dessert: "Dessert",
+        drinks: "Drinks",
+        nightlife: "Nightlife",
+        latenight: "Late-night eats"
+      }[v] || "Stop");
+
+      const makeStop = (whenISO, title, subtitle, kind) => ({
+        whenISO,
+        title,
+        subtitle,
+        kind
+      });
+
+      // Pre stops
+      pre.forEach((v, idx)=>{
+        const label = vibeLabel(v);
+        items.push(makeStop(
+          cursor,
+          `${label} stop`,
+          `Curated near ${e.venue} · tuned for ${state.pace} pace`,
+          "pre"
+        ));
+        cursor = addMinutes(cursor, preSpacing);
+      });
+
+      // Doors / Arrive / Show
+      items.push(makeStop(doorsISO, "Doors window", `Aim to be nearby. We’ll keep buffers for lines.`, "milestone"));
+      items.push(makeStop(arriveISO, "Arrive at venue", `${e.venue} · arrive early, move smooth.`, "milestone"));
+      items.push(makeStop(e.startTimeISO, "Show starts", e.title, "show"));
+      items.push(makeStop(endISO, "Encore ends (est.)", "Plan begins moving again.", "milestone"));
+
+      // Post stops
+      let postCursor = postStartISO;
+      post.forEach(v=>{
+        const label = vibeLabel(v);
+        items.push(makeStop(
+          postCursor,
+          `${label} after`,
+          `Best options within a short ride from ${e.venue}`,
+          "post"
+        ));
+        postCursor = addMinutes(postCursor, postSpacing);
+      });
+
+      return items;
+    }
+
+    function renderTimeline(items){
+      timelineEl.innerHTML = items.map((it, i)=>{
+        const metaTag = it.kind === "show" ? "Show" : it.kind === "milestone" ? "Timing" : it.kind === "pre" ? "Before" : "After";
+        const primary = it.kind === "show";
+
+        return `
+          <div class="titem">
+            <div class="ttime">${escapeHtml(fmtTime(it.whenISO))}</div>
+            <div class="tcard">
+              <div class="tmain">
+                <div class="ttitle">${escapeHtml(it.title)}</div>
+                <div class="tsub">${escapeHtml(it.subtitle)}</div>
+              </div>
+              <div class="tmeta">
+                <span class="chip" style="padding:7px 10px;"><strong>${escapeHtml(metaTag)}</strong></span>
+                <button type="button" class="tbtn ${primary ? "primary" : ""}" data-maps="${escapeHtml(it.title)}">Maps</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      $$(`[data-maps]`, timelineEl).forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          // For milestones we don't have coordinates; open a venue search.
+          const q = encodeURIComponent(`${btn.getAttribute("data-maps")} near ${state.event?.venue || ""} ${state.event?.city || ""}`.trim());
+          window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
+        });
+      });
+    }
+
+    function mockNearbyPicks(){
+      const e = state.event;
+      const picks = [
+        { name: "Top Coffee", tag: "Coffee", desc: `Fast, walkable, and perfect for pre-doors timing.`, q: `coffee near ${e.venue} ${e.city}` },
+        { name: "Best Dinner", tag: "Dinner", desc: `Concierge pick: elevated + close to the venue.`, q: `dinner near ${e.venue} ${e.city}` },
+        { name: "Post-Show Drinks", tag: "Drinks", desc: `Late-friendly spot with quick service after encore.`, q: `cocktails near ${e.venue} ${e.city}` },
+        { name: "Late-night Eats", tag: "Late", desc: `Open late with low wait times.`, q: `late night food near ${e.venue} ${e.city}` },
+      ];
+
+      return picks;
+    }
+
+    function renderRails(picks){
+      placeRailsEl.innerHTML = picks.map(p=>`
+        <div class="place-card">
+          <div class="place-top">
+            <h4 class="place-name">${escapeHtml(p.name)}</h4>
+            <div class="place-tag">${escapeHtml(p.tag)}</div>
+          </div>
+          <div class="place-sub">${escapeHtml(p.desc)}</div>
+          <div class="place-actions">
+            <button class="tbtn primary" type="button" data-open="${escapeHtml(p.q)}">Open in Maps</button>
+            <button class="tbtn" type="button" data-copy="${escapeHtml(p.q)}">Copy search</button>
+          </div>
+        </div>
+      `).join("");
+
+      $$(`[data-open]`, placeRailsEl).forEach(b=>{
+        b.addEventListener("click", ()=>{
+          const q = encodeURIComponent(b.getAttribute("data-open"));
+          window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
+        });
+      });
+
+      $$(`[data-copy]`, placeRailsEl).forEach(b=>{
+        b.addEventListener("click", async ()=>{
+          const text = b.getAttribute("data-copy");
+          try{
+            await navigator.clipboard.writeText(text);
+            toast("Copied", "Search copied to clipboard.");
+          }catch{
+            toast("Copy failed", "Your browser blocked clipboard access.");
+          }
+        });
+      });
+    }
+
+    async function generatePlan(){
+      if(!canGenerate()) return;
+
+      // lock step 3 open state with premium “build” feel
+      setLocked(step3, false);
+      setStepOpen(step3);
+
+      // loading UI
+      timelineEl.innerHTML = `<div class="shimmer"></div><div class="shimmer"></div><div class="shimmer"></div>`;
+      placeRailsEl.innerHTML = `<div class="place-card"><div class="shimmer" style="height:120px;"></div></div>`;
+
+      planStatus.textContent = "Building your concierge plan…";
+      toast("Concierge building", "Timing the day around doors + start.");
+
+      await new Promise(r=> setTimeout(r, 650));
+
+      const items = buildTimeline();
+      renderTimeline(items);
+
+      await new Promise(r=> setTimeout(r, 200));
+      renderRails(mockNearbyPicks());
+
+      markCompleted(step2, true);
+      markCompleted(step3, true);
+
+      updateConciergeBar();
+
+      toast("Plan ready", "Timeline + nearby picks loaded.");
+    }
+
+    generateBtn.addEventListener("click", generatePlan);
+
+    editChoicesBtn.addEventListener("click", ()=>{
+      setStepOpen(step2);
+      toast("Edit", "Adjust vibes and rebuild anytime.");
+    });
+
+    sharePlanBtn.addEventListener("click", async ()=>{
+      // Share a compact itinerary text (premium feature feel).
+      if(!state.event){ toast("Nothing to share", "Select an event first."); return; }
+
+      const items = buildTimeline();
+      const header = `Concerto+ Plan — ${state.event.title}\n${state.event.venue} · ${state.event.city}\n${fmtDateTime(state.event.startTimeISO)}\n`;
+      const lines = items.map(it => `${fmtTime(it.whenISO)} — ${it.title}`).join("\n");
+      const text = `${header}\n${lines}\n\nBuilt by Concerto+`;
+
+      try{
+        if(navigator.share){
+          await navigator.share({ title: "Concerto+ Plan", text });
+          toast("Shared", "Sent via share sheet.");
+        }else{
+          await navigator.clipboard.writeText(text);
+          toast("Copied", "Plan copied to clipboard.");
+        }
+      }catch{
+        toast("Share canceled", "No worries — your plan is saved here.");
+      }
+    });
+
+    // Enable step 2 when event selected; enable step 3 when plan built.
+    function primeAfterSelection(){
+      setLocked(step2, false);
+      setLocked(step3, true);
+      markCompleted(step1, true);
+      markCompleted(step2, false);
+      markCompleted(step3, false);
+      setStepOpen(step2);
+    }
+
+    // Triggered by event selection
+    function onEventSelected(){
+      primeAfterSelection();
+      updateBriefing();
+      updateGenerateEnabled();
+      updateConciergeBar();
+    }
+
+    // Override selectEvent to hook
+    const _selectEvent = selectEvent;
+    selectEvent = function(e){
+      state.event = e;
+      onEventSelected();
+      toast("Event selected", `${e.venue} · ${fmtTime(e.startTimeISO)}`);
+    };
+
+    // Initial paint
+    updateGenerateEnabled();
+    updateConciergeBar();
+    updateBriefing();
+
+    // Small UX: Enter triggers search
+    keywordInput.addEventListener("keydown", (ev)=>{
+      if(ev.key === "Enter"){ ev.preventDefault(); searchBtn.click(); }
+    });
+    cityInput.addEventListener("keydown", (ev)=>{
+      if(ev.key === "Enter"){ ev.preventDefault(); searchBtn.click(); }
+    });
+  </script>
 </body>
 </html>

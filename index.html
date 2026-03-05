@@ -186,6 +186,14 @@ a{color:inherit;text-decoration:none}
 .plan-acts{display:flex;gap:1px;margin:26px 24px 0;border:1px solid var(–rule);overflow:hidden}
 .plan-act{flex:1;padding:15px 10px;font-size:10px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(–ink60);text-align:center;background:var(–white);transition:all .18s}
 .plan-act:active{background:var(–ink);color:var(–paper)}
+
+.plan-err{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:80px 32px;text-align:center}
+.plan-err.gone{display:none}
+.plan-err-msg{font-family:var(–serif);font-size:19px;font-weight:300;font-style:italic;color:var(–ink);line-height:1.4}
+.plan-err-retry{font-size:10px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:var(–ink60);padding:10px 0;border-bottom:1px solid var(–rule)}
+
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.tile.nudge{animation:nudge .3s ease-in-out}
 </style>
 
 </head>
@@ -305,6 +313,11 @@ a{color:inherit;text-decoration:none}
       <div class="load-sub">Finding the best spots near the venue.</div>
     </div>
 
+    <div class="plan-err gone" id="planErr">
+      <p class="plan-err-msg" id="planErrMsg"></p>
+      <button class="plan-err-retry" id="retryBtn">← Try again</button>
+    </div>
+
     <div class="plan-out" id="planOut">
       <div class="plan-hero">
         <p class="plan-eye">Your Night Out</p>
@@ -418,6 +431,8 @@ $('arrG').addEventListener('click',e=>{const b=e.target.closest('.tri-it');if(!b
 
 function geocode(addr){return new Promise(r=>{if(!window.google?.maps)return r(null);new google.maps.Geocoder().geocode({address:addr},(res,st)=>{if(st==='OK'&&res[0]){const l=res[0].geometry.location;r({lat:l.lat(),lng:l.lng()})}else r(null)})})}
 
+function showErr(msg){$('planErrMsg').textContent=msg;$('planErr').classList.remove('gone')}
+$('retryBtn').addEventListener('click',()=>{$('planErr').classList.add('gone');goTo(1)});
 function initP(){if(psvc||!window.google?.maps?.places)return;psvc=new google.maps.places.PlacesService(document.createElement('div'))}
 function nearby({loc,type,kw,max=8}){return new Promise(r=>{initP();if(!psvc||!loc)return r([]);try{psvc.nearbySearch({location:new google.maps.LatLng(loc.lat,loc.lng),rankBy:google.maps.places.RankBy.DISTANCE,type,keyword:kw},(results,status)=>{if(status===google.maps.places.PlacesServiceStatus.OK&&Array.isArray(results)){r(results.slice(0,max).map(p=>({name:p.name||'',placeId:p.place_id,lat:p.geometry?.location?.lat()??null,lng:p.geometry?.location?.lng()??null,rating:typeof p.rating==='number'?p.rating:null,price:typeof p.price_level==='number'?p.price_level:null,address:p.vicinity||'',photos:p.photos||[]})))}else r([])})}catch{r([])}})}
 
@@ -450,26 +465,35 @@ RULES:
 
 RESPOND ONLY with:
 {"timeline":[{"time":"5:30 PM","label":"Dinner at Rossoblu","note":"The tajarin with rabbit ragù is the reason people come.","placeName":"Rossoblu","vibe":"dinner","isShow":false}],"picks":{"dinner":[{"name":"Rossoblu","why":"Scott Conant's best work — the handmade pasta alone justifies the reservation."}]}}`;
-  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1800,system:sys,messages:[{role:'user',content:msg}]})});
+  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5-20251001',max_tokens:1800,system:sys,messages:[{role:'user',content:msg}]})});
   const data=await res.json();
   return JSON.parse((data?.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
 }
 
 $('buildBtn').addEventListener('click',async()=>{
-  if(!ev){alert('Please select a show first.');goTo(0);return}
-  if(!vibes.length){alert('Choose at least one vibe.');return}
+  if(!ev){goTo(0);return}
+  if(!vibes.length){
+    document.querySelectorAll('.tile').forEach(t=>t.classList.add('nudge'));
+    setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('nudge')),600);
+    return;
+  }
   let loc=null;
   if(typeof ev.lat==='number'&&typeof ev.lng==='number')loc={lat:ev.lat,lng:ev.lng};
   else loc=await geocode(ev.addr||`${ev.venue} ${ev.city}`);
-  if(!loc){alert(`Couldn't locate ${ev.venue}. Try a different event.`);return}
+  if(!loc){
+    $('loadSt').classList.add('gone');
+    showErr(`Couldn't locate ${ev.venue}. Try a different event.`);
+    return;
+  }
   const hotel=($('hotelInp').value||'').trim();
-  goTo(2);$('loadSt').classList.remove('gone');$('planOut').classList.remove('show');
+  goTo(2);$('loadSt').classList.remove('gone');$('planOut').classList.remove('show');$('planErr').classList.add('gone');
   try{
     const byVibe={};
     await Promise.all(vibes.map(async v=>{const c=VC[v];if(!c)return;byVibe[v]=await nearby({loc,type:c.type,kw:c.kw,max:8})}));
     const plan=await callClaude({ev,vibes,pace,arrival,hotel,byVibe,loc});
     render(plan,byVibe,loc);
-  }catch(e){console.error(e);$('loadSt').classList.add('gone');alert('Something went wrong. Please try again.');goTo(1)}
+  }catch(e){console.error(e);$('loadSt').classList.add('gone');showErr('Something went wrong building your plan. Tap to try again.');
+  }
 });
 
 function render(plan,byVibe,loc){

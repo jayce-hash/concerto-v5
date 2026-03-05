@@ -1,603 +1,229 @@
-<!DOCTYPE html>
-
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<meta name="theme-color" content="#F8F7F4"/>
-<title>Concerto+</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"/>
-<style>
-:root {
-  --paper:  #F8F7F4;
-  --ink:    #121E36;
-  --ink60:  rgba(18,30,54,.6);
-  --ink30:  rgba(18,30,54,.3);
-  --ink10:  rgba(18,30,54,.08);
-  --rule:   rgba(18,30,54,.1);
-  --silver: #C0C0C0;
-  --white:  #ffffff;
-  --serif:  'Cormorant Garamond', 'Times New Roman', serif;
-  --sans:   'DM Sans', system-ui, sans-serif;
-  --spring: cubic-bezier(.16,1,.3,1);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--paper);-webkit-tap-highlight-color:transparent}
-body{font-family:var(--sans);font-size:15px;color:var(--ink);-webkit-font-smoothing:antialiased;overflow:hidden;position:fixed;width:100%}
-button{cursor:pointer;background:none;border:none;color:inherit;font-family:var(--sans);padding:0}
-input{font-family:var(--sans)}
-a{color:inherit;text-decoration:none}
-
-/* APP */
-.app{position:fixed;inset:0;display:flex;flex-direction:column;background:var(–paper)}
-
-/* HEADER */
-.hd{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0}
-.hd-logo-name{font-family:var(–serif);font-size:15px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;display:block;line-height:1}
-.hd-logo-tier{font-size:8px;font-weight:400;letter-spacing:.32em;text-transform:uppercase;color:var(–silver);margin-top:2px;display:block}
-.hd-back{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;letter-spacing:.06em;color:var(–ink60);opacity:0;pointer-events:none;transition:opacity .25s}
-.hd-back.on{opacity:1;pointer-events:all}
-.hd-back svg{width:12px;height:12px;stroke:currentColor;stroke-width:1.5;fill:none}
-
-/* TRACK */
-.track{flex-shrink:0;display:flex;align-items:center;padding:16px 24px 0;gap:0}
-.track-seg{flex:1;height:1px;background:var(–rule);position:relative;overflow:hidden}
-.track-seg::after{content:’’;position:absolute;inset:0;background:var(–ink);transform:scaleX(0);transform-origin:left;transition:transform .5s var(–spring)}
-.track-seg.filled::after{transform:scaleX(1)}
-.track-seg.active::after{transform:scaleX(.45)}
-.track-num{font-size:9px;font-weight:500;letter-spacing:.12em;color:var(–ink30);padding:0 8px;flex-shrink:0;transition:color .3s}
-.track-num.lit{color:var(–ink)}
-
-/* SCREENS */
-.screens{flex:1;position:relative;overflow:hidden}
-.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;opacity:0;pointer-events:none;transform:translateX(28px);transition:opacity .4s var(–spring),transform .4s var(–spring)}
-.screen.active{opacity:1;pointer-events:all;transform:none}
-.screen.exit{opacity:0;transform:translateX(-20px);pointer-events:none}
-
-/* SHARED */
-.lbl{font-size:9px;font-weight:500;letter-spacing:.3em;text-transform:uppercase;color:var(–silver);display:block;margin-bottom:12px}
-.cta{display:block;width:100%;background:var(–ink);color:var(–paper);padding:18px 24px;font-size:10px;font-weight:500;letter-spacing:.3em;text-transform:uppercase;text-align:center;transition:opacity .15s;border:none;cursor:pointer}
-.cta:active{opacity:.8}
-.cta:disabled{opacity:.28;cursor:default}
-
-/* ── S1 ── */
-.s1-in{padding:32px 24px 0}
-.s1-eye{font-size:9px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:var(–silver);margin-bottom:14px}
-.s1-hed{font-family:var(–serif);font-size:clamp(44px,12vw,58px);font-weight:300;line-height:.93;letter-spacing:-.01em;margin-bottom:18px}
-.s1-hed em{font-style:italic}
-.s1-deck{font-size:14px;font-weight:300;color:var(–ink60);line-height:1.55;margin-bottom:32px}
-
-.sf{border-bottom:1.5px solid var(–ink);display:flex;align-items:center;gap:10px;padding-bottom:12px}
-.sf-ico{color:var(–ink30);flex-shrink:0}
-.sf-inp{flex:1;background:transparent;border:none;outline:none;font-size:18px;font-weight:300;color:var(–ink);min-width:0}
-.sf-inp::placeholder{color:var(–ink30)}
-
-.cr{border-bottom:1px solid var(–rule);display:flex;align-items:center;gap:10px;padding:11px 0 10px;margin-bottom:24px}
-.cr-pre{font-size:9px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:var(–ink30);flex-shrink:0}
-.cr-inp{flex:1;background:transparent;border:none;outline:none;font-size:13px;font-weight:300;color:var(–ink);min-width:0}
-.cr-inp::placeholder{color:var(–ink30)}
-
-.s-note{font-size:12px;font-weight:300;color:var(–ink60);text-align:center;padding:12px 0 8px;min-height:38px}
-
-.ev-list{padding-bottom:48px}
-.ev-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px 0;border-bottom:1px solid var(–rule);animation:up .36s var(–spring) both}
-@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.ev-row:nth-child(1){animation-delay:.04s}
-.ev-row:nth-child(2){animation-delay:.08s}
-.ev-row:nth-child(3){animation-delay:.12s}
-.ev-row:nth-child(4){animation-delay:.16s}
-.ev-row:nth-child(n+5){animation-delay:.20s}
-.ev-info{flex:1;min-width:0}
-.ev-artist{font-family:var(–serif);font-size:22px;font-weight:400;line-height:1.15;margin-bottom:3px}
-.ev-where{font-size:12px;font-weight:300;color:var(–ink60);line-height:1.4}
-.ev-when{font-size:11px;font-weight:500;color:var(–ink);margin-top:5px;letter-spacing:.04em}
-.ev-sel{flex-shrink:0;align-self:center;border:1px solid var(–rule);padding:9px 16px;font-size:10px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(–ink60);white-space:nowrap;transition:all .18s}
-.ev-row.picked .ev-sel,.ev-sel:active{background:var(–ink);color:var(–paper);border-color:var(–ink)}
-
-/* ── S2 ── */
-.s2-in{padding:26px 0 80px}
-.show-strip{margin:0 24px 30px;display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(–rule);background:var(–white)}
-.ss-dot{width:6px;height:6px;border-radius:50%;background:var(–ink);flex-shrink:0}
-.ss-txt{font-size:13px;font-weight:300;color:var(–ink);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-.vs{padding:0 24px;margin-bottom:30px}
-
-.tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(–rule);border:1px solid var(–rule);overflow:hidden}
-.tile{background:var(–white);padding:17px 15px 15px;display:flex;flex-direction:column;position:relative;min-height:76px;cursor:pointer;transition:background .15s;-webkit-tap-highlight-color:transparent}
-.tile.on{background:var(–ink)}
-.tile-name{font-size:16px;font-weight:400;color:var(–ink);line-height:1.2;margin-bottom:2px;transition:color .15s}
-.tile.on .tile-name{color:var(–paper)}
-.tile-sub{font-size:11px;font-weight:300;color:var(–ink60);transition:color .15s}
-.tile.on .tile-sub{color:rgba(248,247,244,.5)}
-.tile-ck{position:absolute;top:13px;right:13px;width:17px;height:17px;border:1px solid var(–rule);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.tile-ck svg{opacity:0;transition:opacity .12s}
-.tile.on .tile-ck{background:var(–paper);border-color:var(–paper)}
-.tile.on .tile-ck svg{opacity:1}
-
-.tri{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(–rule);border:1px solid var(–rule);overflow:hidden}
-.tri-it{background:var(–white);padding:14px 8px;text-align:center;cursor:pointer;transition:background .15s;-webkit-tap-highlight-color:transparent}
-.tri-it.on{background:var(–ink)}
-.tri-main{font-size:14px;font-weight:400;color:var(–ink);display:block;margin-bottom:1px;transition:color .15s}
-.tri-it.on .tri-main{color:var(–paper)}
-.tri-hint{font-size:10px;font-weight:300;color:var(–ink60);display:block;transition:color .15s}
-.tri-it.on .tri-hint{color:rgba(248,247,244,.48)}
-
-.hotel-f{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(–rule);padding-bottom:12px;transition:border-color .2s}
-.hotel-f:focus-within{border-bottom-color:var(–ink)}
-.hotel-lbl{font-size:9px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(–ink30);flex-shrink:0}
-.hotel-inp{flex:1;background:transparent;border:none;outline:none;font-size:15px;font-weight:300;color:var(–ink);min-width:0}
-.hotel-inp::placeholder{color:var(–ink30)}
-
-.build-pad{padding:28px 24px 0}
-
-/* ── S3 ── */
-.s3-in{padding-bottom:60px}
-
-.load-st{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:80px 32px;text-align:center}
-.load-st.gone{display:none}
-.load-ring{width:28px;height:28px;border:1.5px solid var(–rule);border-top-color:var(–ink);border-radius:50%;animation:spin .75s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.load-lbl{font-family:var(–serif);font-size:21px;font-weight:300;font-style:italic;color:var(–ink)}
-.load-sub{font-size:12px;font-weight:300;color:var(–ink60)}
-
-.plan-out{display:none}
-.plan-out.show{display:block}
-
-.plan-hero{padding:30px 24px 24px;border-bottom:1px solid var(–rule)}
-.plan-eye{font-size:9px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:var(–silver);margin-bottom:10px}
-.plan-name{font-family:var(–serif);font-size:clamp(36px,10vw,52px);font-weight:300;line-height:.94;letter-spacing:-.01em;margin-bottom:8px}
-.plan-meta{font-size:13px;font-weight:300;color:var(–ink60);line-height:1.5}
-.plan-dp{display:inline-flex;align-items:center;margin-top:12px;border:1px solid var(–rule);padding:5px 13px;font-size:11px;font-weight:500;letter-spacing:.1em;color:var(–ink)}
-
-.tl-sec{padding:28px 24px 0}
-.tl-hd-lbl{font-size:9px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:var(–silver);margin-bottom:26px}
-
-.tl-list{position:relative}
-.tl-list::before{content:’’;position:absolute;left:56px;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent,var(–rule) 6%,var(–rule) 94%,transparent)}
-
-.tl-row{display:grid;grid-template-columns:56px 1fr;padding-bottom:26px;animation:up .4s var(–spring) both;position:relative}
-.tl-t{font-size:11px;font-weight:400;color:var(–ink60);padding-top:2px;text-align:right;padding-right:18px;white-space:nowrap;line-height:1.3}
-.tl-r{position:relative}
-.tl-r::before{content:’’;position:absolute;left:-4px;top:5px;width:7px;height:7px;border-radius:50%;background:var(–paper);border:1.5px solid var(–silver);z-index:1}
-.tl-row.show-r .tl-r::before{background:var(–ink);border-color:var(–ink);width:9px;height:9px;left:-5px;top:4px;box-shadow:0 0 0 3px var(–ink10)}
-.tl-lname{font-family:var(–serif);font-size:21px;font-weight:400;color:var(–ink);line-height:1.15;margin-bottom:4px}
-.tl-row.show-r .tl-lname{font-size:25px;font-style:italic}
-.tl-lname a{border-bottom:1px solid var(–ink10);transition:border-color .15s}
-.tl-lname a:active{border-color:var(–ink)}
-.tl-note{font-size:13px;font-weight:300;color:var(–ink60);line-height:1.6}
-
-.picks-sec{padding:32px 0 0;border-top:1px solid var(–rule);margin-top:10px}
-.picks-hd{font-size:9px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:var(–silver);margin-bottom:22px;padding:0 24px}
-.picks-cat{margin-bottom:26px}
-.picks-cat-lbl{font-size:12px;font-weight:400;color:var(–ink);letter-spacing:.04em;margin-bottom:10px;padding:0 24px}
-.picks-rail{display:flex;gap:10px;overflow-x:auto;padding:0 24px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.picks-rail::-webkit-scrollbar{display:none}
-.pk{flex:0 0 148px;border:1px solid var(–rule);background:var(–white);overflow:hidden;display:block;transition:border-color .18s;-webkit-tap-highlight-color:transparent}
-.pk:active{border-color:var(–ink)}
-.pk-img{height:84px;background:var(–paper);overflow:hidden}
-.pk-img img{width:100%;height:100%;object-fit:cover;display:block}
-.pk-body{padding:10px 11px 12px}
-.pk-name{font-family:var(–serif);font-size:15px;font-weight:400;color:var(–ink);line-height:1.2;margin-bottom:3px}
-.pk-why{font-size:11px;font-weight:300;color:var(–ink60);line-height:1.5;margin-bottom:5px}
-.pk-meta{font-size:10px;font-weight:400;color:var(–silver);letter-spacing:.04em}
-
-.plan-acts{display:flex;gap:1px;margin:26px 24px 0;border:1px solid var(–rule);overflow:hidden}
-.plan-act{flex:1;padding:15px 10px;font-size:10px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(–ink60);text-align:center;background:var(–white);transition:all .18s}
-.plan-act:active{background:var(–ink);color:var(–paper)}
-
-.plan-err{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:80px 32px;text-align:center}
-.plan-err.gone{display:none}
-.plan-err-msg{font-family:var(–serif);font-size:19px;font-weight:300;font-style:italic;color:var(–ink);line-height:1.4}
-.plan-err-retry{font-size:10px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:var(–ink60);padding:10px 0;border-bottom:1px solid var(–rule)}
-
-@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
-.tile.nudge{animation:nudge .3s ease-in-out}
-</style>
-
+  <meta charset="UTF-8" />
+  <title>Concerto+ · Day Planner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><!-- Fonts: Inter --><link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  ><link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div class="app">
+  <div class="page">
+    <!-- Header -->
+    <header class="page-header">
+      <div class="page-header-inner">
+        <img
+          src="IMG_3180.jpeg"
+          alt="Concerto - From the Concert to the City"
+          class="brand-logo"
+        />
+        <h1 class="feature-title">Concerto+</h1>
+        <p class="tagline">
+          Build a Curated Day Around Your Show — Before and After the Main Event.
+        </p>
 
-  <header class="hd">
-    <div>
-      <span class="hd-logo-name">Concerto</span>
-      <span class="hd-logo-tier">Premium</span>
+    <!-- How it works (Festivals-style) -->
+    <div class="header-actions">
+      <a class="btn-ghost" href="#" id="openHelp">How it works</a>
     </div>
-    <button class="hd-back" id="backBtn">
-      <svg viewBox="0 0 12 12"><path d="M8 2L4 6l4 4"/></svg>Back
+  </div>
+</header>
+
+<!-- Main content -->
+<main class="page-main">
+  <!-- STEP 1: Choose Your Show -->
+  <section class="step-pill open" data-step="1">
+    <button type="button" class="step-pill-header">
+      <div class="step-pill-label">
+        <span class="step-number">01</span>
+        <div class="step-text-block">
+          <div class="step-title">Choose Your Show</div>
+          <div class="step-subtitle">Search Ticketmaster for your event.</div>
+        </div>
+      </div>
+      <div class="step-pill-status">
+        <span class="step-pill-check" aria-hidden="true">✓</span>
+        <span class="step-pill-caret" aria-hidden="true">⌄</span>
+      </div>
     </button>
-  </header>
 
-  <div class="track">
-    <span class="track-num lit">01</span>
-    <div class="track-seg active" id="seg0"></div>
-    <span class="track-num" id="tn1">02</span>
-    <div class="track-seg" id="seg1"></div>
-    <span class="track-num" id="tn2">03</span>
-  </div>
+    <div class="step-pill-body">
+      <div class="card">
+        <div class="stack gap-16">
+          <div class="stack gap-6">
+            <h2 class="section-title">Find your event</h2>
+            <p class="section-help">
+              Search by Artist, Team, Tour, Venue, or City.
+            </p>
+          </div>
 
-  <div class="screens">
+          <div class="form-grid">
+            <div class="field">
+              <label for="eventKeyword">Artist / Team / Tour</label>
+              <input
+                type="text"
+                id="eventKeyword"
+                placeholder="e.g. Billie Eilish, Lakers, The Eras Tour"
+                autocomplete="off"
+              />
+            </div>
+            <div class="field">
+              <label for="eventCity">City (optional)</label>
+              <input
+                type="text"
+                id="eventCity"
+                placeholder="e.g. Los Angeles, CA"
+                autocomplete="off"
+              />
+              <p class="tiny">Add a city to narrow results, or leave blank.</p>
+            </div>
+          </div>
 
-```
-<!-- S1 -->
-<div class="screen active" id="s1">
-  <div class="s1-in">
-    <p class="s1-eye">Concerto+</p>
-    <h1 class="s1-hed">Plan your<br/><em>perfect</em><br/>night out.</h1>
-    <p class="s1-deck">Search for your show.<br/>We'll handle the rest.</p>
-    <div class="sf">
-      <svg class="sf-ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5.25"/><path d="M11.5 11.5L14.5 14.5" stroke-linecap="round"/></svg>
-      <input class="sf-inp" id="kwInput" type="search" placeholder="Artist, team, or venue…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-    </div>
-    <div class="cr">
-      <span class="cr-pre">City</span>
-      <input class="cr-inp" id="cityInput" type="text" placeholder="Narrow by city (optional)" autocomplete="off"/>
-    </div>
-    <button class="cta" id="searchBtn">Search Events</button>
-    <div class="s-note" id="s1Note"></div>
-    <div class="ev-list" id="evList"></div>
-  </div>
-</div>
+          <div class="search-actions">
+            <button type="button" id="searchEventsBtn" class="btn-primary">
+              Search Ticketmaster
+            </button>
+            <div id="eventStatus" class="status muted"></div>
+          </div>
 
-<!-- S2 -->
-<div class="screen" id="s2">
-  <div class="s2-in">
-
-    <div class="show-strip">
-      <div class="ss-dot"></div>
-      <div class="ss-txt" id="ssTxt">—</div>
-    </div>
-
-    <div class="vs">
-      <span class="lbl">Food</span>
-      <div class="tile-grid">
-        <button class="tile" data-v="coffee"><span class="tile-name">Coffee</span><span class="tile-sub">Before doors</span><span class="tile-ck"><svg width="8" height="7" viewBox="0 0 8 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5l2 2 4-4"/></svg></span></button>
-        <button class="tile" data-v="lunch"><span class="tile-name">Lunch</span><span class="tile-sub">Casual afternoon</span><span class="tile-ck"><svg width="8" height="7" viewBox="0 0 8 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5l2 2 4-4"/></svg></span></button>
-        <button class="tile" data-v="dinner"><span class="tile-name">Dinner</span><span class="tile-sub">Pre-show meal</span><span class="tile-ck"><svg width="8" height="7" viewBox="0 0 8 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5l2 2 4-4"/></svg></span></button>
-        <button class="tile" data-v="latenight"><span class="tile-name">Late-night</span><span class="tile-sub">Post-show eats</span><span class="tile-ck"><svg width="8" height="7" viewBox="0 0 8 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5l2 2 4-4"/></svg></span></button>
+          <div id="eventResults" class="event-results"></div>
+        </div>
       </div>
     </div>
+  </section>
 
-    <div class="vs">
-      <span class="lbl">Drinks &amp; Nightlife</span>
-      <div class="tile-grid">
-        <button class="tile" data-v="drinks"><span class="tile-name">Cocktails</span><span class="tile-sub">Before or after</span><span class="tile-ck"><svg width="8" height="7" viewBox="0 0 8 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5l2 2 4-4"/></svg></span></button>
-        <button class="tile" data-v="wine"><span class="tile-name">Wine bar</span><span class="tile-sub">Relaxed vibe</span><span class="tile-ck"><svg width="8" height="7" viewBox="0 0 8 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5l2 2 4-4"/></svg></span></button>
-        <button class="tile" data-v="nightlife"><span class="tile-name">Nightlife</span><span class="tile-sub">Keep it going</span><span class="tile-ck"><svg width="8" height="7" viewBox="0 0 8 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5l2 2 4-4"/></svg></span></button>
-        <button class="tile" data-v="dessert"><span class="tile-name">Dessert</span><span class="tile-sub">Sweet finish</span><span class="tile-ck"><svg width="8" height="7" viewBox="0 0 8 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5l2 2 4-4"/></svg></span></button>
+  <!-- STEP 2: Plan Your Vibe -->
+  <section class="step-pill" data-step="2" id="card-vibe">
+    <button type="button" class="step-pill-header">
+      <div class="step-pill-label">
+        <span class="step-number">02</span>
+        <div class="step-text-block">
+          <div class="step-title">Plan Your Vibe</div>
+          <div class="step-subtitle">Before &amp; after the show, what are you in the mood for?</div>
+        </div>
+      </div>
+      <div class="step-pill-status">
+        <span class="step-pill-check" aria-hidden="true">✓</span>
+        <span class="step-pill-caret" aria-hidden="true">⌄</span>
+      </div>
+    </button>
+
+    <div class="step-pill-body">
+      <div class="card">
+        <p id="selectedEventSummary" class="muted">
+          Select an event in Step 1 to continue.
+        </p>
+
+        <div class="field">
+          <label>Before the show</label>
+          <p class="tiny">Pick a couple of things you’d love to do before doors.</p>
+          <div id="preVibePills" class="pill-row">
+            <button type="button" class="pill" data-vibe="coffee">Coffee</button>
+            <button type="button" class="pill" data-vibe="lunch">Lunch</button>
+            <button type="button" class="pill" data-vibe="dinner">Dinner</button>
+            <button type="button" class="pill" data-vibe="shopping">Shopping</button>
+            <button type="button" class="pill" data-vibe="sightseeing">Sightseeing</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>After the show</label>
+          <p class="tiny">Keep the night going or wind down with something chill.</p>
+          <div id="postVibePills" class="pill-row">
+            <button type="button" class="pill" data-vibe="dessert">Dessert</button>
+            <button type="button" class="pill" data-vibe="drinks">Drinks</button>
+            <button type="button" class="pill" data-vibe="nightlife">Nightlife</button>
+            <button type="button" class="pill" data-vibe="latenight">Late-night eats</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>How packed should the day feel?</label>
+          <div id="paceControl" class="seg-row">
+            <button type="button" class="seg-pill" data-pace="chill">Chill</button>
+            <button type="button" class="seg-pill active" data-pace="balanced">Balanced</button>
+            <button type="button" class="seg-pill" data-pace="packed">Packed</button>
+          </div>
+        </div>
+
+        <div class="search-actions">
+          <button type="button" id="generatePlanBtn" class="btn-primary" disabled>
+            Build my Concerto plan
+          </button>
+          <div id="planStatus" class="status muted"></div>
+        </div>
       </div>
     </div>
+  </section>
 
-    <div class="vs">
-      <span class="lbl">Pace</span>
-      <div class="tri" id="paceG">
-        <button class="tri-it" data-p="chill"><span class="tri-main">Chill</span><span class="tri-hint">1–2 stops</span></button>
-        <button class="tri-it on" data-p="balanced"><span class="tri-main">Balanced</span><span class="tri-hint">3–4 stops</span></button>
-        <button class="tri-it" data-p="packed"><span class="tri-main">Full day</span><span class="tri-hint">5–6 stops</span></button>
+  <!-- STEP 3: Your Concerto Plan -->
+  <section class="step-pill" data-step="3" id="card-plan">
+    <button type="button" class="step-pill-header">
+      <div class="step-pill-label">
+        <span class="step-number">03</span>
+        <div class="step-text-block">
+          <div class="step-title">Your Concerto Plan</div>
+          <div class="step-subtitle">A step-by-step schedule with nearby picks.</div>
+        </div>
+      </div>
+      <div class="step-pill-status">
+        <span class="step-pill-check" aria-hidden="true">✓</span>
+        <span class="step-pill-caret" aria-hidden="true">⌄</span>
+      </div>
+    </button>
+
+    <div class="step-pill-body">
+      <div class="card">
+        <div class="plan-header">
+          <div>
+            <h2 class="section-title">Timeline</h2>
+            <p class="section-help">
+              From first stop to final encore, all in one scroll.
+            </p>
+          </div>
+          <div class="plan-actions">
+            <button type="button" id="editChoicesBtn" class="btn-ghost">
+              Edit choices
+            </button>
+            <button type="button" id="sharePlanBtn" class="btn-secondary">
+              Share plan
+            </button>
+          </div>
+        </div>
+
+        <div id="timeline" class="timeline"></div>
+
+        <div class="rails-wrapper">
+          <h3 class="subsection-title">Nearby picks</h3>
+          <div id="placeRails" class="rails"></div>
+        </div>
       </div>
     </div>
+  </section>
+</main>
 
-    <div class="vs">
-      <span class="lbl">Arrive at venue</span>
-      <div class="tri" id="arrG">
-        <button class="tri-it" data-m="30"><span class="tri-main">30 min</span><span class="tri-hint">early</span></button>
-        <button class="tri-it on" data-m="60"><span class="tri-main">1 hour</span><span class="tri-hint">early</span></button>
-        <button class="tri-it" data-m="120"><span class="tri-main">2 hours</span><span class="tri-hint">early</span></button>
+<footer class="page-footer">
+  <p class="muted">From the Concert to the City · Powered by Concerto+</p>
+</footer>
+
+
+</div><!-- How it works modal --><div class="modal" id="modal" hidden>
+    <div class="modal-backdrop" id="modalClose"></div>
+    <div class="modal-card">
+      <div class="modal-title">How Concerto+ Works</div>
+      <div class="modal-body">
+        <ul class="bullets">
+          <li>Search Ticketmaster and select your show.</li>
+          <li>Pick a few “before” and “after” vibes.</li>
+          <li>Concerto+ builds a timeline plus nearby picks around the venue.</li>
+          <li>Tap any place to open directions in Maps.</li>
+        </ul>
+      </div>
+      <div class="modal-actions">
+        <button class="primary-btn" id="modalOk">Got it</button>
       </div>
     </div>
-
-    <div class="vs">
-      <span class="lbl">Your hotel <span style="color:var(--ink30);font-weight:300;text-transform:none;letter-spacing:.05em;font-size:9px">(optional)</span></span>
-      <div class="hotel-f">
-        <input class="hotel-inp" id="hotelInp" type="text" placeholder="e.g. The Beverly Hilton" autocomplete="off"/>
-        <span class="hotel-lbl">Stay</span>
-      </div>
-    </div>
-
-    <div class="build-pad">
-      <button class="cta" id="buildBtn">Build My Plan</button>
-    </div>
-
-  </div>
-</div>
-
-<!-- S3 -->
-<div class="screen" id="s3">
-  <div class="s3-in">
-
-    <div class="load-st" id="loadSt">
-      <div class="load-ring"></div>
-      <div class="load-lbl">Curating your night…</div>
-      <div class="load-sub">Finding the best spots near the venue.</div>
-    </div>
-
-    <div class="plan-err gone" id="planErr">
-      <p class="plan-err-msg" id="planErrMsg"></p>
-      <button class="plan-err-retry" id="retryBtn">← Try again</button>
-    </div>
-
-    <div class="plan-out" id="planOut">
-      <div class="plan-hero">
-        <p class="plan-eye">Your Night Out</p>
-        <h2 class="plan-name" id="pName"></h2>
-        <p class="plan-meta" id="pMeta"></p>
-        <span class="plan-dp" id="pDate"></span>
-      </div>
-      <div class="tl-sec">
-        <div class="tl-hd-lbl">Timeline</div>
-        <div class="tl-list" id="tlList"></div>
-      </div>
-      <div class="picks-sec" id="picksSec"></div>
-      <div class="plan-acts">
-        <button class="plan-act" id="editBtn">← Edit</button>
-        <button class="plan-act" id="shareBtn">Share Plan</button>
-      </div>
-    </div>
-
-  </div>
-</div>
-```
-
-  </div>
-</div>
-
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script>
-
-<script>
-(function(){
-'use strict';
-const TM='oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh';
-let cur=0,ev=null,vibes=[],pace='balanced',arrival=60,psvc=null;
-const VC={
-  coffee:{label:'Coffee',type:'cafe',kw:'coffee shop'},
-  lunch:{label:'Lunch',type:'restaurant',kw:'lunch restaurant'},
-  dinner:{label:'Dinner',type:'restaurant',kw:'dinner restaurant'},
-  latenight:{label:'Late-night',type:'restaurant',kw:'late night food'},
-  drinks:{label:'Cocktails',type:'bar',kw:'cocktail bar'},
-  wine:{label:'Wine',type:'bar',kw:'wine bar'},
-  nightlife:{label:'Nightlife',type:'night_club',kw:'nightclub'},
-  dessert:{label:'Dessert',type:'bakery',kw:'dessert'},
-};
-const $=id=>document.getElementById(id);
-const toDate=s=>{try{return s?new Date(s):null}catch{return null}};
-const fmtT=d=>d?d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
-const fmtD=d=>d?d.toLocaleDateString(undefined,{weekday:'short',month:'long',day:'numeric',year:'numeric'}):'Date TBA';
-function hav(aLat,aLng,bLat,bLng){const r=x=>x*Math.PI/180,R=3958.8,dl=r(bLat-aLat),dg=r(bLng-aLng),a=Math.sin(dl/2)**2+Math.cos(r(aLat))*Math.cos(r(bLat))*Math.sin(dg/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))}
-function mUrl(p){return p.placeId?`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(p.placeId)}`:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name||'')}`}
-
-function goTo(n){
-  const ss=document.querySelectorAll('.screen');
-  ss[cur].classList.remove('active');ss[cur].classList.add('exit');
-  setTimeout(()=>ss[cur].classList.remove('exit'),420);
-  cur=n;ss[n].classList.add('active');ss[n].scrollTop=0;
-  $('seg0').className='track-seg'+(n>=1?' filled':' active');
-  $('seg1').className='track-seg'+(n>=2?' filled':n===1?' active':'');
-  $('tn1').className='track-num'+(n>=1?' lit':'');
-  $('tn2').className='track-num'+(n>=2?' lit':'');
-  $('backBtn').classList.toggle('on',n>0);
-}
-$('backBtn').addEventListener('click',()=>{if(cur>0)goTo(cur-1)});
-
-async function search(){
-  const kw=($('kwInput').value||'').trim(),city=($('cityInput').value||'').trim();
-  if(!kw&&!city){$('s1Note').textContent='Enter an artist, team, or venue.';return}
-  $('s1Note').textContent='Searching…';$('evList').innerHTML='';ev=null;
-  try{
-    const u=new URL('https://app.ticketmaster.com/discovery/v2/events.json');
-    u.searchParams.set('apikey',TM);u.searchParams.set('size','30');u.searchParams.set('locale','*');
-    if(kw)u.searchParams.set('keyword',kw);if(city)u.searchParams.set('city',city);
-    const j=await fetch(u).then(r=>r.json());
-    const raw=(j?._embedded?.events||[]).map(e=>{
-      const att=(e._embedded?.attractions||[])[0],ven=(e._embedded?.venues||[])[0]||{},loc=ven.location||{};
-      return{id:e.id,name:e.name||'',artist:att?.name||'',venue:ven.name||'',city:[ven.city?.name,ven.state?.stateCode].filter(Boolean).join(', '),dateTime:e.dates?.start?.dateTime||null,lat:loc.latitude?Number(loc.latitude):null,lng:loc.longitude?Number(loc.longitude):null,addr:[ven.address?.line1,ven.city?.name,ven.state?.stateCode].filter(Boolean).join(', ')};
-    });
-    const seen=new Map();
-    const evs=raw.filter(e=>{
-      const k=`${(e.artist||e.name).toLowerCase()}|${e.venue.toLowerCase()}|${(e.dateTime||'').slice(0,10)}`,bad=/suite|box|parking|hospitality/i.test(e.name);
-      if(seen.has(k)){if(!bad&&/suite|box|parking|hospitality/i.test(seen.get(k).name))seen.set(k,e);return false}
-      seen.set(k,e);return true;
-    });
-    if(!evs.length){$('s1Note').textContent='No events found — try a different search.';return}
-    $('s1Note').textContent=`${evs.length} event${evs.length===1?'':'s'} found`;
-    renderEvs(evs);
-  }catch(e){console.error(e);$('s1Note').textContent='Could not reach Ticketmaster. Try again.'}
-}
-
-function renderEvs(evs){
-  const list=$('evList');list.innerHTML='';
-  evs.forEach((e,i)=>{
-    const dt=toDate(e.dateTime),row=document.createElement('div');
-    row.className='ev-row';row.style.animationDelay=`${Math.min(i*.04,.22)}s`;
-    row.innerHTML=`<div class="ev-info"><div class="ev-artist">${e.artist||e.name||'Event'}</div><div class="ev-where">${[e.venue,e.city].filter(Boolean).join(' · ')}</div>${dt?`<div class="ev-when">${fmtD(dt)} · ${fmtT(dt)}</div>`:''}</div><button class="ev-sel">Select</button>`;
-    row.querySelector('.ev-sel').addEventListener('click',()=>{
-      document.querySelectorAll('.ev-row').forEach(r=>r.classList.remove('picked'));
-      row.classList.add('picked');ev=e;
-      setTimeout(()=>{const dt2=toDate(e.dateTime);$('ssTxt').textContent=`${e.artist||e.name}  ·  ${e.venue}${dt2?'  ·  '+fmtT(dt2):''}`;goTo(1)},180);
-    });
-    list.appendChild(row);
-  });
-}
-
-document.querySelectorAll('.tile').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    btn.classList.toggle('on');const v=btn.dataset.v,i=vibes.indexOf(v);
-    if(i>=0)vibes.splice(i,1);else vibes.push(v);
-  });
-});
-$('paceG').addEventListener('click',e=>{const b=e.target.closest('.tri-it');if(!b)return;document.querySelectorAll('#paceG .tri-it').forEach(x=>x.classList.remove('on'));b.classList.add('on');pace=b.dataset.p});
-$('arrG').addEventListener('click',e=>{const b=e.target.closest('.tri-it');if(!b)return;document.querySelectorAll('#arrG .tri-it').forEach(x=>x.classList.remove('on'));b.classList.add('on');arrival=Number(b.dataset.m)});
-
-function geocode(addr){return new Promise(r=>{if(!window.google?.maps)return r(null);new google.maps.Geocoder().geocode({address:addr},(res,st)=>{if(st==='OK'&&res[0]){const l=res[0].geometry.location;r({lat:l.lat(),lng:l.lng()})}else r(null)})})}
-
-function showErr(msg){$('planErrMsg').textContent=msg;$('planErr').classList.remove('gone')}
-$('retryBtn').addEventListener('click',()=>{$('planErr').classList.add('gone');goTo(1)});
-function initP(){if(psvc||!window.google?.maps?.places)return;psvc=new google.maps.places.PlacesService(document.createElement('div'))}
-function nearby({loc,type,kw,max=8}){return new Promise(r=>{initP();if(!psvc||!loc)return r([]);try{psvc.nearbySearch({location:new google.maps.LatLng(loc.lat,loc.lng),rankBy:google.maps.places.RankBy.DISTANCE,type,keyword:kw},(results,status)=>{if(status===google.maps.places.PlacesServiceStatus.OK&&Array.isArray(results)){r(results.slice(0,max).map(p=>({name:p.name||'',placeId:p.place_id,lat:p.geometry?.location?.lat()??null,lng:p.geometry?.location?.lng()??null,rating:typeof p.rating==='number'?p.rating:null,price:typeof p.price_level==='number'?p.price_level:null,address:p.vicinity||'',photos:p.photos||[]})))}else r([])})}catch{r([])}})}
-
-async function callClaude({ev,vibes,pace,arrival,hotel,byVibe,loc}){
-  const dt=toDate(ev.dateTime),sum={};
-  for(const[v,ps]of Object.entries(byVibe))sum[v]=ps.slice(0,6).map(p=>({name:p.name,address:p.address,rating:p.rating,price:p.price,distMi:p.lat&&p.lng&&loc?+hav(loc.lat,loc.lng,p.lat,p.lng).toFixed(2):null}));
-  const sys=`You are Concerto's AI concierge — the precision of a luxury hotel concierge combined with the taste of a lifelong concert-goer. Every recommendation is specific, opinionated, and earned. Never generic. Respond ONLY with valid JSON, no markdown, no backticks, no preamble.`;
-  const msg=`Build a complete day-of itinerary plan.
-
-SHOW: ${ev.artist||ev.name}
-VENUE: ${ev.venue}, ${ev.city}
-DATE: ${dt?fmtD(dt):'TBA'}
-SHOW TIME: ${dt?fmtT(dt):'TBA'}
-PACE: ${pace} — chill=2 stops max, balanced=3-4, packed=5-6
-ARRIVE AT VENUE: ${arrival} min before show
-HOTEL: ${hotel||'not specified'}
-VIBES SELECTED: ${vibes.join(', ')||'open'}
-
-NEARBY PLACES (use ONLY these, do not invent places):
-${JSON.stringify(sum,null,2)}
-
-INSTRUCTIONS:
-1. Build "timeline" array from first activity through end of night.
-2. Always include the show entry with isShow:true.
-3. If hotel given, open with hotel departure entry.
-4. Time pre-show stops to finish ${arrival} min before show. Post-show: add 20 min, assume show runs 2.5hrs.
-5. Each "note": 1-2 sentences, specific detail — what to order, local tip, why it matters.
-6. "picks": 2-3 best options per vibe from the nearby places. Each "why": one specific opinionated sentence.
-
-RESPOND WITH ONLY THIS JSON STRUCTURE:
-{"timeline":[{"time":"5:30 PM","label":"Dinner at Rossoblu","note":"The tajarin is the reason people come — ask for the bar counter.","placeName":"Rossoblu","vibe":"dinner","isShow":false}],"picks":{"dinner":[{"name":"Rossoblu","why":"Scott Conant's best work, steps from MSG."}]}}`;
-
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body:JSON.stringify({
-      model:'claude-haiku-4-5-20251001',
-      max_tokens:2000,
-      system:sys,
-      messages:[{role:'user',content:msg}]
-    })
-  });
-  
-  if(!res.ok){
-    const err=await res.text();
-    console.error('Claude API error:',res.status,err);
-    throw new Error(`API ${res.status}: ${err}`);
-  }
-  
-  const data=await res.json();
-  console.log('Claude raw response:',data);
-  
-  if(data.error){
-    console.error('Claude error object:',data.error);
-    throw new Error(data.error.message||'API error');
-  }
-  
-  const raw=(data?.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
-  console.log('Claude text:',raw);
-  
-  if(!raw){throw new Error('Empty response from Claude');}
-  
-  try{
-    return JSON.parse(raw);
-  }catch(parseErr){
-    // Try to extract JSON from the text
-    const match=raw.match(/\{[\s\S]*\}/);
-    if(match)return JSON.parse(match[0]);
-    throw new Error('Could not parse Claude response as JSON');
-  }
-}
-
-$('buildBtn').addEventListener('click',async()=>{
-  if(!ev){goTo(0);return}
-  if(!vibes.length){
-    document.querySelectorAll('.tile').forEach(t=>t.classList.add('nudge'));
-    setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('nudge')),600);
-    return;
-  }
-  let loc=null;
-  if(typeof ev.lat==='number'&&typeof ev.lng==='number')loc={lat:ev.lat,lng:ev.lng};
-  else loc=await geocode(ev.addr||`${ev.venue} ${ev.city}`);
-  if(!loc){
-    $('loadSt').classList.add('gone');
-    showErr(`Couldn't locate ${ev.venue}. Try a different event.`);
-    return;
-  }
-  const hotel=($('hotelInp').value||'').trim();
-  goTo(2);$('loadSt').classList.remove('gone');$('planOut').classList.remove('show');$('planErr').classList.add('gone');
-  try{
-    const byVibe={};
-    await Promise.all(vibes.map(async v=>{const c=VC[v];if(!c)return;byVibe[v]=await nearby({loc,type:c.type,kw:c.kw,max:8})}));
-    const plan=await callClaude({ev,vibes,pace,arrival,hotel,byVibe,loc});
-    render(plan,byVibe,loc);
-  }catch(e){console.error(e);$('loadSt').classList.add('gone');showErr('Something went wrong building your plan. Tap to try again.');
-  }
-});
-
-function render(plan,byVibe,loc){
-  $('loadSt').classList.add('gone');
-  const dt=toDate(ev.dateTime);
-  $('pName').textContent=ev.artist||ev.name||'Your Show';
-  $('pMeta').textContent=[ev.venue,ev.city].filter(Boolean).join(' · ');
-  $('pDate').textContent=dt?fmtD(dt):'Date TBA';
-  const tl=$('tlList');tl.innerHTML='';
-  const flat=Object.values(byVibe).flat();
-  const timeline=plan.timeline||[];
-  
-  if(!timeline.length){
-    tl.innerHTML='<div style="padding:20px 0;font-size:13px;color:var(--ink60);font-weight:300">No timeline generated — please try again.</div>';
-  } else {
-    timeline.forEach((item,i)=>{
-      const place=flat.find(p=>p.name===item.placeName),url=place?mUrl(place):null;
-      const row=document.createElement('div');
-      row.className='tl-row'+(item.isShow?' show-r':'');
-      row.style.animationDelay=`${i*.065}s`;
-      let lbl=item.label||'';
-      if(url&&item.placeName&&!item.isShow)lbl=lbl.replace(item.placeName,`<a href="${url}" target="_blank" rel="noopener">${item.placeName}</a>`);
-      row.innerHTML=`<div class="tl-t">${item.time||''}</div><div class="tl-r"><div class="tl-lname">${lbl}</div>${!item.isShow&&item.note?`<div class="tl-note">${item.note}</div>`:''}</div>`;
-      tl.appendChild(row);
-    });
-  }
-  
-  const ps=$('picksSec');ps.innerHTML='';
-  const pd=plan.picks||{},any=vibes.some(v=>(pd[v]||[]).length>0);
-  if(any){
-    const hd=document.createElement('div');hd.className='picks-hd';hd.textContent='Nearby Picks';ps.appendChild(hd);
-    vibes.forEach(v=>{
-      const picks=pd[v];if(!picks?.length)return;
-      const cat=document.createElement('div');cat.className='picks-cat';
-      const lbl=document.createElement('div');lbl.className='picks-cat-lbl';lbl.textContent=VC[v]?.label||v;cat.appendChild(lbl);
-      const rail=document.createElement('div');rail.className='picks-rail';
-      picks.forEach(pick=>{
-        const rp=flat.find(p=>p.name===pick.name),href=rp?mUrl(rp):'#';
-        const d=rp?.lat&&rp?.lng&&loc?hav(loc.lat,loc.lng,rp.lat,rp.lng):null;
-        const meta=[d!=null?`${d.toFixed(1)} mi`:null,rp?.rating!=null?`★ ${rp.rating.toFixed(1)}`:null,rp?.price!=null?'$'.repeat(Math.max(1,Math.min(4,rp.price))):null].filter(Boolean).join(' · ');
-        const card=document.createElement('a');card.className='pk';card.href=href;card.target='_blank';card.rel='noopener';
-        const img_w=document.createElement('div');img_w.className='pk-img';
-        if(rp?.photos?.[0]?.getUrl){const img=document.createElement('img');img.src=rp.photos[0].getUrl({maxWidth:310,maxHeight:180});img.alt=pick.name;img_w.appendChild(img)}
-        card.appendChild(img_w);
-        const body=document.createElement('div');body.className='pk-body';
-        body.innerHTML=`<div class="pk-name">${pick.name}</div><div class="pk-why">${pick.why||''}</div>${meta?`<div class="pk-meta">${meta}</div>`:''}`;
-        card.appendChild(body);rail.appendChild(card);
-      });
-      cat.appendChild(rail);ps.appendChild(cat);
-    });
-  }
-  $('planOut').classList.add('show');
-}
-
-$('editBtn').addEventListener('click',()=>goTo(1));
-$('shareBtn').addEventListener('click',async()=>{
-  if(!ev)return;const dt=toDate(ev.dateTime);
-  const text=`My Concerto+ plan for ${ev.artist||ev.name} at ${ev.venue}${dt?' on '+fmtD(dt):''}`;
-  try{if(navigator.share)await navigator.share({title:'Concerto+ Plan',text,url:location.href});else if(navigator.clipboard){await navigator.clipboard.writeText(location.href);alert('Link copied!')}}catch{}
-});
-$('searchBtn').addEventListener('click',search);
-$('kwInput').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
-$('cityInput').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
-})();
-</script>
-
-</body>
+  </div><!-- Google Maps JS (Places API) --><script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script><!-- App --><script src="app.js"></script></body>
 </html>

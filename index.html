@@ -439,35 +439,74 @@ function nearby({loc,type,kw,max=8}){return new Promise(r=>{initP();if(!psvc||!l
 async function callClaude({ev,vibes,pace,arrival,hotel,byVibe,loc}){
   const dt=toDate(ev.dateTime),sum={};
   for(const[v,ps]of Object.entries(byVibe))sum[v]=ps.slice(0,6).map(p=>({name:p.name,address:p.address,rating:p.rating,price:p.price,distMi:p.lat&&p.lng&&loc?+hav(loc.lat,loc.lng,p.lat,p.lng).toFixed(2):null}));
-  const sys=`You are Concerto's AI concierge — the precision of a luxury hotel concierge combined with the taste of a lifelong concert-goer. Every recommendation is specific, opinionated, and earned. Never generic. Respond ONLY with valid JSON.`;
-  const msg=`Build a complete day-of plan.
+  const sys=`You are Concerto's AI concierge — the precision of a luxury hotel concierge combined with the taste of a lifelong concert-goer. Every recommendation is specific, opinionated, and earned. Never generic. Respond ONLY with valid JSON, no markdown, no backticks, no preamble.`;
+  const msg=`Build a complete day-of itinerary plan.
 
 SHOW: ${ev.artist||ev.name}
 VENUE: ${ev.venue}, ${ev.city}
 DATE: ${dt?fmtD(dt):'TBA'}
 SHOW TIME: ${dt?fmtT(dt):'TBA'}
-PACE: ${pace} — chill=2 stops max, balanced=3–4, packed=5–6
+PACE: ${pace} — chill=2 stops max, balanced=3-4, packed=5-6
 ARRIVE AT VENUE: ${arrival} min before show
 HOTEL: ${hotel||'not specified'}
-VIBES: ${vibes.join(', ')||'open'}
+VIBES SELECTED: ${vibes.join(', ')||'open'}
 
-NEARBY PLACES (use ONLY these):
+NEARBY PLACES (use ONLY these, do not invent places):
 ${JSON.stringify(sum,null,2)}
 
-RULES:
-1. Build complete "timeline" from first activity through end of night.
-2. Always include the show (isShow:true).
-3. If hotel given, open with getting-ready entry.
-4. Time pre-show stops to end ${arrival} min before show. Post-show starts 20 min after show ends (assume 2.5hr).
-5. Each "note": 1–2 sentences, specific — what to order, local tip, what makes it special. Never "great atmosphere."
-6. Picks: 2–3 best options per vibe. Each "why": one specific, opinionated sentence.
-7. Pick best by rating + fit, not just proximity.
+INSTRUCTIONS:
+1. Build "timeline" array from first activity through end of night.
+2. Always include the show entry with isShow:true.
+3. If hotel given, open with hotel departure entry.
+4. Time pre-show stops to finish ${arrival} min before show. Post-show: add 20 min, assume show runs 2.5hrs.
+5. Each "note": 1-2 sentences, specific detail — what to order, local tip, why it matters.
+6. "picks": 2-3 best options per vibe from the nearby places. Each "why": one specific opinionated sentence.
 
-RESPOND ONLY with:
-{"timeline":[{"time":"5:30 PM","label":"Dinner at Rossoblu","note":"The tajarin with rabbit ragù is the reason people come.","placeName":"Rossoblu","vibe":"dinner","isShow":false}],"picks":{"dinner":[{"name":"Rossoblu","why":"Scott Conant's best work — the handmade pasta alone justifies the reservation."}]}}`;
-  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5-20251001',max_tokens:1800,system:sys,messages:[{role:'user',content:msg}]})});
+RESPOND WITH ONLY THIS JSON STRUCTURE:
+{"timeline":[{"time":"5:30 PM","label":"Dinner at Rossoblu","note":"The tajarin is the reason people come — ask for the bar counter.","placeName":"Rossoblu","vibe":"dinner","isShow":false}],"picks":{"dinner":[{"name":"Rossoblu","why":"Scott Conant's best work, steps from MSG."}]}}`;
+
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:2000,
+      system:sys,
+      messages:[{role:'user',content:msg}]
+    })
+  });
+  
+  if(!res.ok){
+    const err=await res.text();
+    console.error('Claude API error:',res.status,err);
+    throw new Error(`API ${res.status}: ${err}`);
+  }
+  
   const data=await res.json();
-  return JSON.parse((data?.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
+  console.log('Claude raw response:',data);
+  
+  if(data.error){
+    console.error('Claude error object:',data.error);
+    throw new Error(data.error.message||'API error');
+  }
+  
+  const raw=(data?.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+  console.log('Claude text:',raw);
+  
+  if(!raw){throw new Error('Empty response from Claude');}
+  
+  try{
+    return JSON.parse(raw);
+  }catch(parseErr){
+    // Try to extract JSON from the text
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(match)return JSON.parse(match[0]);
+    throw new Error('Could not parse Claude response as JSON');
+  }
 }
 
 $('buildBtn').addEventListener('click',async()=>{
@@ -504,16 +543,23 @@ function render(plan,byVibe,loc){
   $('pDate').textContent=dt?fmtD(dt):'Date TBA';
   const tl=$('tlList');tl.innerHTML='';
   const flat=Object.values(byVibe).flat();
-  (plan.timeline||[]).forEach((item,i)=>{
-    const place=flat.find(p=>p.name===item.placeName),url=place?mUrl(place):null;
-    const row=document.createElement('div');
-    row.className='tl-row'+(item.isShow?' show-r':'');
-    row.style.animationDelay=`${i*.065}s`;
-    let lbl=item.label||'';
-    if(url&&item.placeName&&!item.isShow)lbl=lbl.replace(item.placeName,`<a href="${url}" target="_blank" rel="noopener">${item.placeName}</a>`);
-    row.innerHTML=`<div class="tl-t">${item.time||''}</div><div class="tl-r"><div class="tl-lname">${lbl}</div>${!item.isShow&&item.note?`<div class="tl-note">${item.note}</div>`:''}</div>`;
-    tl.appendChild(row);
-  });
+  const timeline=plan.timeline||[];
+  
+  if(!timeline.length){
+    tl.innerHTML='<div style="padding:20px 0;font-size:13px;color:var(--ink60);font-weight:300">No timeline generated — please try again.</div>';
+  } else {
+    timeline.forEach((item,i)=>{
+      const place=flat.find(p=>p.name===item.placeName),url=place?mUrl(place):null;
+      const row=document.createElement('div');
+      row.className='tl-row'+(item.isShow?' show-r':'');
+      row.style.animationDelay=`${i*.065}s`;
+      let lbl=item.label||'';
+      if(url&&item.placeName&&!item.isShow)lbl=lbl.replace(item.placeName,`<a href="${url}" target="_blank" rel="noopener">${item.placeName}</a>`);
+      row.innerHTML=`<div class="tl-t">${item.time||''}</div><div class="tl-r"><div class="tl-lname">${lbl}</div>${!item.isShow&&item.note?`<div class="tl-note">${item.note}</div>`:''}</div>`;
+      tl.appendChild(row);
+    });
+  }
+  
   const ps=$('picksSec');ps.innerHTML='';
   const pd=plan.picks||{},any=vibes.some(v=>(pd[v]||[]).length>0);
   if(any){

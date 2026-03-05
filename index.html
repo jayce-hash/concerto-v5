@@ -1,229 +1,599 @@
-<!DOCTYPE html><html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Concerto+ · Day Planner</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><!-- Fonts: Inter --><link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-    rel="stylesheet"
-  ><link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div class="page">
-    <!-- Header -->
-    <header class="page-header">
-      <div class="page-header-inner">
-        <img
-          src="IMG_3180.jpeg"
-          alt="Concerto - From the Concert to the City"
-          class="brand-logo"
-        />
-        <h1 class="feature-title">Concerto+</h1>
-        <p class="tagline">
-          Build a Curated Day Around Your Show — Before and After the Main Event.
-        </p>
+<!DOCTYPE html>
+<html lang="en">
 
-    <!-- How it works (Festivals-style) -->
-    <div class="header-actions">
-      <a class="btn-ghost" href="#" id="openHelp">How it works</a>
-    </div>
-  </div>
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+<title>Concerto+ · Day Planner</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+/* GLOBAL */
+
+body{
+margin:0;
+font-family:Inter,system-ui;
+background:#F8F9F9;
+color:#121E36;
+}
+
+.page{
+max-width:900px;
+margin:auto;
+padding:20px;
+}
+
+/* HEADER */
+
+.page-header{
+text-align:center;
+padding:30px 10px;
+}
+
+.brand-logo{
+width:60px;
+margin-bottom:10px;
+}
+
+.feature-title{
+font-size:34px;
+margin:0;
+}
+
+.tagline{
+color:#6b7280;
+margin-top:6px;
+}
+
+/* BUTTONS */
+
+button{
+font-family:inherit;
+cursor:pointer;
+}
+
+.btn-primary{
+background:#121E36;
+color:white;
+border:none;
+padding:12px 18px;
+border-radius:10px;
+font-weight:600;
+}
+
+.btn-secondary{
+background:white;
+border:1px solid #ddd;
+padding:10px 16px;
+border-radius:10px;
+}
+
+.btn-ghost{
+background:none;
+border:none;
+color:#121E36;
+}
+
+/* CARD STACK */
+
+.step-pill{
+margin-bottom:18px;
+transition:all .35s ease;
+}
+
+.step-pill-header{
+
+width:100%;
+background:white;
+border-radius:16px;
+border:none;
+padding:20px;
+
+display:flex;
+justify-content:space-between;
+align-items:center;
+
+box-shadow:0 10px 30px rgba(0,0,0,.06);
+}
+
+.step-pill-header:hover{
+transform:translateY(-2px);
+box-shadow:0 16px 40px rgba(0,0,0,.08);
+}
+
+.step-pill-body{
+overflow:hidden;
+max-height:0;
+opacity:0;
+transition:all .4s ease;
+}
+
+.step-pill.open .step-pill-body{
+max-height:2000px;
+opacity:1;
+margin-top:12px;
+}
+
+.step-pill.completed .step-pill-header{
+border-left:5px solid #121E36;
+}
+
+/* TEXT */
+
+.step-number{
+font-weight:700;
+margin-right:10px;
+}
+
+.step-pill-label{
+display:flex;
+align-items:center;
+}
+
+.step-text-block{
+display:flex;
+flex-direction:column;
+}
+
+.step-title{
+font-weight:600;
+}
+
+.step-subtitle{
+font-size:13px;
+color:#6b7280;
+}
+
+/* CARD */
+
+.card{
+background:white;
+padding:20px;
+border-radius:14px;
+box-shadow:0 6px 18px rgba(0,0,0,.06);
+}
+
+/* FORM */
+
+input{
+padding:10px;
+border-radius:8px;
+border:1px solid #ddd;
+width:100%;
+}
+
+.form-grid{
+display:grid;
+grid-template-columns:1fr;
+gap:16px;
+}
+
+.tiny{
+font-size:12px;
+color:#6b7280;
+}
+
+/* PILLS */
+
+.pill-row{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+}
+
+.pill{
+
+padding:8px 14px;
+border-radius:999px;
+border:1px solid #ddd;
+background:white;
+
+}
+
+.pill.active{
+background:#121E36;
+color:white;
+}
+
+/* SEGMENT */
+
+.seg-row{
+display:flex;
+gap:10px;
+}
+
+.seg-pill{
+padding:8px 14px;
+border-radius:999px;
+border:1px solid #ddd;
+background:white;
+}
+
+.seg-pill.active{
+background:#121E36;
+color:white;
+}
+
+/* TIMELINE */
+
+.timeline{
+margin-top:20px;
+}
+
+.timeline-item{
+display:flex;
+gap:14px;
+margin-bottom:18px;
+}
+
+.timeline-time{
+width:80px;
+font-weight:600;
+}
+
+.timeline-card{
+flex:1;
+background:white;
+padding:14px;
+border-radius:12px;
+box-shadow:0 6px 18px rgba(0,0,0,.06);
+}
+
+/* MODAL */
+
+.modal{
+position:fixed;
+inset:0;
+display:flex;
+align-items:center;
+justify-content:center;
+}
+
+.modal-backdrop{
+position:absolute;
+inset:0;
+background:rgba(0,0,0,.5);
+}
+
+.modal-card{
+background:white;
+padding:24px;
+border-radius:14px;
+width:90%;
+max-width:420px;
+z-index:2;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="page">
+
+<header class="page-header">
+
+<img src="IMG_3180.jpeg" class="brand-logo">
+
+<h1 class="feature-title">Concerto+</h1>
+
+<p class="tagline">
+Build a curated concert day from coffee to encore.
+</p>
+
+<button class="btn-ghost" id="openHelp">
+How it works
+</button>
+
 </header>
 
-<!-- Main content -->
-<main class="page-main">
-  <!-- STEP 1: Choose Your Show -->
-  <section class="step-pill open" data-step="1">
-    <button type="button" class="step-pill-header">
-      <div class="step-pill-label">
-        <span class="step-number">01</span>
-        <div class="step-text-block">
-          <div class="step-title">Choose Your Show</div>
-          <div class="step-subtitle">Search Ticketmaster for your event.</div>
-        </div>
-      </div>
-      <div class="step-pill-status">
-        <span class="step-pill-check" aria-hidden="true">✓</span>
-        <span class="step-pill-caret" aria-hidden="true">⌄</span>
-      </div>
-    </button>
 
-    <div class="step-pill-body">
-      <div class="card">
-        <div class="stack gap-16">
-          <div class="stack gap-6">
-            <h2 class="section-title">Find your event</h2>
-            <p class="section-help">
-              Search by Artist, Team, Tour, Venue, or City.
-            </p>
-          </div>
+<!-- STEP 1 -->
 
-          <div class="form-grid">
-            <div class="field">
-              <label for="eventKeyword">Artist / Team / Tour</label>
-              <input
-                type="text"
-                id="eventKeyword"
-                placeholder="e.g. Billie Eilish, Lakers, The Eras Tour"
-                autocomplete="off"
-              />
-            </div>
-            <div class="field">
-              <label for="eventCity">City (optional)</label>
-              <input
-                type="text"
-                id="eventCity"
-                placeholder="e.g. Los Angeles, CA"
-                autocomplete="off"
-              />
-              <p class="tiny">Add a city to narrow results, or leave blank.</p>
-            </div>
-          </div>
+<section class="step-pill open" data-step="1">
 
-          <div class="search-actions">
-            <button type="button" id="searchEventsBtn" class="btn-primary">
-              Search Ticketmaster
-            </button>
-            <div id="eventStatus" class="status muted"></div>
-          </div>
+<button class="step-pill-header">
 
-          <div id="eventResults" class="event-results"></div>
-        </div>
-      </div>
-    </div>
-  </section>
+<div class="step-pill-label">
 
-  <!-- STEP 2: Plan Your Vibe -->
-  <section class="step-pill" data-step="2" id="card-vibe">
-    <button type="button" class="step-pill-header">
-      <div class="step-pill-label">
-        <span class="step-number">02</span>
-        <div class="step-text-block">
-          <div class="step-title">Plan Your Vibe</div>
-          <div class="step-subtitle">Before &amp; after the show, what are you in the mood for?</div>
-        </div>
-      </div>
-      <div class="step-pill-status">
-        <span class="step-pill-check" aria-hidden="true">✓</span>
-        <span class="step-pill-caret" aria-hidden="true">⌄</span>
-      </div>
-    </button>
+<span class="step-number">01</span>
 
-    <div class="step-pill-body">
-      <div class="card">
-        <p id="selectedEventSummary" class="muted">
-          Select an event in Step 1 to continue.
-        </p>
+<div class="step-text-block">
 
-        <div class="field">
-          <label>Before the show</label>
-          <p class="tiny">Pick a couple of things you’d love to do before doors.</p>
-          <div id="preVibePills" class="pill-row">
-            <button type="button" class="pill" data-vibe="coffee">Coffee</button>
-            <button type="button" class="pill" data-vibe="lunch">Lunch</button>
-            <button type="button" class="pill" data-vibe="dinner">Dinner</button>
-            <button type="button" class="pill" data-vibe="shopping">Shopping</button>
-            <button type="button" class="pill" data-vibe="sightseeing">Sightseeing</button>
-          </div>
-        </div>
+<div class="step-title">Choose Your Show</div>
 
-        <div class="field">
-          <label>After the show</label>
-          <p class="tiny">Keep the night going or wind down with something chill.</p>
-          <div id="postVibePills" class="pill-row">
-            <button type="button" class="pill" data-vibe="dessert">Dessert</button>
-            <button type="button" class="pill" data-vibe="drinks">Drinks</button>
-            <button type="button" class="pill" data-vibe="nightlife">Nightlife</button>
-            <button type="button" class="pill" data-vibe="latenight">Late-night eats</button>
-          </div>
-        </div>
+<div class="step-subtitle">
+Search Ticketmaster for your event
+</div>
 
-        <div class="field">
-          <label>How packed should the day feel?</label>
-          <div id="paceControl" class="seg-row">
-            <button type="button" class="seg-pill" data-pace="chill">Chill</button>
-            <button type="button" class="seg-pill active" data-pace="balanced">Balanced</button>
-            <button type="button" class="seg-pill" data-pace="packed">Packed</button>
-          </div>
-        </div>
+</div>
 
-        <div class="search-actions">
-          <button type="button" id="generatePlanBtn" class="btn-primary" disabled>
-            Build my Concerto plan
-          </button>
-          <div id="planStatus" class="status muted"></div>
-        </div>
-      </div>
-    </div>
-  </section>
+</div>
 
-  <!-- STEP 3: Your Concerto Plan -->
-  <section class="step-pill" data-step="3" id="card-plan">
-    <button type="button" class="step-pill-header">
-      <div class="step-pill-label">
-        <span class="step-number">03</span>
-        <div class="step-text-block">
-          <div class="step-title">Your Concerto Plan</div>
-          <div class="step-subtitle">A step-by-step schedule with nearby picks.</div>
-        </div>
-      </div>
-      <div class="step-pill-status">
-        <span class="step-pill-check" aria-hidden="true">✓</span>
-        <span class="step-pill-caret" aria-hidden="true">⌄</span>
-      </div>
-    </button>
+<span>⌄</span>
 
-    <div class="step-pill-body">
-      <div class="card">
-        <div class="plan-header">
-          <div>
-            <h2 class="section-title">Timeline</h2>
-            <p class="section-help">
-              From first stop to final encore, all in one scroll.
-            </p>
-          </div>
-          <div class="plan-actions">
-            <button type="button" id="editChoicesBtn" class="btn-ghost">
-              Edit choices
-            </button>
-            <button type="button" id="sharePlanBtn" class="btn-secondary">
-              Share plan
-            </button>
-          </div>
-        </div>
+</button>
 
-        <div id="timeline" class="timeline"></div>
+<div class="step-pill-body">
 
-        <div class="rails-wrapper">
-          <h3 class="subsection-title">Nearby picks</h3>
-          <div id="placeRails" class="rails"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-</main>
+<div class="card">
 
-<footer class="page-footer">
-  <p class="muted">From the Concert to the City · Powered by Concerto+</p>
-</footer>
+<input placeholder="Artist / Team / Tour">
+
+<br><br>
+
+<input placeholder="City (optional)">
+
+<br><br>
+
+<button class="btn-primary" id="selectEvent">
+Select Example Event
+</button>
+
+</div>
+
+</div>
+
+</section>
 
 
-</div><!-- How it works modal --><div class="modal" id="modal" hidden>
-    <div class="modal-backdrop" id="modalClose"></div>
-    <div class="modal-card">
-      <div class="modal-title">How Concerto+ Works</div>
-      <div class="modal-body">
-        <ul class="bullets">
-          <li>Search Ticketmaster and select your show.</li>
-          <li>Pick a few “before” and “after” vibes.</li>
-          <li>Concerto+ builds a timeline plus nearby picks around the venue.</li>
-          <li>Tap any place to open directions in Maps.</li>
-        </ul>
-      </div>
-      <div class="modal-actions">
-        <button class="primary-btn" id="modalOk">Got it</button>
-      </div>
-    </div>
-  </div><!-- Google Maps JS (Places API) --><script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places"></script><!-- App --><script src="app.js"></script></body>
+
+<!-- STEP 2 -->
+
+<section class="step-pill" data-step="2">
+
+<button class="step-pill-header">
+
+<div class="step-pill-label">
+
+<span class="step-number">02</span>
+
+<div class="step-text-block">
+
+<div class="step-title">Plan Your Vibe</div>
+
+<div class="step-subtitle">
+Before & after the show
+</div>
+
+</div>
+
+</div>
+
+<span>⌄</span>
+
+</button>
+
+
+<div class="step-pill-body">
+
+<div class="card">
+
+<p>Before the show</p>
+
+<div class="pill-row">
+
+<button class="pill">Coffee</button>
+<button class="pill">Lunch</button>
+<button class="pill">Dinner</button>
+<button class="pill">Shopping</button>
+
+</div>
+
+<br>
+
+<p>After the show</p>
+
+<div class="pill-row">
+
+<button class="pill">Dessert</button>
+<button class="pill">Drinks</button>
+<button class="pill">Nightlife</button>
+
+</div>
+
+<br>
+
+<button class="btn-primary" id="generatePlan">
+Build My Concerto Plan
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+
+
+<!-- STEP 3 -->
+
+<section class="step-pill" data-step="3">
+
+<button class="step-pill-header">
+
+<div class="step-pill-label">
+
+<span class="step-number">03</span>
+
+<div class="step-text-block">
+
+<div class="step-title">Your Concerto Plan</div>
+
+<div class="step-subtitle">
+A smart timeline around your show
+</div>
+
+</div>
+
+</div>
+
+<span>⌄</span>
+
+</button>
+
+
+<div class="step-pill-body">
+
+<div class="card">
+
+<div class="timeline" id="timeline"></div>
+
+</div>
+
+</div>
+
+</section>
+
+
+</div>
+
+
+
+<!-- MODAL -->
+
+<div class="modal" id="modal" hidden>
+
+<div class="modal-backdrop"></div>
+
+<div class="modal-card">
+
+<h3>How Concerto+ Works</h3>
+
+<p>
+
+Select your event → choose your vibe → Concerto builds a curated plan around your venue.
+
+</p>
+
+<button id="closeModal" class="btn-primary">Got it</button>
+
+</div>
+
+</div>
+
+
+
+<script>
+
+/* STEP LOGIC */
+
+function openStep(n){
+
+document.querySelectorAll(".step-pill").forEach(step=>{
+step.classList.remove("open")
+})
+
+document.querySelector(`[data-step="${n}"]`).classList.add("open")
+
+}
+
+function completeStep(n){
+
+document.querySelector(`[data-step="${n}"]`).classList.add("completed")
+
+}
+
+/* STEP EVENTS */
+
+document.getElementById("selectEvent").onclick=()=>{
+
+completeStep(1)
+
+openStep(2)
+
+}
+
+document.getElementById("generatePlan").onclick=()=>{
+
+completeStep(2)
+
+openStep(3)
+
+generateTimeline()
+
+}
+
+
+/* TIMELINE */
+
+function generateTimeline(){
+
+const timeline=document.getElementById("timeline")
+
+timeline.innerHTML=`
+
+<div class="timeline-item">
+
+<div class="timeline-time">4:30 PM</div>
+
+<div class="timeline-card">
+Coffee at Blue Bottle
+</div>
+
+</div>
+
+<div class="timeline-item">
+
+<div class="timeline-time">6:00 PM</div>
+
+<div class="timeline-card">
+Dinner near the venue
+</div>
+
+</div>
+
+<div class="timeline-item">
+
+<div class="timeline-time">7:45 PM</div>
+
+<div class="timeline-card">
+Arrive at the venue
+</div>
+
+</div>
+
+<div class="timeline-item">
+
+<div class="timeline-time">10:30 PM</div>
+
+<div class="timeline-card">
+Drinks after the show
+</div>
+
+</div>
+
+`
+
+}
+
+
+/* MODAL */
+
+const modal=document.getElementById("modal")
+
+document.getElementById("openHelp").onclick=()=>{
+
+modal.hidden=false
+
+}
+
+document.getElementById("closeModal").onclick=()=>{
+
+modal.hidden=true
+
+}
+
+</script>
+
+
+</body>
 </html>

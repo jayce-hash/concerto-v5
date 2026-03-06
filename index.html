@@ -72,6 +72,7 @@ img { display:block; }
   transition: opacity .38s var(--spring), transform .38s var(--spring);
   transform: translateY(18px);
   overflow: hidden;
+  height: 100dvh;
 }
 .screen.active {
   opacity: 1;
@@ -1143,7 +1144,7 @@ img { display:block; }
 <!-- ════════════════════════════════════════════════════════
      SCREEN 2 — PLAN
 ═══════════════════════════════════════════════════════════ -->
-<div id="s2" class="screen" style="background:var(--bg); position:relative;">
+<div id="s2" class="screen" style="background:var(--bg); display:flex; flex-direction:column;">
   <!-- Generating overlay -->
   <div class="gen-overlay" id="genOverlay">
     <div class="gen-orb"></div>
@@ -1156,8 +1157,8 @@ img { display:block; }
     </div>
   </div>
 
-  <!-- Plan content -->
-  <div class="plan-header" id="planHeader">
+  <!-- Plan header — fixed, never scrolls -->
+  <div class="plan-header" id="planHeader" style="flex:0 0 auto;">
     <div class="plan-eyebrow">Your Concerto+ plan</div>
     <div class="plan-artist" id="planArtist">—</div>
     <div class="plan-meta" id="planMeta">—</div>
@@ -1167,7 +1168,8 @@ img { display:block; }
     </div>
   </div>
 
-  <div class="scroll-area" id="planScroll">
+  <!-- Scrollable content -->
+  <div class="scroll-area" id="planScroll" style="flex:1 1 auto; min-height:0;">
     <!-- Timeline -->
     <div class="tl" id="tlWrap">
       <div class="tl-spine"></div>
@@ -1181,8 +1183,8 @@ img { display:block; }
     <div class="chat-msgs" id="chatMsgs"></div>
   </div>
 
-  <!-- Chat bar -->
-  <div class="chat-bar">
+  <!-- Chat bar — fixed at bottom -->
+  <div class="chat-bar" style="flex:0 0 auto;">
     <div class="chat-inner">
       <textarea class="chat-input" id="chatInput" rows="1"
                 placeholder="Ask to adjust anything…" maxlength="400"></textarea>

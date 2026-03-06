@@ -1558,6 +1558,1802 @@ RESPOND WITH ONLY THIS JSON — no markdown fences, no explanation:
 async function claudeCall(messages){
   const sys=`You are the Concerto+ concierge — a lifelong music fan with the precision of a luxury hotel concierge. You build curated night-out plans around concerts. Be specific and opinionated. Name actual dishes. Give real insider tips. Avoid generic filler phrases. Respond ONLY with a raw JSON object — no markdown, no extra text.`;
 
+  const res=await fetch('/.netlify/functions/claude',{
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 2400,
+      system:     sys,
+      messages,
+    }),
+  });
+
+  if(!res.ok){
+    const t=await res.text();
+    console.error('Claude HTTP error:', res.status, t);
+    throw new Error(`Claude API ${res.status}: ${t.slice(0,300)}`);
+  }
+
+  const data=await res.json();
+  console.log('Claude response:', data);
+
+  if(data.error) throw new Error(data.error.message||'API error');
+
+  const raw=(data?.content?.[0]?.text||'').trim();
+  console.log('Claude raw text (first 600):', raw.slice(0,600));
+  if(!raw) throw new Error('Empty Claude response — stop_reason: '+(data?.stop_reason||'unknown'));
+
+  // Strip any accidental fences
+  const cleaned=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/,'').trim();
+
+  try{
+    return JSON.parse(cleaned);
+  } catch(parseErr){
+    // Last-ditch: grab outermost { ... }
+    const m=cleaned.match(/\{[\s\S]*\}/);
+    if(m){
+      try{ return JSON.parse(m[0]); } catch{}
+    }
+    console.error('Unparseable Claude response:', cleaned.slice(0,400));
+    throw new Error('JSON parse failed. Claude said: '+cleaned.slice(0,120));
+  }
+}
+
+// ── Geocode ───────────────────────────────────
+function geocode(addr){
+  return new Promise(resolve=>{
+    if(!window.google?.maps) return resolve(null);
+    new google.maps.Geocoder().geocode({address:addr}, (results, status)=>{
+      if(status==='OK' && results[0]){
+        const l=results[0].geometry.location;
+        resolve({lat:l.lat(), lng:l.lng()});
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+// ── Google Places ─────────────────────────────
+let _psvc=null;
+function getPlaceSvc(){
+  if(_psvc) return _psvc;
+  if(window.google?.maps?.places){
+    _psvc=new google.maps.places.PlacesService(document.createElement('div'));
+  }
+  return _psvc;
+}
+window._mapsReadyCb=()=>{ getPlaceSvc(); };
+
+function mapPlace(p){
+  return {
+    name:    p.name||'',
+    placeId: p.place_id||'',
+    lat:     p.geometry?.location?.lat()  ?? null,
+    lng:     p.geometry?.location?.lng()  ?? null,
+    rating:  typeof p.rating==='number'   ? p.rating    : null,
+    price:   typeof p.price_level==='number' ? p.price_level : null,
+    address: p.vicinity || p.formatted_address || '',
+    photos:  p.photos || [],
+  };
+}
+
+function fetchNearby({loc, type, kw, max=8}){
+  return new Promise(resolve=>{
+    const svc=getPlaceSvc();
+    if(!svc || !loc) return resolve([]);
+    const ll=new google.maps.LatLng(loc.lat, loc.lng);
+
+    svc.nearbySearch(
+      {location:ll, rankBy:google.maps.places.RankBy.DISTANCE, type, keyword:kw},
+      (res, st)=>{
+        if(st===google.maps.places.PlacesServiceStatus.OK && res?.length){
+          return resolve(res.slice(0,max).map(mapPlace));
+        }
+        // fallback: text search
+        svc.textSearch(
+          {query:`${kw} near ${S.ev?.venue||''}`, location:ll, radius:2000},
+          (r2, s2)=>{
+            if(s2===google.maps.places.PlacesServiceStatus.OK && r2?.length){
+              resolve(r2.slice(0,max).map(mapPlace));
+            } else {
+              resolve([]);
+            }
+          }
+        );
+      }
+    );
+  });
+}
+
+// ── Render plan ───────────────────────────────
+function renderPlan(plan){
+  const ev=S.ev, dt=toDate(ev.dateTime);
+  $('planArtist').textContent = ev.artist||ev.name;
+  $('planMeta').textContent   = [ev.venue, ev.city, dt?fmtD(dt):''].filter(Boolean).join(' · ');
+
+  // ─ Timeline ─
+  const tlList=$('tlList');
+  tlList.innerHTML='';
+  const allPlaces=Object.values(S.byVibe).flat();
+
+  if(!plan.timeline?.length){
+    tlList.innerHTML='<div style="padding:20px 0;font-size:14px;color:var(--ink-2);font-style:italic">No plan returned — try rebuilding.</div>';
+  } else {
+    plan.timeline.forEach((item,i)=>{
+      const place = allPlaces.find(p=>p.name===item.placeName);
+      const url   = place ? mapsUrl(place)
+                  : item.isShow ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((ev.venue||'')+' '+(ev.city||''))}` : '';
+
+      const wrap=document.createElement('div');
+      wrap.className='tl-item'+(item.isShow?' is-show':'');
+      wrap.style.animationDelay=`${i*0.07}s`;
+
+      wrap.innerHTML=`
+        <div class="tl-dot-col"><div class="tl-dot"></div></div>
+        <div class="tl-content">
+          <div class="tl-card">
+            <div class="tl-time">${item.time||''}</div>
+            <div class="tl-label">${item.label||''}</div>
+            ${item.note && !item.isShow ? `<div class="tl-note">${item.note}</div>` : ''}
+            ${url ? `<a class="tl-maps" href="${url}" target="_blank" rel="noopener">↗ Maps</a>` : ''}
+          </div>
+          <div class="tl-spacer"></div>
+        </div>`;
+      tlList.appendChild(wrap);
+    });
+  }
+
+  // ─ Picks ─
+  const picksSec=$('picksSec');
+  picksSec.innerHTML='';
+  const pd=plan.picks||{};
+  const hasAny=S.vibes.some(v=>(pd[v]||[]).length>0);
+
+  if(hasAny){
+    picksSec.innerHTML='<div class="picks-section-label">Nearby picks</div>';
+    S.vibes.forEach(v=>{
+      const picks=pd[v]; if(!picks?.length) return;
+      const cfg=VC[v]||{};
+
+      const cat=document.createElement('div'); cat.className='picks-category';
+      cat.innerHTML=`<div class="picks-cat-name">${cfg.icon||''} ${cfg.label||v}</div>`;
+
+      const rail=document.createElement('div'); rail.className='picks-rail';
+      picks.forEach(pick=>{
+        const rp   = allPlaces.find(p=>p.name===pick.name);
+        const href = rp ? mapsUrl(rp) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pick.name+' '+(S.ev?.city||''))}`;
+        const dist = (rp?.lat&&rp?.lng&&S.loc) ? hav(S.loc.lat,S.loc.lng,rp.lat,rp.lng) : null;
+        const meta = [
+          rp?.rating!=null  ? `★ ${rp.rating.toFixed(1)}` : '',
+          rp?.price!=null   ? '$'.repeat(Math.min(4,rp.price)) : '',
+          dist!=null        ? `${dist.toFixed(1)} mi` : '',
+        ].filter(Boolean).join(' · ');
+        const imgSrc = rp?.photos?.[0]?.getUrl ? rp.photos[0].getUrl({maxWidth:360,maxHeight:180}) : '';
+
+        const card=document.createElement('a');
+        card.className='pick-card'; card.href=href; card.target='_blank'; card.rel='noopener';
+        card.innerHTML=`
+          <div class="pick-img">
+            ${imgSrc
+              ? `<img src="${imgSrc}" alt="${pick.name}" loading="lazy"/>`
+              : `<div class="pick-img-placeholder">${cfg.icon||'📍'}</div>`}
+          </div>
+          <div class="pick-body">
+            <div class="pick-name">${pick.name}</div>
+            <div class="pick-why">${pick.why||''}</div>
+            ${meta ? `<div class="pick-meta">${meta}</div>` : ''}
+          </div>`;
+        rail.appendChild(card);
+      });
+      cat.appendChild(rail);
+      picksSec.appendChild(cat);
+    });
+  }
+
+  $('planScroll').scrollTop=0;
+}
+
+// ── Share ─────────────────────────────────────
+$('shareBtn').addEventListener('click', async()=>{
+  if(!S.ev || !S.plan) return;
+  const dt=toDate(S.ev.dateTime);
+  const lines=(S.plan.timeline||[]).map(t=>`${t.time} — ${t.label}`).join('\n');
+  const text=`My Concerto+ plan\n${S.ev.artist||S.ev.name} at ${S.ev.venue}\n${dt?fmtD(dt):''}\n\n${lines}\n\nBuilt with Concerto+`;
+  try{
+    if(navigator.share) await navigator.share({title:'Concerto+ Plan', text});
+    else { await navigator.clipboard.writeText(text); showToast('Plan copied to clipboard'); }
+  } catch { showToast('Share canceled'); }
+});
+
+// ── Chat ──────────────────────────────────────
+const chatInput=$('chatInput');
+chatInput.addEventListener('input', ()=>{
+  chatInput.style.height='auto';
+  chatInput.style.height=Math.min(chatInput.scrollHeight,80)+'px';
+});
+chatInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
+});
+$('chatSend').addEventListener('click', sendChat);
+
+async function sendChat(){
+  const msg=chatInput.value.trim();
+  if(!msg || !S.plan) return;
+  chatInput.value='';
+  chatInput.style.height='auto';
+
+  addBubble(msg, 'user');
+  const typing=addBubble('', 'ai', true);
+
+  // Build full message list: original build, original response, then chat turns
+  const messages=[
+    {role:'user',      content: S.buildPrompt},
+    {role:'assistant', content: JSON.stringify(S.plan)},
+    ...S.chatHistory,
+    {role:'user',      content: `Update the plan: ${msg}. Return the full updated plan in the exact same JSON format.`},
+  ];
+
+  try{
+    const plan=await claudeCall(messages);
+    S.plan=plan;
+    S.chatHistory.push(
+      {role:'user',      content:`Update the plan: ${msg}. Return the full updated plan in the exact same JSON format.`},
+      {role:'assistant', content:JSON.stringify(plan)},
+    );
+    typing.remove();
+    renderPlan(plan);
+    addBubble('Updated ✓', 'ai');
+    $('planScroll').scrollTop=0;
+  } catch(err){
+    console.error('Chat error:', err);
+    typing.remove();
+    addBubble("Couldn't update — try again.", 'ai');
+  }
+}
+
+function addBubble(text, role, typing=false){
+  const el=document.createElement('div');
+  el.className=`chat-bubble ${role}`;
+  if(typing) el.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+  else el.textContent=text;
+  $('chatMsgs').appendChild(el);
+  const scroll=$('planScroll');
+  scroll.scrollTop=scroll.scrollHeight;
+  return el;
+}
+
+// ── Init ──────────────────────────────────────
+updateBuildBtn();
+</script>
+</body>
+</html>}
+
+/* ── RESET ───────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; overflow:hidden; }
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: fixed;
+  width: 100%;
+}
+button { cursor:pointer; background:none; border:none; color:inherit; font-family:var(--body); }
+input, textarea { font-family:var(--body); }
+a { color:inherit; text-decoration:none; }
+img { display:block; }
+
+/* ── APP SHELL ───────────────────────────────────────────── */
+#app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── SCREENS ─────────────────────────────────────────────── */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .38s var(--spring), transform .38s var(--spring);
+  transform: translateY(18px);
+  overflow: hidden;
+}
+.screen.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0);
+}
+.screen.exit {
+  opacity: 0;
+  transform: translateY(-14px);
+  pointer-events: none;
+}
+
+/* ── TOPBAR ──────────────────────────────────────────────── */
+.topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 10px;
+  position: relative;
+  z-index: 10;
+}
+.topbar-logo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.topbar-logo-word {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .02em;
+  line-height: 1;
+}
+.topbar-logo-sub {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--card-b);
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  font-size: 15px;
+  transition: background .18s, transform .18s var(--spring);
+  backdrop-filter: blur(8px);
+}
+.icon-btn:hover { background: var(--white); transform: scale(1.06); }
+.icon-btn:active { transform: scale(.95); }
+
+/* ── SCROLLABLE CONTENT ──────────────────────────────────── */
+.scroll-area {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 20px 40px;
+}
+.scroll-area::-webkit-scrollbar { display: none; }
+
+/* ── HERO (Search screen) ────────────────────────────────── */
+.hero-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .2em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.hero-headline {
+  font-family: var(--display);
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.08;
+  color: var(--ink);
+  letter-spacing: -.01em;
+  margin-bottom: 10px;
+}
+.hero-headline em {
+  font-style: italic;
+  color: var(--gold);
+}
+.hero-sub {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin-bottom: 28px;
+}
+
+/* ── SEARCH BOX ──────────────────────────────────────────── */
+.search-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+.search-input {
+  width: 100%;
+  padding: 15px 48px 15px 18px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--card-b);
+  background: var(--white);
+  font-size: 15px;
+  color: var(--ink);
+  outline: none;
+  box-shadow: 0 4px 20px rgba(14,26,43,.06);
+  transition: border-color .2s, box-shadow .2s;
+  -webkit-appearance: none;
+}
+.search-input::placeholder { color: var(--ink-3); }
+.search-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft), 0 4px 20px rgba(14,26,43,.08);
+}
+.search-go {
+  position: absolute;
+  right: 10px; top: 50%;
+  transform: translateY(-50%);
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--white);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  transition: background .18s, transform .18s var(--spring);
+}
+.search-go:hover { background: var(--gold); transform: translateY(-50%) scale(1.08); }
+.search-go:active { transform: translateY(-50%) scale(.94); }
+
+/* ── STATUS LINE ─────────────────────────────────────────── */
+.status-line {
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+  margin-bottom: 18px;
+  min-height: 16px;
+  transition: color .2s;
+}
+.status-line.err { color: var(--red); }
+
+/* ── EVENT CARDS ─────────────────────────────────────────── */
+.event-list { display: flex; flex-direction: column; gap: 10px; }
+
+.event-card {
+  background: var(--card);
+  border: 1px solid var(--card-b);
+  border-radius: var(--r-md);
+  padding: 14px 14px 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(8px);
+  transition: transform .2s var(--spring), box-shadow .2s, border-color .2s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.event-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--gold);
+  opacity: 0;
+  transition: opacity .2s;
+}
+.event-card:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(14,26,43,.1); border-color: var(--gold-line); }
+.event-card:hover::before { opacity: 1; }
+.event-card:active { transform: translateY(0) scale(.99); }
+
+.event-date-block {
+  flex: 0 0 auto;
+  width: 44px;
+  text-align: center;
+}
+.event-date-mon {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  line-height: 1;
+}
+.event-date-day {
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+.event-info { flex: 1 1 auto; min-width: 0; }
+.event-artist {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+.event-venue {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-time {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 600;
+  margin-top: 4px;
+  letter-spacing: .04em;
+}
+.event-select-btn {
+  flex: 0 0 auto;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--ink-4);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: var(--ink-2);
+  transition: background .2s, color .2s, transform .18s var(--spring);
+}
+.event-card:hover .event-select-btn {
+  background: var(--ink);
+  color: var(--white);
+  transform: scale(1.1);
+}
+
+/* ── SHIMMER ─────────────────────────────────────────────── */
+.shimmer-card {
+  height: 72px;
+  border-radius: var(--r-md);
+  background: linear-gradient(90deg,
+    rgba(14,26,43,.04) 0%,
+    rgba(14,26,43,.09) 40%,
+    rgba(14,26,43,.04) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── VIBE SCREEN ─────────────────────────────────────────── */
+.show-summary-card {
+  background: var(--ink);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.show-summary-card::after {
+  content: '';
+  position: absolute;
+  right: -30px; top: -30px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-soft) 0%, transparent 70%);
+  pointer-events: none;
+}
+.show-sum-eyebrow {
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: var(--gold);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.show-sum-artist {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.show-sum-meta {
+  font-size: 13px;
+  color: rgba(255,255,255,.55);
+  line-height: 1.45;
+}
+.show-sum-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  background: var(--gold-soft);
+  border: 1px solid var(--gold-line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: .04em;
+}
+
+/* ── SECTION LABEL ───────────────────────────────────────── */
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* ── VIBE GRID ───────────────────────────────────────────── */
+.vibe-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-bottom: 20px;
+}
+.vibe-tile {
+  background: var(--white);
+  border: 1.5px solid var(--card-b);
+  border-radius: var(--r-md);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: border-color .2s, background .2s, transform .18s var(--spring), box-shadow .2s;
+  position: relative;
+  overflow: hidden;
+}
+.vibe-tile:active { transform: scale(.97); }
+.vibe-tile.on {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+.vibe-tile-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.vibe-tile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1;
+}
+.vibe-tile-hint {
+  font-size: 11px;
+  color: var(--ink-3);
+  line-height: 1.3;
+}
+.vibe-check {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--white);
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: scale(.6);
+  transition: opacity .2s, transform .2s var(--spring);
+}
+.vibe-tile.on .vibe-check { opacity: 1; transform: scale(1); }
+
+/* ── OPTION ROW (pace / arrival) ─────────────────────────── */
+.option-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.opt-pill {
+  flex: 1;
+  padding: 11px 8px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--card-b);
+  background: var(--white);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-align: center;
+  transition: border-color .2s, background .2s, color .2s, transform .18s var(--spring);
+}
+.opt-pill:active { transform: scale(.96); }
+.opt-pill.on {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+}
+
+/* ── OPTIONAL INPUT ──────────────────────────────────────── */
+.optional-input {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--card-b);
+  background: var(--white);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  margin-bottom: 24px;
+  transition: border-color .2s, box-shadow .2s;
+  -webkit-appearance: none;
+}
+.optional-input::placeholder { color: var(--ink-3); }
+.optional-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft);
+}
+
+/* ── PRIMARY BUTTON ──────────────────────────────────────── */
+.primary-btn {
+  width: 100%;
+  padding: 17px;
+  border-radius: var(--r-md);
+  background: var(--ink);
+  color: var(--white);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-align: center;
+  transition: background .2s, transform .2s var(--spring), box-shadow .2s;
+  box-shadow: 0 8px 28px rgba(14,26,43,.22);
+  position: relative;
+  overflow: hidden;
+}
+.primary-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.08) 0%, transparent 100%);
+  pointer-events: none;
+}
+.primary-btn:hover { background: #1a2d47; transform: translateY(-1px); box-shadow: 0 12px 36px rgba(14,26,43,.28); }
+.primary-btn:active { transform: translateY(0) scale(.99); }
+.primary-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.primary-btn.gold {
+  background: linear-gradient(135deg, #C9A84C, #e8c96a, #C9A84C);
+  background-size: 200% 100%;
+  color: var(--ink);
+  box-shadow: 0 8px 28px rgba(201,168,76,.35);
+  animation: gold-shimmer 3s ease-in-out infinite;
+}
+@keyframes gold-shimmer {
+  0%, 100% { background-position: 0% 0; }
+  50% { background-position: 100% 0; }
+}
+.primary-btn.gold:hover { box-shadow: 0 12px 36px rgba(201,168,76,.45); }
+
+/* ── PLAN SCREEN ─────────────────────────────────────────── */
+.plan-header {
+  padding: 18px 20px 0;
+  margin-bottom: 18px;
+}
+.plan-eyebrow {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+.plan-artist {
+  font-family: var(--display);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.08;
+  letter-spacing: -.01em;
+}
+.plan-meta {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 4px;
+}
+.plan-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.ghost-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--card-b);
+  background: var(--white);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-align: center;
+  transition: border-color .18s, background .18s, transform .18s var(--spring);
+}
+.ghost-btn:hover { border-color: var(--ink-3); background: var(--bg); }
+.ghost-btn:active { transform: scale(.97); }
+.ghost-btn.accent {
+  border-color: var(--gold-line);
+  color: var(--gold);
+}
+
+/* ── TIMELINE ────────────────────────────────────────────── */
+.tl {
+  padding: 0 20px;
+  position: relative;
+}
+.tl-spine {
+  position: absolute;
+  left: 36px;
+  top: 8px; bottom: 8px;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--ink-4) 12%, var(--ink-4) 88%, transparent);
+}
+.tl-item {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+  align-items: flex-start;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: tl-in .45s var(--spring) forwards;
+}
+@keyframes tl-in {
+  to { opacity:1; transform:translateY(0); }
+}
+.tl-dot-col {
+  flex: 0 0 auto;
+  width: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 12px;
+}
+.tl-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  border: 1.5px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--ink-4);
+  transition: background .2s;
+  position: relative;
+  z-index: 1;
+}
+.tl-item.is-show .tl-dot {
+  width: 13px; height: 13px;
+  background: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft), 0 0 12px rgba(201,168,76,.4);
+}
+.tl-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tl-card {
+  background: var(--white);
+  border: 1px solid var(--card-b);
+  border-radius: var(--r-md);
+  padding: 13px 14px;
+  margin-bottom: 0;
+  box-shadow: 0 2px 12px rgba(14,26,43,.05);
+  transition: box-shadow .2s, border-color .2s;
+}
+.tl-item.is-show .tl-card {
+  background: var(--ink);
+  border-color: transparent;
+  box-shadow: 0 8px 28px rgba(14,26,43,.2);
+}
+.tl-time {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.tl-item.is-show .tl-time { color: rgba(201,168,76,.8); }
+.tl-label {
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+.tl-item.is-show .tl-label { color: var(--white); font-weight: 700; }
+.tl-note {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.tl-item.is-show .tl-note { color: rgba(255,255,255,.55); }
+.tl-maps {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  border: 1px solid var(--card-b);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--bg);
+  transition: color .18s, border-color .18s, background .18s;
+}
+.tl-maps:hover { color: var(--ink); border-color: var(--ink-3); background: var(--white); }
+.tl-spacer { height: 10px; }
+
+/* ── PICKS ───────────────────────────────────────────────── */
+.picks-section {
+  padding: 22px 20px 0;
+}
+.picks-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.picks-category {
+  margin-bottom: 20px;
+}
+.picks-cat-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.picks-cat-name::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ink-4);
+}
+.picks-rail {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+}
+.picks-rail::-webkit-scrollbar { display: none; }
+.pick-card {
+  flex: 0 0 auto;
+  width: 176px;
+  scroll-snap-align: start;
+  background: var(--white);
+  border: 1px solid var(--card-b);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: transform .2s var(--spring), box-shadow .2s;
+}
+.pick-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(14,26,43,.1); }
+.pick-img {
+  height: 90px;
+  background: var(--ink-4);
+  overflow: hidden;
+  position: relative;
+}
+.pick-img img { width: 100%; height: 100%; object-fit: cover; }
+.pick-img-placeholder {
+  width: 100%; height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  background: linear-gradient(135deg, rgba(14,26,43,.04), rgba(201,168,76,.08));
+}
+.pick-body { padding: 10px 11px 11px; }
+.pick-name {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pick-why {
+  font-size: 11px;
+  color: var(--ink-2);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.pick-meta {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+/* ── CHAT BAR ────────────────────────────────────────────── */
+.chat-bar {
+  flex: 0 0 auto;
+  padding: 10px 14px 18px;
+  background: linear-gradient(to top, var(--bg) 60%, transparent);
+  position: relative;
+  z-index: 10;
+}
+.chat-inner {
+  display: flex;
+  gap: 9px;
+  align-items: flex-end;
+  background: var(--white);
+  border: 1.5px solid var(--card-b);
+  border-radius: 22px;
+  padding: 10px 10px 10px 16px;
+  box-shadow: 0 4px 20px rgba(14,26,43,.08);
+  transition: border-color .2s, box-shadow .2s;
+}
+.chat-inner:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft), 0 4px 20px rgba(14,26,43,.08);
+}
+.chat-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  resize: none;
+  max-height: 80px;
+  line-height: 1.45;
+  padding: 2px 0;
+}
+.chat-input::placeholder { color: var(--ink-3); }
+.chat-send {
+  width: 34px; height: 34px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--white);
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  transition: background .18s, transform .18s var(--spring);
+}
+.chat-send:hover { background: var(--gold); transform: scale(1.06); }
+.chat-send:active { transform: scale(.94); }
+
+/* ── CHAT MESSAGES ───────────────────────────────────────── */
+.chat-msgs {
+  padding: 0 20px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-bubble {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  animation: bubble-in .3s var(--spring) both;
+}
+@keyframes bubble-in {
+  from { opacity:0; transform:translateY(6px) scale(.97); }
+  to { opacity:1; transform:none; }
+}
+.chat-bubble.user {
+  background: var(--ink);
+  color: var(--white);
+  align-self: flex-end;
+  border-bottom-right-radius: 5px;
+}
+.chat-bubble.ai {
+  background: var(--white);
+  border: 1px solid var(--card-b);
+  color: var(--ink);
+  align-self: flex-start;
+  border-bottom-left-radius: 5px;
+}
+.chat-bubble.typing {
+  background: var(--white);
+  border: 1px solid var(--card-b);
+  padding: 12px 16px;
+}
+.typing-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.typing-dots span {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  animation: dot-bounce .9s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: .15s; }
+.typing-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-5px); }
+}
+
+/* ── GENERATING OVERLAY ──────────────────────────────────── */
+.gen-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+}
+.gen-overlay.show { opacity: 1; pointer-events: all; }
+.gen-orb {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), rgba(201,168,76,.4));
+  box-shadow: 0 0 40px rgba(201,168,76,.35), 0 0 80px rgba(201,168,76,.15);
+  animation: orb-pulse 1.8s ease-in-out infinite;
+  position: relative;
+}
+.gen-orb::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@keyframes orb-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(201,168,76,.35), 0 0 80px rgba(201,168,76,.15); }
+  50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(201,168,76,.5), 0 0 120px rgba(201,168,76,.2); }
+}
+.gen-label {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: center;
+}
+.gen-sub {
+  font-size: 13px;
+  color: var(--ink-3);
+  text-align: center;
+}
+.gen-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  align-items: center;
+}
+.gen-step {
+  font-size: 12px;
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity .4s, color .4s;
+}
+.gen-step.active { opacity: 1; color: var(--gold); }
+.gen-step.done { opacity: .5; color: var(--ink-2); }
+
+/* ── BACK BTN ────────────────────────────────────────────── */
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 8px 0;
+  margin-bottom: 6px;
+  transition: color .18s;
+}
+.back-btn:hover { color: var(--ink); }
+.back-arrow { font-size: 16px; line-height: 1; }
+
+/* ── NUDGE ANIMATION ─────────────────────────────────────── */
+@keyframes nudge {
+  0%,100% { transform:translateX(0); }
+  20% { transform:translateX(-5px); }
+  40% { transform:translateX(5px); }
+  60% { transform:translateX(-4px); }
+  80% { transform:translateX(4px); }
+}
+.nudge { animation: nudge .5s ease; }
+
+/* ── TOAST ───────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(14px);
+  background: var(--ink);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 11px 18px;
+  border-radius: 999px;
+  box-shadow: 0 8px 28px rgba(14,26,43,.28);
+  z-index: 200;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .28s var(--spring), transform .28s var(--spring);
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── DIVIDER ─────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--ink-4);
+  margin: 20px 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 0 — SEARCH
+═══════════════════════════════════════════════════════════ -->
+<div id="s0" class="screen active" style="background:var(--bg);">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <span class="topbar-logo-word">Concerto</span>
+      <span class="topbar-logo-sub">Premium</span>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" id="helpBtn" title="How it works">?</button>
+    </div>
+  </div>
+
+  <div class="scroll-area">
+    <p class="hero-eyebrow">Your night, curated</p>
+    <h1 class="hero-headline">What show are<br>you going <em>to?</em></h1>
+    <p class="hero-sub">Search your event and we'll build the perfect day around it — from first coffee to last call.</p>
+
+    <div class="search-wrap">
+      <input id="kwInput" class="search-input" type="text"
+             placeholder="Artist, band, venue, city…"
+             autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <button class="search-go" id="searchBtn" title="Search">→</button>
+    </div>
+
+    <div id="statusLine" class="status-line">Start with an artist name or city</div>
+
+    <div id="eventList" class="event-list"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 1 — VIBE
+═══════════════════════════════════════════════════════════ -->
+<div id="s1" class="screen" style="background:var(--bg);">
+  <div class="topbar">
+    <button class="back-btn" id="vibeBack">
+      <span class="back-arrow">←</span> Back
+    </button>
+    <div class="topbar-right">
+      <button class="icon-btn" id="vibeReset" title="Reset">✕</button>
+    </div>
+  </div>
+
+  <div class="scroll-area">
+    <!-- Show summary pill -->
+    <div class="show-summary-card">
+      <div class="show-sum-eyebrow">Your show</div>
+      <div class="show-sum-artist" id="sumArtist">—</div>
+      <div class="show-sum-meta" id="sumMeta">—</div>
+      <div class="show-sum-time" id="sumTime">
+        <span>🎟</span>
+        <span id="sumTimeText">—</span>
+      </div>
+    </div>
+
+    <!-- Vibe tiles -->
+    <p class="section-label">What's the vibe?</p>
+    <div class="vibe-grid" id="vibeGrid">
+      <button class="vibe-tile" data-v="dinner" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🍽</div>
+        <div class="vibe-tile-name">Dinner</div>
+        <div class="vibe-tile-hint">Pre-show meal</div>
+      </button>
+      <button class="vibe-tile" data-v="cocktails" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🍸</div>
+        <div class="vibe-tile-name">Cocktails</div>
+        <div class="vibe-tile-hint">Pre-show drinks</div>
+      </button>
+      <button class="vibe-tile" data-v="coffee" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">☕</div>
+        <div class="vibe-tile-name">Coffee</div>
+        <div class="vibe-tile-hint">Afternoon start</div>
+      </button>
+      <button class="vibe-tile" data-v="afterparty" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🌙</div>
+        <div class="vibe-tile-name">After-party</div>
+        <div class="vibe-tile-hint">Keep it going</div>
+      </button>
+      <button class="vibe-tile" data-v="latenight" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🌮</div>
+        <div class="vibe-tile-name">Late-night eats</div>
+        <div class="vibe-tile-hint">Post-encore fuel</div>
+      </button>
+      <button class="vibe-tile" data-v="wine" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🍷</div>
+        <div class="vibe-tile-name">Wine bar</div>
+        <div class="vibe-tile-hint">Slow and easy</div>
+      </button>
+    </div>
+
+    <!-- Pace -->
+    <p class="section-label">How packed is the day?</p>
+    <div class="option-row" id="paceRow">
+      <button class="opt-pill" data-p="chill">Chill</button>
+      <button class="opt-pill on" data-p="balanced">Balanced</button>
+      <button class="opt-pill" data-p="packed">Packed</button>
+    </div>
+
+    <!-- Arrive -->
+    <p class="section-label">Arrive at venue</p>
+    <div class="option-row" id="arrRow">
+      <button class="opt-pill" data-m="30">30 min early</button>
+      <button class="opt-pill on" data-m="60">1 hr early</button>
+      <button class="opt-pill" data-m="90">90 min early</button>
+    </div>
+
+    <!-- Hotel optional -->
+    <p class="section-label">Hotel / starting point <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-3);font-size:11px;"> — optional</span></p>
+    <input id="hotelInp" class="optional-input" type="text"
+           placeholder="e.g. The Standard, High Line"
+           autocomplete="off"/>
+
+    <button id="buildBtn" class="primary-btn gold" disabled>
+      Build my night →
+    </button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 2 — PLAN
+═══════════════════════════════════════════════════════════ -->
+<div id="s2" class="screen" style="background:var(--bg); position:relative;">
+  <!-- Generating overlay -->
+  <div class="gen-overlay" id="genOverlay">
+    <div class="gen-orb"></div>
+    <div class="gen-label">Building your night…</div>
+    <div class="gen-sub">Concerto+ is curating your plan</div>
+    <div class="gen-steps">
+      <div class="gen-step" id="gs0">Finding places near the venue</div>
+      <div class="gen-step" id="gs1">Timing everything to your show</div>
+      <div class="gen-step" id="gs2">Writing your concierge notes</div>
+    </div>
+  </div>
+
+  <!-- Plan content -->
+  <div class="plan-header" id="planHeader">
+    <div class="plan-eyebrow">Your Concerto+ plan</div>
+    <div class="plan-artist" id="planArtist">—</div>
+    <div class="plan-meta" id="planMeta">—</div>
+    <div class="plan-action-row">
+      <button class="ghost-btn" id="editBtn">← Edit</button>
+      <button class="ghost-btn accent" id="shareBtn">Share plan ↑</button>
+    </div>
+  </div>
+
+  <div class="scroll-area" id="planScroll">
+    <!-- Timeline -->
+    <div class="tl" id="tlWrap">
+      <div class="tl-spine"></div>
+      <div id="tlList"></div>
+    </div>
+
+    <!-- Picks -->
+    <div class="picks-section" id="picksSec"></div>
+
+    <!-- Chat history -->
+    <div class="chat-msgs" id="chatMsgs"></div>
+  </div>
+
+  <!-- Chat bar -->
+  <div class="chat-bar">
+    <div class="chat-inner">
+      <textarea class="chat-input" id="chatInput" rows="1"
+                placeholder="Ask to adjust anything…" maxlength="400"></textarea>
+      <button class="chat-send" id="chatSend">↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Google Maps -->
+<script>
+(function(){
+  const s=document.createElement('script');
+  s.src='https://maps.googleapis.com/maps/api/js?key=AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w&libraries=places&callback=onMapsReady';
+  s.async=true; s.defer=true;
+  document.head.appendChild(s);
+})();
+window.onMapsReady=function(){if(window._mapsReadyCb)window._mapsReadyCb();};
+</script>
+
+
+<script>
+/* ═══════════════════════════════════════════════
+   CONCERTO+ — MAIN SCRIPT (clean)
+   TM  : oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh
+   GP  : AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w
+   AI  : claude-haiku-4-5-20251001
+═══════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+
+// ── State ─────────────────────────────────────
+const S = {
+  ev:          null,   // selected Ticketmaster event
+  vibes:       [],     // e.g. ['dinner','cocktails']
+  pace:        'balanced',
+  arrival:     60,     // minutes before show
+  hotel:       '',
+  plan:        null,   // {timeline:[…], picks:{…}}
+  byVibe:      {},     // Google Places results keyed by vibe
+  loc:         null,   // {lat, lng}
+  buildPrompt: '',     // full prompt sent to Claude for build
+  chatHistory: [],     // [{role,content}] real chat turns only
+};
+
+// ── Vibe config ───────────────────────────────
+const VC = {
+  dinner:     {label:'Dinner',      icon:'🍽',  type:'restaurant',  kw:'dinner restaurant'},
+  cocktails:  {label:'Cocktails',   icon:'🍸',  type:'bar',         kw:'cocktail bar'},
+  coffee:     {label:'Coffee',      icon:'☕',  type:'cafe',        kw:'coffee cafe'},
+  afterparty: {label:'After-party', icon:'🌙',  type:'night_club',  kw:'nightclub lounge'},
+  latenight:  {label:'Late-night',  icon:'🌮',  type:'restaurant',  kw:'late night food'},
+  wine:       {label:'Wine bar',    icon:'🍷',  type:'bar',         kw:'wine bar'},
+};
+
+// ── Tiny helpers ──────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function toDate(s){
+  try { return s ? new Date(s) : null; } catch { return null; }
+}
+function fmtD(d){
+  return d.toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+function fmtT(d){
+  return d.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'});
+}
+function hav(a,b,c,d){
+  const R=3958.8, dL=(c-a)*Math.PI/180, dl=(d-b)*Math.PI/180;
+  const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)**2;
+  return R*2*Math.asin(Math.sqrt(x));
+}
+function mapsUrl(p){
+  if(p?.placeId) return `https://www.google.com/maps/place/?q=place_id:${p.placeId}`;
+  if(p?.name)    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}`;
+  return '#';
+}
+
+let _toastTimer;
+function showToast(msg, ms=2400){
+  const el=$('toast');
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'), ms);
+}
+
+// ── Screen nav ────────────────────────────────
+const SCREENS=[$('s0'),$('s1'),$('s2')];
+function goTo(idx){
+  SCREENS.forEach((s,i)=>{
+    s.classList.remove('active','exit');
+    if(i===idx)      s.classList.add('active');
+    else if(i<idx)   s.classList.add('exit');
+  });
+}
+
+// ── Gen overlay ───────────────────────────────
+function showGen(on){
+  const el=$('genOverlay');
+  if(on){
+    el.classList.add('show');
+    ['gs0','gs1','gs2'].forEach(id=>{
+      const e=$(id); if(e){ e.classList.remove('active','done'); }
+    });
+  } else {
+    el.classList.remove('show');
+  }
+}
+function genStep(i){
+  for(let j=0;j<i;j++){
+    const e=$(`gs${j}`); if(e){ e.classList.remove('active'); e.classList.add('done'); }
+  }
+  const cur=$(`gs${i}`); if(cur){ cur.classList.remove('done'); cur.classList.add('active'); }
+}
+
+// ── Nav wiring ────────────────────────────────
+$('vibeBack').addEventListener('click',  ()=>goTo(0));
+$('editBtn').addEventListener('click',   ()=>goTo(1));
+$('vibeReset').addEventListener('click', ()=>{
+  S.vibes=[];
+  document.querySelectorAll('.vibe-tile').forEach(t=>t.classList.remove('on'));
+  updateBuildBtn();
+  goTo(0);
+});
+$('helpBtn').addEventListener('click', ()=>{
+  showToast('Search a show → pick your vibe → we build the night', 3200);
+});
+
+// ── Event search ──────────────────────────────
+$('kwInput').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); doSearch(); }});
+$('searchBtn').addEventListener('click', doSearch);
+
+async function doSearch(){
+  const kw=$('kwInput').value.trim();
+  if(!kw){
+    $('statusLine').textContent='Type an artist or venue first';
+    $('statusLine').classList.add('err');
+    return;
+  }
+  $('statusLine').textContent='Searching…';
+  $('statusLine').classList.remove('err');
+  $('eventList').innerHTML=`
+    <div class="shimmer-card"></div>
+    <div class="shimmer-card" style="margin-top:10px"></div>
+    <div class="shimmer-card" style="margin-top:10px"></div>`;
+
+  try{
+    const url=`https://app.ticketmaster.com/discovery/v2/events.json`
+      +`?apikey=oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh`
+      +`&keyword=${encodeURIComponent(kw)}`
+      +`&size=10&sort=date,asc&classificationName=music`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const raw  = data?._embedded?.events || [];
+
+    // dedupe by artist+venue+date
+    const seen=new Set();
+    const events=raw.filter(e=>{
+      const key=`${(e.name||'').slice(0,28)}_${e._embedded?.venues?.[0]?.name||''}_${e.dates?.start?.localDate||''}`;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0,6).map(e=>({
+      id:      e.id,
+      name:    e.name,
+      artist:  e._embedded?.attractions?.[0]?.name || e.name,
+      venue:   e._embedded?.venues?.[0]?.name || '',
+      city:    [e._embedded?.venues?.[0]?.city?.name, e._embedded?.venues?.[0]?.state?.stateCode].filter(Boolean).join(', '),
+      dateTime:e.dates?.start?.dateTime || e.dates?.start?.localDate || '',
+      lat:     parseFloat(e._embedded?.venues?.[0]?.location?.latitude)  || null,
+      lng:     parseFloat(e._embedded?.venues?.[0]?.location?.longitude) || null,
+      addr:    [e._embedded?.venues?.[0]?.address?.line1, e._embedded?.venues?.[0]?.city?.name].filter(Boolean).join(', '),
+    }));
+
+    renderEvents(events);
+  } catch(err){
+    console.error('Search error:', err);
+    $('eventList').innerHTML='';
+    $('statusLine').textContent='Search failed — check your connection';
+    $('statusLine').classList.add('err');
+  }
+}
+
+function renderEvents(events){
+  if(!events.length){
+    $('eventList').innerHTML='';
+    $('statusLine').textContent='No events found — try a broader search';
+    return;
+  }
+  $('statusLine').textContent=`${events.length} event${events.length===1?'':'s'} found`;
+
+  $('eventList').innerHTML=events.map(ev=>{
+    const dt  = toDate(ev.dateTime);
+    const mon = dt ? dt.toLocaleString('en-US',{month:'short'}).toUpperCase() : '';
+    const day = dt ? dt.getDate() : '—';
+    const time= dt ? fmtT(dt) : 'TBA';
+    return `<div class="event-card" data-eid="${ev.id}">
+      <div class="event-date-block">
+        <div class="event-date-mon">${mon}</div>
+        <div class="event-date-day">${day}</div>
+      </div>
+      <div class="event-info">
+        <div class="event-artist">${ev.artist||ev.name}</div>
+        <div class="event-venue">${ev.venue}${ev.city?` · ${ev.city}`:''}</div>
+        <div class="event-time">${time}</div>
+      </div>
+      <div class="event-select-btn">→</div>
+    </div>`;
+  }).join('');
+
+  // bind clicks — use the stored events array via closure
+  $('eventList').querySelectorAll('.event-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const ev=events.find(x=>x.id===card.dataset.eid);
+      if(ev) selectEvent(ev);
+    });
+  });
+}
+
+function selectEvent(ev){
+  S.ev=ev;
+  const dt=toDate(ev.dateTime);
+  $('sumArtist').textContent  = ev.artist||ev.name;
+  $('sumMeta').textContent    = [ev.venue,ev.city].filter(Boolean).join(' · ');
+  $('sumTimeText').textContent= dt ? `${fmtD(dt)} · ${fmtT(dt)}` : (ev.dateTime||'Date TBA');
+  updateBuildBtn();
+  goTo(1);
+}
+
+// ── Vibe tiles ────────────────────────────────
+document.querySelectorAll('.vibe-tile').forEach(tile=>{
+  tile.addEventListener('click', ()=>{
+    const v=tile.dataset.v;
+    tile.classList.toggle('on');
+    const i=S.vibes.indexOf(v);
+    if(i>=0) S.vibes.splice(i,1); else S.vibes.push(v);
+    updateBuildBtn();
+  });
+});
+
+// ── Pace ──────────────────────────────────────
+$('paceRow').addEventListener('click', e=>{
+  const b=e.target.closest('.opt-pill'); if(!b) return;
+  $('paceRow').querySelectorAll('.opt-pill').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  S.pace=b.dataset.p;
+});
+
+// ── Arrival ───────────────────────────────────
+$('arrRow').addEventListener('click', e=>{
+  const b=e.target.closest('.opt-pill'); if(!b) return;
+  $('arrRow').querySelectorAll('.opt-pill').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  S.arrival=Number(b.dataset.m);
+});
+
+function updateBuildBtn(){
+  $('buildBtn').disabled=!(S.ev && S.vibes.length>0);
+}
+
+// ── BUILD PLAN ────────────────────────────────
+$('buildBtn').addEventListener('click', buildPlan);
+
+async function buildPlan(){
+  if(!S.ev || !S.vibes.length) return;
+
+  S.hotel        = $('hotelInp').value.trim();
+  S.chatHistory  = [];
+  $('chatMsgs').innerHTML='';
+
+  // Navigate to plan screen & show overlay
+  goTo(2);
+  showGen(true);
+
+  // 1. Resolve location
+  let loc=null;
+  if(S.ev.lat && S.ev.lng && !isNaN(S.ev.lat)){
+    loc={lat:S.ev.lat, lng:S.ev.lng};
+  } else {
+    loc=await geocode(`${S.ev.venue} ${S.ev.city}`);
+  }
+  S.loc=loc;
+  genStep(0);
+
+  // 2. Fetch Places for each vibe
+  const byVibe={};
+  if(loc && window.google?.maps?.places){
+    await Promise.all(S.vibes.map(async v=>{
+      const c=VC[v]; if(!c) return;
+      byVibe[v]=await fetchNearby({loc, type:c.type, kw:c.kw});
+    }));
+  }
+  S.byVibe=byVibe;
+  genStep(1);
+  await sleep(300);
+  genStep(2);
+
+  // 3. Call Claude
+  // 3. Call Claude
+  try{
+    const prompt=makeBuildPrompt();
+    S.buildPrompt=prompt;
+    console.log('loc:', JSON.stringify(S.loc));
+    console.log('vibes:', S.vibes);
+    console.log('byVibe:', Object.entries(S.byVibe).map(([k,v])=>k+':'+v.length));
+    const plan=await claudeCall([{role:'user',content:prompt}]);
+    console.log('plan received:', JSON.stringify(plan).slice(0,200));
+    S.plan=plan;
+    renderPlan(plan);
+    showGen(false);
+  } catch(err){
+    console.error('Build error:', err.message, err);
+    showGen(false);
+    $('tlList').innerHTML='<div style="padding:20px 4px"><div style="font-size:13px;font-weight:600;color:#C0392B;margin-bottom:6px">Build failed</div><div style="font-size:12px;color:var(--ink-2);line-height:1.6;word-break:break-all">' + (err.message||String(err)) + '</div></div>';
+    $('planArtist').textContent=S.ev?.artist||S.ev?.name||'Error';
+    $('planMeta').textContent='Check the error below';
+    showGen(false);
+  }
+}
+
+// ── Prompt builder ────────────────────────────
+function makeBuildPrompt(){
+  const ev=S.ev;
+  const dt=toDate(ev.dateTime);
+
+  // Summarise nearby places
+  const sum={};
+  const hasPlaces=Object.values(S.byVibe).some(a=>a.length>0);
+  if(hasPlaces){
+    for(const [v,ps] of Object.entries(S.byVibe)){
+      sum[v]=ps.slice(0,6).map(p=>({
+        name:    p.name,
+        address: p.address,
+        rating:  p.rating,
+        price:   p.price,
+        distMi:  (p.lat&&p.lng&&S.loc) ? +hav(S.loc.lat,S.loc.lng,p.lat,p.lng).toFixed(2) : null,
+      }));
+    }
+  }
+
+  const placesBlock=hasPlaces
+    ? `NEARBY PLACES (prefer these):\n${JSON.stringify(sum,null,2)}`
+    : `NEARBY PLACES: API returned none. Draw on your knowledge of dining/bars near ${ev.venue}, ${ev.city}.`;
+
+  return `Build a complete night-out itinerary for a concert.
+
+SHOW: ${ev.artist||ev.name}
+VENUE: ${ev.venue}, ${ev.city}
+DATE/TIME: ${dt ? `${fmtD(dt)} at ${fmtT(dt)}` : 'TBA'}
+PACE: ${S.pace} — chill=2 stops total, balanced=3-4 stops, packed=5-6 stops
+ARRIVE AT VENUE: ${S.arrival} min before show start
+HOTEL/START: ${S.hotel||'not specified'}
+SELECTED VIBES: ${S.vibes.join(', ')}
+
+${placesBlock}
+
+RULES:
+1. "timeline" — ordered array from first activity to last. Always include the show entry (isShow:true).
+2. If hotel is given, open with a departure entry from the hotel.
+3. Schedule pre-show stops to wrap up ${S.arrival} min before show. Post-show: first stop starts 20 min after show ends (assume 2.5 hr show).
+4. Each "note": 1-2 sentences — what to order, a local tip, what makes it worth it. Zero generic phrases.
+5. "picks": 2-3 best options per vibe. Each "why": one sharp, specific sentence.
+6. Use real place names. Never invent a place name that clearly doesn't exist.
+
+RESPOND WITH ONLY THIS JSON — no markdown fences, no explanation:
+{"timeline":[{"time":"6:00 PM","label":"Dinner at Carbone","note":"Order the rigatoni vodka — worth the hour wait at the bar.","placeName":"Carbone","vibe":"dinner","isShow":false},{"time":"8:30 PM","label":"Harry Styles at MSG","note":"","placeName":"Madison Square Garden","vibe":"show","isShow":true}],"picks":{"dinner":[{"name":"Carbone","why":"The best pre-show power dinner in the city — book or walk in at 5:45."}]}}`;
+}
+
+// ── Claude API call ───────────────────────────
+async function claudeCall(messages){
+  const sys=`You are the Concerto+ concierge — a lifelong music fan with the precision of a luxury hotel concierge. You build curated night-out plans around concerts. Be specific and opinionated. Name actual dishes. Give real insider tips. Avoid generic filler phrases. Respond ONLY with a raw JSON object — no markdown, no extra text.`;
+
   const res=await fetch('https://api.anthropic.com/v1/messages',{
     method: 'POST',
     headers: {

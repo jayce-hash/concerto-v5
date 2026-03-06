@@ -1205,126 +1205,166 @@ img { display:block; }
 window.onMapsReady=function(){if(window._mapsReadyCb)window._mapsReadyCb();};
 </script>
 
+
 <script>
-/* ════════════════════════════════════════════════════════
-   CONCERTO+ — MAIN SCRIPT
-   Keys: Ticketmaster oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh
-         Google Places AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w
-         Claude haiku-4-5-20251001
-═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+   CONCERTO+ — MAIN SCRIPT (clean)
+   TM  : oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh
+   GP  : AIzaSyAEl3Mjr2zQPJySBCD0JJZEVS5xcJPB-2w
+   AI  : claude-haiku-4-5-20251001
+═══════════════════════════════════════════════ */
 
-// ── State ──────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+// ── State ─────────────────────────────────────
 const S = {
-  ev: null,        // selected event object
-  vibes: [],       // selected vibe keys
-  pace: 'balanced',
-  arrival: 60,
-  hotel: '',
-  plan: null,      // last generated plan {timeline, picks}
-  byVibe: {},      // Places results per vibe
-  loc: null,       // {lat,lng}
-  msgs: [],        // chat history [{role,content}]
+  ev:          null,   // selected Ticketmaster event
+  vibes:       [],     // e.g. ['dinner','cocktails']
+  pace:        'balanced',
+  arrival:     60,     // minutes before show
+  hotel:       '',
+  plan:        null,   // {timeline:[…], picks:{…}}
+  byVibe:      {},     // Google Places results keyed by vibe
+  loc:         null,   // {lat, lng}
+  buildPrompt: '',     // full prompt sent to Claude for build
+  chatHistory: [],     // [{role,content}] real chat turns only
 };
 
-// ── Vibe config ────────────────────────────────────────
+// ── Vibe config ───────────────────────────────
 const VC = {
-  dinner:     {label:'Dinner',     icon:'🍽', type:'restaurant',   kw:'dinner restaurant'},
-  cocktails:  {label:'Cocktails',  icon:'🍸', type:'bar',          kw:'cocktail bar'},
-  coffee:     {label:'Coffee',     icon:'☕', type:'cafe',         kw:'coffee cafe'},
-  afterparty: {label:'After-party',icon:'🌙', type:'night_club',   kw:'nightclub lounge'},
-  latenight:  {label:'Late-night', icon:'🌮', type:'restaurant',   kw:'late night food'},
-  wine:       {label:'Wine bar',   icon:'🍷', type:'bar',          kw:'wine bar'},
+  dinner:     {label:'Dinner',      icon:'🍽',  type:'restaurant',  kw:'dinner restaurant'},
+  cocktails:  {label:'Cocktails',   icon:'🍸',  type:'bar',         kw:'cocktail bar'},
+  coffee:     {label:'Coffee',      icon:'☕',  type:'cafe',        kw:'coffee cafe'},
+  afterparty: {label:'After-party', icon:'🌙',  type:'night_club',  kw:'nightclub lounge'},
+  latenight:  {label:'Late-night',  icon:'🌮',  type:'restaurant',  kw:'late night food'},
+  wine:       {label:'Wine bar',    icon:'🍷',  type:'bar',         kw:'wine bar'},
 };
 
-// ── Utils ──────────────────────────────────────────────
-const $  = id => document.getElementById(id);
-const qs = s  => document.querySelector(s);
+// ── Tiny helpers ──────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-function toDate(s){ try{ return s?new Date(s):null; }catch{ return null; } }
-function fmtD(d){ return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); }
-function fmtT(d){ return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
-function addMins(d,m){ return new Date(d.getTime()+m*60000); }
-function hav(a,b,c,d){ // haversine miles
-  const R=3958.8, dLat=(c-a)*Math.PI/180, dLon=(d-b)*Math.PI/180;
-  const x=Math.sin(dLat/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dLon/2)**2;
+function toDate(s){
+  try { return s ? new Date(s) : null; } catch { return null; }
+}
+function fmtD(d){
+  return d.toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+function fmtT(d){
+  return d.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'});
+}
+function hav(a,b,c,d){
+  const R=3958.8, dL=(c-a)*Math.PI/180, dl=(d-b)*Math.PI/180;
+  const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)**2;
   return R*2*Math.asin(Math.sqrt(x));
 }
 function mapsUrl(p){
   if(p?.placeId) return `https://www.google.com/maps/place/?q=place_id:${p.placeId}`;
-  if(p?.name) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}`;
+  if(p?.name)    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}`;
   return '#';
 }
 
-let _toast;
-function showToast(msg, ms=2200){
+let _toastTimer;
+function showToast(msg, ms=2400){
   const el=$('toast');
-  el.textContent=msg; el.classList.add('show');
-  clearTimeout(_toast);
-  _toast=setTimeout(()=>el.classList.remove('show'),ms);
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'), ms);
 }
 
-// ── Screen transitions ─────────────────────────────────
-let _curScreen=0;
+// ── Screen nav ────────────────────────────────
+const SCREENS=[$('s0'),$('s1'),$('s2')];
 function goTo(idx){
-  const screens=[s0,s1,s2]; // defined below after DOM ready
-  screens.forEach((s,i)=>{
+  SCREENS.forEach((s,i)=>{
     s.classList.remove('active','exit');
-    if(i===idx) s.classList.add('active');
-    else if(i<idx) s.classList.add('exit');
+    if(i===idx)      s.classList.add('active');
+    else if(i<idx)   s.classList.add('exit');
   });
-  _curScreen=idx;
 }
-const s0=$('s0'),s1=$('s1'),s2=$('s2');
 
-// ── Back / Nav ─────────────────────────────────────────
-$('vibeBack').addEventListener('click',()=>goTo(0));
-$('editBtn').addEventListener('click',()=>goTo(1));
-$('vibeReset').addEventListener('click',()=>{
-  S.vibes=[]; S.plan=null;
+// ── Gen overlay ───────────────────────────────
+function showGen(on){
+  const el=$('genOverlay');
+  if(on){
+    el.classList.add('show');
+    ['gs0','gs1','gs2'].forEach(id=>{
+      const e=$(id); if(e){ e.classList.remove('active','done'); }
+    });
+  } else {
+    el.classList.remove('show');
+  }
+}
+function genStep(i){
+  for(let j=0;j<i;j++){
+    const e=$(`gs${j}`); if(e){ e.classList.remove('active'); e.classList.add('done'); }
+  }
+  const cur=$(`gs${i}`); if(cur){ cur.classList.remove('done'); cur.classList.add('active'); }
+}
+
+// ── Nav wiring ────────────────────────────────
+$('vibeBack').addEventListener('click',  ()=>goTo(0));
+$('editBtn').addEventListener('click',   ()=>goTo(1));
+$('vibeReset').addEventListener('click', ()=>{
+  S.vibes=[];
   document.querySelectorAll('.vibe-tile').forEach(t=>t.classList.remove('on'));
   updateBuildBtn();
   goTo(0);
 });
+$('helpBtn').addEventListener('click', ()=>{
+  showToast('Search a show → pick your vibe → we build the night', 3200);
+});
 
-// ── Search ─────────────────────────────────────────────
-$('kwInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doSearch(); }});
-$('searchBtn').addEventListener('click',doSearch);
+// ── Event search ──────────────────────────────
+$('kwInput').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); doSearch(); }});
+$('searchBtn').addEventListener('click', doSearch);
 
 async function doSearch(){
   const kw=$('kwInput').value.trim();
-  if(!kw){ $('statusLine').textContent='Type an artist or venue first'; $('statusLine').classList.add('err'); return; }
-  $('statusLine').textContent='Searching…'; $('statusLine').classList.remove('err');
-  $('eventList').innerHTML='<div class="shimmer-card"></div><div class="shimmer-card" style="margin-top:10px"></div>';
+  if(!kw){
+    $('statusLine').textContent='Type an artist or venue first';
+    $('statusLine').classList.add('err');
+    return;
+  }
+  $('statusLine').textContent='Searching…';
+  $('statusLine').classList.remove('err');
+  $('eventList').innerHTML=`
+    <div class="shimmer-card"></div>
+    <div class="shimmer-card" style="margin-top:10px"></div>
+    <div class="shimmer-card" style="margin-top:10px"></div>`;
 
   try{
-    const city=encodeURIComponent(kw);
-    const url=`https://app.ticketmaster.com/discovery/v2/events.json?apikey=oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh&keyword=${city}&size=8&sort=date,asc&classificationName=music`;
-    const res=await fetch(url);
-    const data=await res.json();
-    const raw=data?._embedded?.events||[];
+    const url=`https://app.ticketmaster.com/discovery/v2/events.json`
+      +`?apikey=oMkciJfNTvAuK1N4O1XXe49pdPEeJQuh`
+      +`&keyword=${encodeURIComponent(kw)}`
+      +`&size=10&sort=date,asc&classificationName=music`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const raw  = data?._embedded?.events || [];
 
-    // dedupe by artist+date
+    // dedupe by artist+venue+date
     const seen=new Set();
     const events=raw.filter(e=>{
-      const k=`${(e.name||'').toLowerCase().slice(0,30)}_${e.dates?.start?.dateTime||''}`;
-      if(seen.has(k))return false; seen.add(k); return true;
+      const key=`${(e.name||'').slice(0,28)}_${e._embedded?.venues?.[0]?.name||''}_${e.dates?.start?.localDate||''}`;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
     }).slice(0,6).map(e=>({
-      id: e.id,
-      name: e.name,
-      artist: e._embedded?.attractions?.[0]?.name||e.name,
-      venue: e._embedded?.venues?.[0]?.name||'',
-      city: [e._embedded?.venues?.[0]?.city?.name, e._embedded?.venues?.[0]?.state?.stateCode].filter(Boolean).join(', '),
-      dateTime: e.dates?.start?.dateTime||e.dates?.start?.localDate,
-      lat: parseFloat(e._embedded?.venues?.[0]?.location?.latitude)||null,
-      lng: parseFloat(e._embedded?.venues?.[0]?.location?.longitude)||null,
-      addr: [e._embedded?.venues?.[0]?.address?.line1, e._embedded?.venues?.[0]?.city?.name].filter(Boolean).join(', '),
+      id:      e.id,
+      name:    e.name,
+      artist:  e._embedded?.attractions?.[0]?.name || e.name,
+      venue:   e._embedded?.venues?.[0]?.name || '',
+      city:    [e._embedded?.venues?.[0]?.city?.name, e._embedded?.venues?.[0]?.state?.stateCode].filter(Boolean).join(', '),
+      dateTime:e.dates?.start?.dateTime || e.dates?.start?.localDate || '',
+      lat:     parseFloat(e._embedded?.venues?.[0]?.location?.latitude)  || null,
+      lng:     parseFloat(e._embedded?.venues?.[0]?.location?.longitude) || null,
+      addr:    [e._embedded?.venues?.[0]?.address?.line1, e._embedded?.venues?.[0]?.city?.name].filter(Boolean).join(', '),
     }));
 
     renderEvents(events);
-  }catch(err){
-    console.error(err);
+  } catch(err){
+    console.error('Search error:', err);
     $('eventList').innerHTML='';
-    $('statusLine').textContent='Search failed — check connection and try again';
+    $('statusLine').textContent='Search failed — check your connection';
     $('statusLine').classList.add('err');
   }
 }
@@ -1332,33 +1372,34 @@ async function doSearch(){
 function renderEvents(events){
   if(!events.length){
     $('eventList').innerHTML='';
-    $('statusLine').textContent='No events found — try a different search';
+    $('statusLine').textContent='No events found — try a broader search';
     return;
   }
   $('statusLine').textContent=`${events.length} event${events.length===1?'':'s'} found`;
-  $('eventList').innerHTML=events.map(e=>{
-    const dt=toDate(e.dateTime);
-    const mon=dt?dt.toLocaleString('en-US',{month:'short'}).toUpperCase():'';
-    const day=dt?dt.getDate():'';
-    const time=dt?fmtT(dt):'TBA';
-    return `<div class="event-card" data-id="${e.id}">
+
+  $('eventList').innerHTML=events.map(ev=>{
+    const dt  = toDate(ev.dateTime);
+    const mon = dt ? dt.toLocaleString('en-US',{month:'short'}).toUpperCase() : '';
+    const day = dt ? dt.getDate() : '—';
+    const time= dt ? fmtT(dt) : 'TBA';
+    return `<div class="event-card" data-eid="${ev.id}">
       <div class="event-date-block">
         <div class="event-date-mon">${mon}</div>
         <div class="event-date-day">${day}</div>
       </div>
       <div class="event-info">
-        <div class="event-artist">${e.artist||e.name}</div>
-        <div class="event-venue">${e.venue}${e.city?` · ${e.city}`:''}</div>
+        <div class="event-artist">${ev.artist||ev.name}</div>
+        <div class="event-venue">${ev.venue}${ev.city?` · ${ev.city}`:''}</div>
         <div class="event-time">${time}</div>
       </div>
       <div class="event-select-btn">→</div>
     </div>`;
   }).join('');
 
+  // bind clicks — use the stored events array via closure
   $('eventList').querySelectorAll('.event-card').forEach(card=>{
-    card.addEventListener('click',()=>{
-      const id=card.dataset.id;
-      const ev=events.find(x=>x.id===id);
+    card.addEventListener('click', ()=>{
+      const ev=events.find(x=>x.id===card.dataset.eid);
       if(ev) selectEvent(ev);
     });
   });
@@ -1367,16 +1408,16 @@ function renderEvents(events){
 function selectEvent(ev){
   S.ev=ev;
   const dt=toDate(ev.dateTime);
-  $('sumArtist').textContent=ev.artist||ev.name;
-  $('sumMeta').textContent=[ev.venue,ev.city].filter(Boolean).join(' · ');
-  $('sumTimeText').textContent=dt?`${fmtD(dt)} · ${fmtT(dt)}`:(ev.dateTime||'Date TBA');
+  $('sumArtist').textContent  = ev.artist||ev.name;
+  $('sumMeta').textContent    = [ev.venue,ev.city].filter(Boolean).join(' · ');
+  $('sumTimeText').textContent= dt ? `${fmtD(dt)} · ${fmtT(dt)}` : (ev.dateTime||'Date TBA');
   updateBuildBtn();
   goTo(1);
 }
 
-// ── Vibe tiles ─────────────────────────────────────────
+// ── Vibe tiles ────────────────────────────────
 document.querySelectorAll('.vibe-tile').forEach(tile=>{
-  tile.addEventListener('click',()=>{
+  tile.addEventListener('click', ()=>{
     const v=tile.dataset.v;
     tile.classList.toggle('on');
     const i=S.vibes.indexOf(v);
@@ -1385,365 +1426,383 @@ document.querySelectorAll('.vibe-tile').forEach(tile=>{
   });
 });
 
-// ── Pace ───────────────────────────────────────────────
-$('paceRow').addEventListener('click',e=>{
-  const b=e.target.closest('.opt-pill'); if(!b)return;
+// ── Pace ──────────────────────────────────────
+$('paceRow').addEventListener('click', e=>{
+  const b=e.target.closest('.opt-pill'); if(!b) return;
   $('paceRow').querySelectorAll('.opt-pill').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); S.pace=b.dataset.p;
+  b.classList.add('on');
+  S.pace=b.dataset.p;
 });
 
-// ── Arrival ────────────────────────────────────────────
-$('arrRow').addEventListener('click',e=>{
-  const b=e.target.closest('.opt-pill'); if(!b)return;
+// ── Arrival ───────────────────────────────────
+$('arrRow').addEventListener('click', e=>{
+  const b=e.target.closest('.opt-pill'); if(!b) return;
   $('arrRow').querySelectorAll('.opt-pill').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); S.arrival=Number(b.dataset.m);
+  b.classList.add('on');
+  S.arrival=Number(b.dataset.m);
 });
 
 function updateBuildBtn(){
-  $('buildBtn').disabled=!(S.ev&&S.vibes.length>0);
+  $('buildBtn').disabled=!(S.ev && S.vibes.length>0);
 }
 
-// ── BUILD ──────────────────────────────────────────────
-$('buildBtn').addEventListener('click',buildPlan);
+// ── BUILD PLAN ────────────────────────────────
+$('buildBtn').addEventListener('click', buildPlan);
 
 async function buildPlan(){
-  if(!S.ev||!S.vibes.length) return;
-  S.hotel=$('hotelInp').value.trim();
-  S.msgs=[]; // reset chat
+  if(!S.ev || !S.vibes.length) return;
+
+  S.hotel        = $('hotelInp').value.trim();
+  S.chatHistory  = [];
   $('chatMsgs').innerHTML='';
 
+  // Navigate to plan screen & show overlay
   goTo(2);
-  showGenOverlay(true);
+  showGen(true);
 
-  // get location
+  // 1. Resolve location
   let loc=null;
-  if(typeof S.ev.lat==='number'&&S.ev.lat!==0) loc={lat:S.ev.lat,lng:S.ev.lng};
-  else loc=await geocode(`${S.ev.venue} ${S.ev.city}`);
+  if(S.ev.lat && S.ev.lng && !isNaN(S.ev.lat)){
+    loc={lat:S.ev.lat, lng:S.ev.lng};
+  } else {
+    loc=await geocode(`${S.ev.venue} ${S.ev.city}`);
+  }
   S.loc=loc;
-
   genStep(0);
 
-  // fetch Places
+  // 2. Fetch Places for each vibe
   const byVibe={};
-  if(loc&&window.google?.maps?.places){
+  if(loc && window.google?.maps?.places){
     await Promise.all(S.vibes.map(async v=>{
-      const c=VC[v]; if(!c)return;
-      byVibe[v]=await fetchNearby({loc,type:c.type,kw:c.kw});
+      const c=VC[v]; if(!c) return;
+      byVibe[v]=await fetchNearby({loc, type:c.type, kw:c.kw});
     }));
   }
   S.byVibe=byVibe;
-
   genStep(1);
-  await sleep(400);
+  await sleep(300);
   genStep(2);
 
-  // Call Claude
+  // 3. Call Claude
   try{
-    const plan=await callClaude({mode:'build'});
+    const prompt=makeBuildPrompt();
+    S.buildPrompt=prompt;
+    const plan=await claudeCall([{role:'user',content:prompt}]);
     S.plan=plan;
     renderPlan(plan);
-    showGenOverlay(false);
-  }catch(err){
-    console.error(err);
-    showGenOverlay(false);
-    showToast('Something went wrong — try again');
+    showGen(false);
+  } catch(err){
+    console.error('Build error:', err);
+    showGen(false);
+    showToast('Something went wrong — tap Edit and try again');
   }
 }
 
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+// ── Prompt builder ────────────────────────────
+function makeBuildPrompt(){
+  const ev=S.ev;
+  const dt=toDate(ev.dateTime);
 
-// ── Generating overlay steps ───────────────────────────
-let _genStep=-1;
-function showGenOverlay(show){
-  const el=$('genOverlay');
-  if(show){
-    el.classList.add('show');
-    _genStep=-1;
-    ['gs0','gs1','gs2'].forEach(id=>{ const el=$(id); el.classList.remove('active','done'); });
-  } else {
-    el.classList.remove('show');
+  // Summarise nearby places
+  const sum={};
+  const hasPlaces=Object.values(S.byVibe).some(a=>a.length>0);
+  if(hasPlaces){
+    for(const [v,ps] of Object.entries(S.byVibe)){
+      sum[v]=ps.slice(0,6).map(p=>({
+        name:    p.name,
+        address: p.address,
+        rating:  p.rating,
+        price:   p.price,
+        distMi:  (p.lat&&p.lng&&S.loc) ? +hav(S.loc.lat,S.loc.lng,p.lat,p.lng).toFixed(2) : null,
+      }));
+    }
+  }
+
+  const placesBlock=hasPlaces
+    ? `NEARBY PLACES (prefer these):\n${JSON.stringify(sum,null,2)}`
+    : `NEARBY PLACES: API returned none. Draw on your knowledge of dining/bars near ${ev.venue}, ${ev.city}.`;
+
+  return `Build a complete night-out itinerary for a concert.
+
+SHOW: ${ev.artist||ev.name}
+VENUE: ${ev.venue}, ${ev.city}
+DATE/TIME: ${dt ? `${fmtD(dt)} at ${fmtT(dt)}` : 'TBA'}
+PACE: ${S.pace} — chill=2 stops total, balanced=3-4 stops, packed=5-6 stops
+ARRIVE AT VENUE: ${S.arrival} min before show start
+HOTEL/START: ${S.hotel||'not specified'}
+SELECTED VIBES: ${S.vibes.join(', ')}
+
+${placesBlock}
+
+RULES:
+1. "timeline" — ordered array from first activity to last. Always include the show entry (isShow:true).
+2. If hotel is given, open with a departure entry from the hotel.
+3. Schedule pre-show stops to wrap up ${S.arrival} min before show. Post-show: first stop starts 20 min after show ends (assume 2.5 hr show).
+4. Each "note": 1-2 sentences — what to order, a local tip, what makes it worth it. Zero generic phrases.
+5. "picks": 2-3 best options per vibe. Each "why": one sharp, specific sentence.
+6. Use real place names. Never invent a place name that clearly doesn't exist.
+
+RESPOND WITH ONLY THIS JSON — no markdown fences, no explanation:
+{"timeline":[{"time":"6:00 PM","label":"Dinner at Carbone","note":"Order the rigatoni vodka — worth the hour wait at the bar.","placeName":"Carbone","vibe":"dinner","isShow":false},{"time":"8:30 PM","label":"Harry Styles at MSG","note":"","placeName":"Madison Square Garden","vibe":"show","isShow":true}],"picks":{"dinner":[{"name":"Carbone","why":"The best pre-show power dinner in the city — book or walk in at 5:45."}]}}`;
+}
+
+// ── Claude API call ───────────────────────────
+async function claudeCall(messages){
+  const sys=`You are the Concerto+ concierge — a lifelong music fan with the precision of a luxury hotel concierge. You build curated night-out plans around concerts. Be specific and opinionated. Name actual dishes. Give real insider tips. Avoid generic filler phrases. Respond ONLY with a raw JSON object — no markdown, no extra text.`;
+
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 2400,
+      system:     sys,
+      messages,
+    }),
+  });
+
+  if(!res.ok){
+    const t=await res.text();
+    console.error('Claude HTTP error:', res.status, t);
+    throw new Error(`Claude API ${res.status}`);
+  }
+
+  const data=await res.json();
+  console.log('Claude response:', data);
+
+  if(data.error) throw new Error(data.error.message||'API error');
+
+  const raw=(data?.content?.[0]?.text||'').trim();
+  if(!raw) throw new Error('Empty Claude response');
+
+  // Strip any accidental fences
+  const cleaned=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/,'').trim();
+
+  try{
+    return JSON.parse(cleaned);
+  } catch{
+    // Last-ditch: grab outermost { ... }
+    const m=cleaned.match(/\{[\s\S]*\}/);
+    if(m) return JSON.parse(m[0]);
+    console.error('Unparseable response:', cleaned);
+    throw new Error('Could not parse Claude JSON');
   }
 }
-function genStep(i){
-  for(let j=0;j<i;j++){
-    const el=$(`gs${j}`); if(el){ el.classList.remove('active'); el.classList.add('done'); }
-  }
-  const cur=$(`gs${i}`); if(cur){ cur.classList.remove('done'); cur.classList.add('active'); }
-  _genStep=i;
-}
-// ── Geocode ────────────────────────────────────────────
+
+// ── Geocode ───────────────────────────────────
 function geocode(addr){
-  return new Promise(r=>{
-    if(!window.google?.maps) return r(null);
-    new google.maps.Geocoder().geocode({address:addr},(res,st)=>{
-      if(st==='OK'&&res[0]){const l=res[0].geometry.location; r({lat:l.lat(),lng:l.lng()});}
-      else r(null);
+  return new Promise(resolve=>{
+    if(!window.google?.maps) return resolve(null);
+    new google.maps.Geocoder().geocode({address:addr}, (results, status)=>{
+      if(status==='OK' && results[0]){
+        const l=results[0].geometry.location;
+        resolve({lat:l.lat(), lng:l.lng()});
+      } else {
+        resolve(null);
+      }
     });
   });
 }
 
-// ── Places ─────────────────────────────────────────────
+// ── Google Places ─────────────────────────────
 let _psvc=null;
 function getPlaceSvc(){
   if(_psvc) return _psvc;
   if(window.google?.maps?.places){
     _psvc=new google.maps.places.PlacesService(document.createElement('div'));
-    return _psvc;
   }
-  return null;
+  return _psvc;
 }
 window._mapsReadyCb=()=>{ getPlaceSvc(); };
 
-function fetchNearby({loc,type,kw,max=8}){
-  return new Promise(r=>{
+function mapPlace(p){
+  return {
+    name:    p.name||'',
+    placeId: p.place_id||'',
+    lat:     p.geometry?.location?.lat()  ?? null,
+    lng:     p.geometry?.location?.lng()  ?? null,
+    rating:  typeof p.rating==='number'   ? p.rating    : null,
+    price:   typeof p.price_level==='number' ? p.price_level : null,
+    address: p.vicinity || p.formatted_address || '',
+    photos:  p.photos || [],
+  };
+}
+
+function fetchNearby({loc, type, kw, max=8}){
+  return new Promise(resolve=>{
     const svc=getPlaceSvc();
-    if(!svc||!loc) return r([]);
-    const mapP=()=>res=>({
-      name:res.name||'',placeId:res.place_id,
-      lat:res.geometry?.location?.lat()??null,lng:res.geometry?.location?.lng()??null,
-      rating:typeof res.rating==='number'?res.rating:null,
-      price:typeof res.price_level==='number'?res.price_level:null,
-      address:res.vicinity||res.formatted_address||'',
-      photos:res.photos||[],
-    });
-    try{
-      svc.nearbySearch(
-        {location:new google.maps.LatLng(loc.lat,loc.lng),rankBy:google.maps.places.RankBy.DISTANCE,type,keyword:kw},
-        (res,st)=>{
-          if(st===google.maps.places.PlacesServiceStatus.OK&&res?.length){
-            return r(res.slice(0,max).map(mapP()));
-          }
-          // fallback textSearch
-          svc.textSearch(
-            {query:`${kw} near ${loc.lat},${loc.lng}`,location:new google.maps.LatLng(loc.lat,loc.lng),radius:2000},
-            (r2,s2)=>{
-              if(s2===google.maps.places.PlacesServiceStatus.OK&&r2?.length) r(r2.slice(0,max).map(mapP()));
-              else r([]);
-            }
-          );
+    if(!svc || !loc) return resolve([]);
+    const ll=new google.maps.LatLng(loc.lat, loc.lng);
+
+    svc.nearbySearch(
+      {location:ll, rankBy:google.maps.places.RankBy.DISTANCE, type, keyword:kw},
+      (res, st)=>{
+        if(st===google.maps.places.PlacesServiceStatus.OK && res?.length){
+          return resolve(res.slice(0,max).map(mapPlace));
         }
-      );
-    }catch(e){ console.error(e); r([]); }
+        // fallback: text search
+        svc.textSearch(
+          {query:`${kw} near ${S.ev?.venue||''}`, location:ll, radius:2000},
+          (r2, s2)=>{
+            if(s2===google.maps.places.PlacesServiceStatus.OK && r2?.length){
+              resolve(r2.slice(0,max).map(mapPlace));
+            } else {
+              resolve([]);
+            }
+          }
+        );
+      }
+    );
   });
 }
 
-// ── Claude API ─────────────────────────────────────────
-async function callClaude({mode, userMsg=''}){
-  const ev=S.ev, dt=toDate(ev.dateTime);
-  const hasPlaces=Object.values(S.byVibe).some(a=>a.length>0);
-
-  // Build places summary
-  const sum={};
-  for(const[v,ps] of Object.entries(S.byVibe)){
-    sum[v]=ps.slice(0,6).map(p=>({
-      name:p.name, address:p.address,
-      rating:p.rating, price:p.price,
-      distMi:p.lat&&p.lng&&S.loc?+hav(S.loc.lat,S.loc.lng,p.lat,p.lng).toFixed(2):null
-    }));
-  }
-
-  const placesBlock=hasPlaces
-    ? `NEARBY PLACES:\n${JSON.stringify(sum,null,2)}`
-    : `NEARBY PLACES: None from API. Use your knowledge of the area near ${ev.venue}, ${ev.city}.`;
-
-  const sys=`You are the Concerto+ concierge — the taste of a lifelong music fan combined with the precision of a luxury hotel concierge. You build night-out itineraries around concerts. Be specific, opinionated, and direct. Name dishes. Give insider tips. Never say "great atmosphere" or "lively spot." Respond ONLY with a raw JSON object.`;
-
-  const buildPrompt=`Build a complete night-out plan.
-
-SHOW: ${ev.artist||ev.name}
-VENUE: ${ev.venue}, ${ev.city}
-DATE/TIME: ${dt?`${fmtD(dt)} at ${fmtT(dt)}`:'TBA'}
-PACE: ${S.pace} (chill=2 stops, balanced=3-4, packed=5-6)
-ARRIVE VENUE: ${S.arrival} min before show
-HOTEL/START: ${S.hotel||'not specified'}
-VIBES: ${S.vibes.join(', ')}
-
-${placesBlock}
-
-Rules:
-- timeline: array from first stop through end of night
-- Always include the show with isShow:true
-- If hotel given, open with departure from hotel
-- Time pre-show stops to finish ${S.arrival} min before show. Post-show starts 20 min after end (assume 2.5hr show)
-- Each note: 1-2 sentences, specific — what to order, why it's worth it, insider tip
-- picks: 2-3 best per vibe, each "why" is one sharp opinionated sentence
-- Rate and pick best, not just closest
-
-Return ONLY:
-{"timeline":[{"time":"6:00 PM","label":"Dinner at Carbone","note":"Order the rigatoni vodka — it's the only reason to be here an hour early.","placeName":"Carbone","vibe":"dinner","isShow":false}],"picks":{"dinner":[{"name":"Carbone","why":"The best pre-show power dinner in the city — book two weeks out or walk in at 5:45."}]}}`;
-
-  let messages;
-  if(mode==='build'){
-    messages=[{role:'user',content:buildPrompt}];
-    S.msgs=[{role:'user',content:buildPrompt}];
-  } else {
-    // chat mode — append user message to history
-    S.msgs.push({role:'user',content:userMsg});
-    // inject context reminder at start of chat
-    const context=`[CONTEXT: The current plan is for ${ev.artist||ev.name} at ${ev.venue}. Current timeline has ${(S.plan?.timeline||[]).length} stops. VIBES: ${S.vibes.join(', ')}. The user wants to adjust something. Return the full updated plan as JSON in the same format.]`;
-    messages=[
-      {role:'user',content:buildPrompt},
-      {role:'assistant',content:JSON.stringify(S.plan)},
-      ...S.msgs.slice(-6).map((m,i)=>i===0?{role:'user',content:context+'\n\n'+m.content}:m)
-    ];
-  }
-
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body:JSON.stringify({
-      model:'claude-haiku-4-5-20251001',
-      max_tokens:2200,
-      system:sys,
-      messages
-    })
-  });
-
-  if(!res.ok){
-    const t=await res.text(); console.error('API error',res.status,t);
-    throw new Error(`API ${res.status}`);
-  }
-
-  const data=await res.json();
-  const raw=(data?.content?.[0]?.text||'').trim();
-  console.log('Claude:', raw.slice(0,300));
-
-  if(data.error) throw new Error(data.error.message);
-  if(!raw) throw new Error('Empty response');
-
-  const cleaned=raw.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
-  try{ return JSON.parse(cleaned); }
-  catch{
-    const m=cleaned.match(/\{[\s\S]*\}/);
-    if(m) return JSON.parse(m[0]);
-    throw new Error('JSON parse failed');
-  }
-}
-
-// ── Render Plan ────────────────────────────────────────
+// ── Render plan ───────────────────────────────
 function renderPlan(plan){
   const ev=S.ev, dt=toDate(ev.dateTime);
-  $('planArtist').textContent=ev.artist||ev.name;
-  $('planMeta').textContent=[ev.venue, ev.city, dt?fmtD(dt):''].filter(Boolean).join(' · ');
+  $('planArtist').textContent = ev.artist||ev.name;
+  $('planMeta').textContent   = [ev.venue, ev.city, dt?fmtD(dt):''].filter(Boolean).join(' · ');
 
-  // Timeline
-  const tl=$('tlList'); tl.innerHTML='';
-  const flat=Object.values(S.byVibe).flat();
-  (plan.timeline||[]).forEach((item,i)=>{
-    const place=flat.find(p=>p.name===item.placeName);
-    const url=place?mapsUrl(place):(item.isShow?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.venue+' '+ev.city)}`:'');
+  // ─ Timeline ─
+  const tlList=$('tlList');
+  tlList.innerHTML='';
+  const allPlaces=Object.values(S.byVibe).flat();
 
-    const wrap=document.createElement('div');
-    wrap.className='tl-item'+(item.isShow?' is-show':'');
-    wrap.style.animationDelay=`${i*0.07}s`;
+  if(!plan.timeline?.length){
+    tlList.innerHTML='<div style="padding:20px 0;font-size:14px;color:var(--ink-2);font-style:italic">No plan returned — try rebuilding.</div>';
+  } else {
+    plan.timeline.forEach((item,i)=>{
+      const place = allPlaces.find(p=>p.name===item.placeName);
+      const url   = place ? mapsUrl(place)
+                  : item.isShow ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((ev.venue||'')+' '+(ev.city||''))}` : '';
 
-    const mapsBtn=url?`<a class="tl-maps" href="${url}" target="_blank" rel="noopener">↗ Maps</a>`:'';
+      const wrap=document.createElement('div');
+      wrap.className='tl-item'+(item.isShow?' is-show':'');
+      wrap.style.animationDelay=`${i*0.07}s`;
 
-    wrap.innerHTML=`
-      <div class="tl-dot-col"><div class="tl-dot"></div></div>
-      <div class="tl-content">
-        <div class="tl-card">
-          <div class="tl-time">${item.time||''}</div>
-          <div class="tl-label">${item.label||''}</div>
-          ${item.note&&!item.isShow?`<div class="tl-note">${item.note}</div>`:''}
-          ${mapsBtn}
-        </div>
-        <div class="tl-spacer"></div>
-      </div>`;
-    tl.appendChild(wrap);
-  });
+      wrap.innerHTML=`
+        <div class="tl-dot-col"><div class="tl-dot"></div></div>
+        <div class="tl-content">
+          <div class="tl-card">
+            <div class="tl-time">${item.time||''}</div>
+            <div class="tl-label">${item.label||''}</div>
+            ${item.note && !item.isShow ? `<div class="tl-note">${item.note}</div>` : ''}
+            ${url ? `<a class="tl-maps" href="${url}" target="_blank" rel="noopener">↗ Maps</a>` : ''}
+          </div>
+          <div class="tl-spacer"></div>
+        </div>`;
+      tlList.appendChild(wrap);
+    });
+  }
 
-  // Picks
-  const ps=$('picksSec'); ps.innerHTML='';
+  // ─ Picks ─
+  const picksSec=$('picksSec');
+  picksSec.innerHTML='';
   const pd=plan.picks||{};
   const hasAny=S.vibes.some(v=>(pd[v]||[]).length>0);
-  if(hasAny){
-    ps.innerHTML='<div class="picks-section-label">Nearby picks</div>';
-    S.vibes.forEach(v=>{
-      const picks=pd[v]; if(!picks?.length)return;
-      const cat=document.createElement('div'); cat.className='picks-category';
-      const cfg=VC[v]||{};
-      cat.innerHTML=`<div class="picks-cat-name">${cfg.icon||''} ${cfg.label||v}</div>`;
-      const rail=document.createElement('div'); rail.className='picks-rail';
 
+  if(hasAny){
+    picksSec.innerHTML='<div class="picks-section-label">Nearby picks</div>';
+    S.vibes.forEach(v=>{
+      const picks=pd[v]; if(!picks?.length) return;
+      const cfg=VC[v]||{};
+
+      const cat=document.createElement('div'); cat.className='picks-category';
+      cat.innerHTML=`<div class="picks-cat-name">${cfg.icon||''} ${cfg.label||v}</div>`;
+
+      const rail=document.createElement('div'); rail.className='picks-rail';
       picks.forEach(pick=>{
-        const rp=flat.find(p=>p.name===pick.name);
-        const href=rp?mapsUrl(rp):'#';
-        const dist=rp?.lat&&rp?.lng&&S.loc?hav(S.loc.lat,S.loc.lng,rp.lat,rp.lng):null;
-        const stars=rp?.rating?`★ ${rp.rating.toFixed(1)}`:'';
-        const price=rp?.price?'$'.repeat(Math.min(4,rp.price)):'';
-        const meta=[stars,price,dist!=null?`${dist.toFixed(1)} mi`:''].filter(Boolean).join(' · ');
-        const img=rp?.photos?.[0]?.getUrl?rp.photos[0].getUrl({maxWidth:360,maxHeight:180}):'';
+        const rp   = allPlaces.find(p=>p.name===pick.name);
+        const href = rp ? mapsUrl(rp) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pick.name+' '+(S.ev?.city||''))}`;
+        const dist = (rp?.lat&&rp?.lng&&S.loc) ? hav(S.loc.lat,S.loc.lng,rp.lat,rp.lng) : null;
+        const meta = [
+          rp?.rating!=null  ? `★ ${rp.rating.toFixed(1)}` : '',
+          rp?.price!=null   ? '$'.repeat(Math.min(4,rp.price)) : '',
+          dist!=null        ? `${dist.toFixed(1)} mi` : '',
+        ].filter(Boolean).join(' · ');
+        const imgSrc = rp?.photos?.[0]?.getUrl ? rp.photos[0].getUrl({maxWidth:360,maxHeight:180}) : '';
 
         const card=document.createElement('a');
         card.className='pick-card'; card.href=href; card.target='_blank'; card.rel='noopener';
         card.innerHTML=`
           <div class="pick-img">
-            ${img?`<img src="${img}" alt="${pick.name}" loading="lazy"/>`:
-            `<div class="pick-img-placeholder">${cfg.icon||'📍'}</div>`}
+            ${imgSrc
+              ? `<img src="${imgSrc}" alt="${pick.name}" loading="lazy"/>`
+              : `<div class="pick-img-placeholder">${cfg.icon||'📍'}</div>`}
           </div>
           <div class="pick-body">
             <div class="pick-name">${pick.name}</div>
             <div class="pick-why">${pick.why||''}</div>
-            ${meta?`<div class="pick-meta">${meta}</div>`:''}
+            ${meta ? `<div class="pick-meta">${meta}</div>` : ''}
           </div>`;
         rail.appendChild(card);
       });
       cat.appendChild(rail);
-      ps.appendChild(cat);
+      picksSec.appendChild(cat);
     });
   }
 
-  // Scroll to top of plan
   $('planScroll').scrollTop=0;
 }
 
-// ── Share ──────────────────────────────────────────────
-$('shareBtn').addEventListener('click',async()=>{
-  if(!S.ev||!S.plan) return;
+// ── Share ─────────────────────────────────────
+$('shareBtn').addEventListener('click', async()=>{
+  if(!S.ev || !S.plan) return;
   const dt=toDate(S.ev.dateTime);
   const lines=(S.plan.timeline||[]).map(t=>`${t.time} — ${t.label}`).join('\n');
   const text=`My Concerto+ plan\n${S.ev.artist||S.ev.name} at ${S.ev.venue}\n${dt?fmtD(dt):''}\n\n${lines}\n\nBuilt with Concerto+`;
   try{
-    if(navigator.share) await navigator.share({title:'Concerto+ Plan',text});
-    else{ await navigator.clipboard.writeText(text); showToast('Plan copied to clipboard'); }
-  }catch{ showToast('Share canceled'); }
+    if(navigator.share) await navigator.share({title:'Concerto+ Plan', text});
+    else { await navigator.clipboard.writeText(text); showToast('Plan copied to clipboard'); }
+  } catch { showToast('Share canceled'); }
 });
 
-// ── Chat ───────────────────────────────────────────────
+// ── Chat ──────────────────────────────────────
 const chatInput=$('chatInput');
-chatInput.addEventListener('input',()=>{
+chatInput.addEventListener('input', ()=>{
   chatInput.style.height='auto';
   chatInput.style.height=Math.min(chatInput.scrollHeight,80)+'px';
 });
-chatInput.addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChat(); }
+chatInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
 });
-$('chatSend').addEventListener('click',sendChat);
+$('chatSend').addEventListener('click', sendChat);
 
 async function sendChat(){
   const msg=chatInput.value.trim();
-  if(!msg||!S.plan) return;
-  chatInput.value=''; chatInput.style.height='auto';
+  if(!msg || !S.plan) return;
+  chatInput.value='';
+  chatInput.style.height='auto';
 
-  addBubble(msg,'user');
-  const typing=addBubble('','ai',true);
+  addBubble(msg, 'user');
+  const typing=addBubble('', 'ai', true);
+
+  // Build full message list: original build, original response, then chat turns
+  const messages=[
+    {role:'user',      content: S.buildPrompt},
+    {role:'assistant', content: JSON.stringify(S.plan)},
+    ...S.chatHistory,
+    {role:'user',      content: `Update the plan: ${msg}. Return the full updated plan in the exact same JSON format.`},
+  ];
 
   try{
-    const plan=await callClaude({mode:'chat',userMsg:msg});
-    typing.remove();
+    const plan=await claudeCall(messages);
     S.plan=plan;
-    renderPlan(plan);
-    S.msgs.push({role:'assistant',content:JSON.stringify(plan)});
-    addBubble('Updated your plan ✓','ai');
-    $('planScroll').scrollTop=0;
-  }catch(err){
+    S.chatHistory.push(
+      {role:'user',      content:`Update the plan: ${msg}. Return the full updated plan in the exact same JSON format.`},
+      {role:'assistant', content:JSON.stringify(plan)},
+    );
     typing.remove();
-    addBubble("Couldn't update the plan — try again.",'ai');
+    renderPlan(plan);
+    addBubble('Updated ✓', 'ai');
+    $('planScroll').scrollTop=0;
+  } catch(err){
+    console.error('Chat error:', err);
+    typing.remove();
+    addBubble("Couldn't update — try again.", 'ai');
   }
 }
 
@@ -1753,18 +1812,12 @@ function addBubble(text, role, typing=false){
   if(typing) el.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
   else el.textContent=text;
   $('chatMsgs').appendChild(el);
-  // scroll to bottom
   const scroll=$('planScroll');
   scroll.scrollTop=scroll.scrollHeight;
   return el;
 }
 
-// ── Help modal (simple toast) ──────────────────────────
-$('helpBtn').addEventListener('click',()=>{
-  showToast('Search a show → pick your vibe → we build the night', 3200);
-});
-
-// ── Init ───────────────────────────────────────────────
+// ── Init ──────────────────────────────────────
 updateBuildBtn();
 </script>
 </body>

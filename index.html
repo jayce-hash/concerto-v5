@@ -1484,17 +1484,25 @@ async function buildPlan(){
   genStep(2);
 
   // 3. Call Claude
+  // 3. Call Claude
   try{
     const prompt=makeBuildPrompt();
     S.buildPrompt=prompt;
+    console.log('loc:', JSON.stringify(S.loc));
+    console.log('vibes:', S.vibes);
+    console.log('byVibe:', Object.entries(S.byVibe).map(([k,v])=>k+':'+v.length));
     const plan=await claudeCall([{role:'user',content:prompt}]);
+    console.log('plan received:', JSON.stringify(plan).slice(0,200));
     S.plan=plan;
     renderPlan(plan);
     showGen(false);
   } catch(err){
-    console.error('Build error:', err);
+    console.error('Build error:', err.message, err);
     showGen(false);
-    showToast('Something went wrong — tap Edit and try again');
+    $('tlList').innerHTML='<div style="padding:20px 4px"><div style="font-size:13px;font-weight:600;color:#C0392B;margin-bottom:6px">Build failed</div><div style="font-size:12px;color:var(--ink-2);line-height:1.6;word-break:break-all">' + (err.message||String(err)) + '</div></div>';
+    $('planArtist').textContent=S.ev?.artist||S.ev?.name||'Error';
+    $('planMeta').textContent='Check the error below';
+    showGen(false);
   }
 }
 
@@ -1568,7 +1576,7 @@ async function claudeCall(messages){
   if(!res.ok){
     const t=await res.text();
     console.error('Claude HTTP error:', res.status, t);
-    throw new Error(`Claude API ${res.status}`);
+    throw new Error(`Claude API ${res.status}: ${t.slice(0,300)}`);
   }
 
   const data=await res.json();
@@ -1577,19 +1585,22 @@ async function claudeCall(messages){
   if(data.error) throw new Error(data.error.message||'API error');
 
   const raw=(data?.content?.[0]?.text||'').trim();
-  if(!raw) throw new Error('Empty Claude response');
+  console.log('Claude raw text (first 600):', raw.slice(0,600));
+  if(!raw) throw new Error('Empty Claude response — stop_reason: '+(data?.stop_reason||'unknown'));
 
   // Strip any accidental fences
   const cleaned=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/,'').trim();
 
   try{
     return JSON.parse(cleaned);
-  } catch{
+  } catch(parseErr){
     // Last-ditch: grab outermost { ... }
     const m=cleaned.match(/\{[\s\S]*\}/);
-    if(m) return JSON.parse(m[0]);
-    console.error('Unparseable response:', cleaned);
-    throw new Error('Could not parse Claude JSON');
+    if(m){
+      try{ return JSON.parse(m[0]); } catch{}
+    }
+    console.error('Unparseable Claude response:', cleaned.slice(0,400));
+    throw new Error('JSON parse failed. Claude said: '+cleaned.slice(0,120));
   }
 }
 

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -17,9 +18,9 @@
   --ink-2:     rgba(14,26,43,.55);
   --ink-3:     rgba(14,26,43,.28);
   --ink-4:     rgba(14,26,43,.10);
-  --gold:      #C9A84C;
-  --gold-soft: rgba(201,168,76,.14);
-  --gold-line: rgba(201,168,76,.35);
+  --gold:      #121E36;
+  --gold-soft: rgba(18,30,54,.10);
+  --gold-line: rgba(18,30,54,.25);
   --white:     #ffffff;
   --card:      rgba(255,255,255,.82);
   --card-b:    rgba(14,26,43,.09);
@@ -526,17 +527,17 @@ img { display:block; }
 .primary-btn:active { transform: translateY(0) scale(.99); }
 .primary-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .primary-btn.gold {
-  background: linear-gradient(135deg, #C9A84C, #e8c96a, #C9A84C);
+  background: linear-gradient(135deg, #121E36, #1e3154, #121E36);
   background-size: 200% 100%;
   color: var(--ink);
-  box-shadow: 0 8px 28px rgba(201,168,76,.35);
+  box-shadow: 0 8px 28px rgba(18,30,54,.25);
   animation: gold-shimmer 3s ease-in-out infinite;
 }
 @keyframes gold-shimmer {
   0%, 100% { background-position: 0% 0; }
   50% { background-position: 100% 0; }
 }
-.primary-btn.gold:hover { box-shadow: 0 12px 36px rgba(201,168,76,.45); }
+.primary-btn.gold:hover { box-shadow: 0 12px 36px rgba(18,30,54,.35); }
 
 /* ── PLAN SCREEN ─────────────────────────────────────────── */
 .plan-header {
@@ -633,7 +634,7 @@ img { display:block; }
 .tl-item.is-show .tl-dot {
   width: 13px; height: 13px;
   background: var(--gold);
-  box-shadow: 0 0 0 3px var(--gold-soft), 0 0 12px rgba(201,168,76,.4);
+  box-shadow: 0 0 0 3px var(--gold-soft), 0 0 12px rgba(18,30,54,.3);
 }
 .tl-content {
   flex: 1 1 auto;
@@ -661,7 +662,7 @@ img { display:block; }
   text-transform: uppercase;
   margin-bottom: 3px;
 }
-.tl-item.is-show .tl-time { color: rgba(201,168,76,.8); }
+.tl-item.is-show .tl-time { color: rgba(18,30,54,.6); }
 .tl-label {
   font-family: var(--display);
   font-size: 17px;
@@ -756,7 +757,7 @@ img { display:block; }
   display: grid;
   place-items: center;
   font-size: 28px;
-  background: linear-gradient(135deg, rgba(14,26,43,.04), rgba(201,168,76,.08));
+  background: linear-gradient(135deg, rgba(14,26,43,.04), rgba(18,30,54,.06));
 }
 .pick-body { padding: 10px 11px 11px; }
 .pick-name {
@@ -912,8 +913,8 @@ img { display:block; }
 .gen-orb {
   width: 72px; height: 72px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--gold), rgba(201,168,76,.4));
-  box-shadow: 0 0 40px rgba(201,168,76,.35), 0 0 80px rgba(201,168,76,.15);
+  background: linear-gradient(135deg, var(--gold), rgba(18,30,54,.3));
+  box-shadow: 0 0 40px rgba(18,30,54,.25), 0 0 80px rgba(18,30,54,.10);
   animation: orb-pulse 1.8s ease-in-out infinite;
   position: relative;
 }
@@ -928,8 +929,8 @@ img { display:block; }
   justify-content: center;
 }
 @keyframes orb-pulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(201,168,76,.35), 0 0 80px rgba(201,168,76,.15); }
-  50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(201,168,76,.5), 0 0 120px rgba(201,168,76,.2); }
+  0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(18,30,54,.25), 0 0 80px rgba(18,30,54,.10); }
+  50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(18,30,54,.4), 0 0 120px rgba(18,30,54,.15); }
 }
 .gen-label {
   font-family: var(--display);
@@ -1012,12 +1013,14 @@ img { display:block; }
   margin: 20px 0;
 }
 </style>
+
 </head>
 <body>
 
 <!-- ════════════════════════════════════════════════════════
      SCREEN 0 — SEARCH
 ═══════════════════════════════════════════════════════════ -->
+
 <div id="s0" class="screen active" style="background:var(--bg);">
   <div class="topbar">
     <div class="topbar-logo">
@@ -1034,22 +1037,26 @@ img { display:block; }
     <h1 class="hero-headline">What show are<br>you going <em>to?</em></h1>
     <p class="hero-sub">Search your event and we'll build the perfect day around it — from first coffee to last call.</p>
 
-    <div class="search-wrap">
-      <input id="kwInput" class="search-input" type="text"
-             placeholder="Artist, band, venue, city…"
-             autocomplete="off" autocorrect="off" spellcheck="false"/>
-      <button class="search-go" id="searchBtn" title="Search">→</button>
-    </div>
+```
+<div class="search-wrap">
+  <input id="kwInput" class="search-input" type="text"
+         placeholder="Artist, band, venue, city…"
+         autocomplete="off" autocorrect="off" spellcheck="false"/>
+  <button class="search-go" id="searchBtn" title="Search">→</button>
+</div>
 
-    <div id="statusLine" class="status-line">Start with an artist name or city</div>
+<div id="statusLine" class="status-line">Start with an artist name or city</div>
 
-    <div id="eventList" class="event-list"></div>
+<div id="eventList" class="event-list"></div>
+```
+
   </div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════
      SCREEN 1 — VIBE
 ═══════════════════════════════════════════════════════════ -->
+
 <div id="s1" class="screen" style="background:var(--bg);">
   <div class="topbar">
     <button class="back-btn" id="vibeBack">
@@ -1072,78 +1079,82 @@ img { display:block; }
       </div>
     </div>
 
-    <!-- Vibe tiles -->
-    <p class="section-label">What's the vibe?</p>
-    <div class="vibe-grid" id="vibeGrid">
-      <button class="vibe-tile" data-v="dinner" type="button">
-        <div class="vibe-check">✓</div>
-        <div class="vibe-tile-icon">🍽</div>
-        <div class="vibe-tile-name">Dinner</div>
-        <div class="vibe-tile-hint">Pre-show meal</div>
-      </button>
-      <button class="vibe-tile" data-v="cocktails" type="button">
-        <div class="vibe-check">✓</div>
-        <div class="vibe-tile-icon">🍸</div>
-        <div class="vibe-tile-name">Cocktails</div>
-        <div class="vibe-tile-hint">Pre-show drinks</div>
-      </button>
-      <button class="vibe-tile" data-v="coffee" type="button">
-        <div class="vibe-check">✓</div>
-        <div class="vibe-tile-icon">☕</div>
-        <div class="vibe-tile-name">Coffee</div>
-        <div class="vibe-tile-hint">Afternoon start</div>
-      </button>
-      <button class="vibe-tile" data-v="afterparty" type="button">
-        <div class="vibe-check">✓</div>
-        <div class="vibe-tile-icon">🌙</div>
-        <div class="vibe-tile-name">After-party</div>
-        <div class="vibe-tile-hint">Keep it going</div>
-      </button>
-      <button class="vibe-tile" data-v="latenight" type="button">
-        <div class="vibe-check">✓</div>
-        <div class="vibe-tile-icon">🌮</div>
-        <div class="vibe-tile-name">Late-night eats</div>
-        <div class="vibe-tile-hint">Post-encore fuel</div>
-      </button>
-      <button class="vibe-tile" data-v="wine" type="button">
-        <div class="vibe-check">✓</div>
-        <div class="vibe-tile-icon">🍷</div>
-        <div class="vibe-tile-name">Wine bar</div>
-        <div class="vibe-tile-hint">Slow and easy</div>
-      </button>
-    </div>
+```
+<!-- Vibe tiles -->
+<p class="section-label">What's the vibe?</p>
+<div class="vibe-grid" id="vibeGrid">
+  <button class="vibe-tile" data-v="dinner" type="button">
+    <div class="vibe-check">✓</div>
+    <div class="vibe-tile-icon">🍽</div>
+    <div class="vibe-tile-name">Dinner</div>
+    <div class="vibe-tile-hint">Pre-show meal</div>
+  </button>
+  <button class="vibe-tile" data-v="cocktails" type="button">
+    <div class="vibe-check">✓</div>
+    <div class="vibe-tile-icon">🍸</div>
+    <div class="vibe-tile-name">Cocktails</div>
+    <div class="vibe-tile-hint">Pre-show drinks</div>
+  </button>
+  <button class="vibe-tile" data-v="coffee" type="button">
+    <div class="vibe-check">✓</div>
+    <div class="vibe-tile-icon">☕</div>
+    <div class="vibe-tile-name">Coffee</div>
+    <div class="vibe-tile-hint">Afternoon start</div>
+  </button>
+  <button class="vibe-tile" data-v="afterparty" type="button">
+    <div class="vibe-check">✓</div>
+    <div class="vibe-tile-icon">🌙</div>
+    <div class="vibe-tile-name">After-party</div>
+    <div class="vibe-tile-hint">Keep it going</div>
+  </button>
+  <button class="vibe-tile" data-v="latenight" type="button">
+    <div class="vibe-check">✓</div>
+    <div class="vibe-tile-icon">🌮</div>
+    <div class="vibe-tile-name">Late-night eats</div>
+    <div class="vibe-tile-hint">Post-encore fuel</div>
+  </button>
+  <button class="vibe-tile" data-v="wine" type="button">
+    <div class="vibe-check">✓</div>
+    <div class="vibe-tile-icon">🍷</div>
+    <div class="vibe-tile-name">Wine bar</div>
+    <div class="vibe-tile-hint">Slow and easy</div>
+  </button>
+</div>
 
-    <!-- Pace -->
-    <p class="section-label">How packed is the day?</p>
-    <div class="option-row" id="paceRow">
-      <button class="opt-pill" data-p="chill">Chill</button>
-      <button class="opt-pill on" data-p="balanced">Balanced</button>
-      <button class="opt-pill" data-p="packed">Packed</button>
-    </div>
+<!-- Pace -->
+<p class="section-label">How packed is the day?</p>
+<div class="option-row" id="paceRow">
+  <button class="opt-pill" data-p="chill">Chill</button>
+  <button class="opt-pill on" data-p="balanced">Balanced</button>
+  <button class="opt-pill" data-p="packed">Packed</button>
+</div>
 
-    <!-- Arrive -->
-    <p class="section-label">Arrive at venue</p>
-    <div class="option-row" id="arrRow">
-      <button class="opt-pill" data-m="30">30 min early</button>
-      <button class="opt-pill on" data-m="60">1 hr early</button>
-      <button class="opt-pill" data-m="90">90 min early</button>
-    </div>
+<!-- Arrive -->
+<p class="section-label">Arrive at venue</p>
+<div class="option-row" id="arrRow">
+  <button class="opt-pill" data-m="30">30 min early</button>
+  <button class="opt-pill on" data-m="60">1 hr early</button>
+  <button class="opt-pill" data-m="90">90 min early</button>
+</div>
 
-    <!-- Hotel optional -->
-    <p class="section-label">Hotel / starting point <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-3);font-size:11px;"> — optional</span></p>
-    <input id="hotelInp" class="optional-input" type="text"
-           placeholder="e.g. The Standard, High Line"
-           autocomplete="off"/>
+<!-- Hotel optional -->
+<p class="section-label">Hotel / starting point <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-3);font-size:11px;"> — optional</span></p>
+<input id="hotelInp" class="optional-input" type="text"
+       placeholder="e.g. The Standard, High Line"
+       autocomplete="off"/>
 
-    <button id="buildBtn" class="primary-btn gold" disabled>
-      Build my night →
-    </button>
+<button id="buildBtn" class="primary-btn gold" disabled>
+  Build my night →
+</button>
+```
+
   </div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════
      SCREEN 2 — PLAN
 ═══════════════════════════════════════════════════════════ -->
+
 <div id="s2" class="screen" style="background:var(--bg); display:flex; flex-direction:column;">
   <!-- Generating overlay -->
   <div class="gen-overlay" id="genOverlay">
@@ -1158,6 +1169,7 @@ img { display:block; }
   </div>
 
   <!-- Plan header — fixed, never scrolls -->
+
   <div class="plan-header" id="planHeader" style="flex:0 0 auto;">
     <div class="plan-eyebrow">Your Concerto+ plan</div>
     <div class="plan-artist" id="planArtist">—</div>
@@ -1169,6 +1181,7 @@ img { display:block; }
   </div>
 
   <!-- Scrollable content -->
+
   <div class="scroll-area" id="planScroll" style="flex:1 1 auto; min-height:0;">
     <!-- Timeline -->
     <div class="tl" id="tlWrap">
@@ -1176,14 +1189,18 @@ img { display:block; }
       <div id="tlList"></div>
     </div>
 
-    <!-- Picks -->
-    <div class="picks-section" id="picksSec"></div>
+```
+<!-- Picks -->
+<div class="picks-section" id="picksSec"></div>
 
-    <!-- Chat history -->
-    <div class="chat-msgs" id="chatMsgs"></div>
+<!-- Chat history -->
+<div class="chat-msgs" id="chatMsgs"></div>
+```
+
   </div>
 
   <!-- Chat bar — fixed at bottom -->
+
   <div class="chat-bar" style="flex:0 0 auto;">
     <div class="chat-inner">
       <textarea class="chat-input" id="chatInput" rows="1"
@@ -1194,10 +1211,10 @@ img { display:block; }
 </div>
 
 <!-- Toast -->
+
 <div class="toast" id="toast"></div>
 
 <!-- Google Maps SDK not needed - using server-side proxy for all API calls -->
-
 
 <script>
 /* ═══════════════════════════════════════════════
@@ -1797,5 +1814,6 @@ function addBubble(text, role, typing=false){
 // ── Init ──────────────────────────────────────
 updateBuildBtn();
 </script>
+
 </body>
 </html>

@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -11,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
 
 <style>
-/* ── TOKENS ─────────────────────────────────────────────── */
+/* -- TOKENS ----------------------------------------------- */
 :root {
   --bg:        #F8F9F9;
   --ink:       #0E1A2B;
@@ -37,7 +36,7 @@
   --ease:   cubic-bezier(.4,0,.2,1);
 }
 
-/* ── RESET ───────────────────────────────────────────────── */
+/* -- RESET ------------------------------------------------- */
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
 html, body { height:100%; overflow:hidden; }
 body {
@@ -54,7 +53,7 @@ input, textarea { font-family:var(--body); }
 a { color:inherit; text-decoration:none; }
 img { display:block; }
 
-/* ── APP SHELL ───────────────────────────────────────────── */
+/* -- APP SHELL --------------------------------------------- */
 #app {
   height: 100dvh;
   display: flex;
@@ -62,7 +61,7 @@ img { display:block; }
   overflow: hidden;
 }
 
-/* ── SCREENS ─────────────────────────────────────────────── */
+/* -- SCREENS ----------------------------------------------- */
 .screen {
   position: absolute;
   inset: 0;
@@ -86,7 +85,7 @@ img { display:block; }
   pointer-events: none;
 }
 
-/* ── TOPBAR ──────────────────────────────────────────────── */
+/* -- TOPBAR ------------------------------------------------ */
 .topbar {
   flex: 0 0 auto;
   display: flex;
@@ -136,7 +135,7 @@ img { display:block; }
 .icon-btn:hover { background: var(--white); transform: scale(1.06); }
 .icon-btn:active { transform: scale(.95); }
 
-/* ── SCROLLABLE CONTENT ──────────────────────────────────── */
+/* -- SCROLLABLE CONTENT ------------------------------------ */
 .scroll-area {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -146,7 +145,7 @@ img { display:block; }
 }
 .scroll-area::-webkit-scrollbar { display: none; }
 
-/* ── HERO (Search screen) ────────────────────────────────── */
+/* -- HERO (Search screen) ---------------------------------- */
 .hero-eyebrow {
   font-size: 10px;
   font-weight: 600;
@@ -176,7 +175,7 @@ img { display:block; }
   margin-bottom: 28px;
 }
 
-/* ── SEARCH BOX ──────────────────────────────────────────── */
+/* -- SEARCH BOX -------------------------------------------- */
 .search-wrap {
   position: relative;
   margin-bottom: 14px;
@@ -215,7 +214,7 @@ img { display:block; }
 .search-go:hover { background: var(--gold); transform: translateY(-50%) scale(1.08); }
 .search-go:active { transform: translateY(-50%) scale(.94); }
 
-/* ── STATUS LINE ─────────────────────────────────────────── */
+/* -- STATUS LINE ------------------------------------------- */
 .status-line {
   font-size: 12px;
   color: var(--ink-3);
@@ -226,7 +225,7 @@ img { display:block; }
 }
 .status-line.err { color: var(--red); }
 
-/* ── EVENT CARDS ─────────────────────────────────────────── */
+/* -- EVENT CARDS ------------------------------------------- */
 .event-list { display: flex; flex-direction: column; gap: 10px; }
 
 .event-card {
@@ -319,7 +318,7 @@ img { display:block; }
   transform: scale(1.1);
 }
 
-/* ── SHIMMER ─────────────────────────────────────────────── */
+/* -- SHIMMER ----------------------------------------------- */
 .shimmer-card {
   height: 72px;
   border-radius: var(--r-md);
@@ -336,7 +335,7 @@ img { display:block; }
   100% { background-position: -200% 0; }
 }
 
-/* ── VIBE SCREEN ─────────────────────────────────────────── */
+/* -- VIBE SCREEN ------------------------------------------- */
 .show-summary-card {
   background: var(--ink);
   border-radius: var(--r-lg);
@@ -390,7 +389,7 @@ img { display:block; }
   letter-spacing: .04em;
 }
 
-/* ── SECTION LABEL ───────────────────────────────────────── */
+/* -- SECTION LABEL ----------------------------------------- */
 .section-label {
   font-size: 10px;
   font-weight: 600;
@@ -400,7 +399,7 @@ img { display:block; }
   margin-bottom: 10px;
 }
 
-/* ── VIBE GRID ───────────────────────────────────────────── */
+/* -- VIBE GRID --------------------------------------------- */
 .vibe-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -455,7 +454,7 @@ img { display:block; }
 }
 .vibe-tile.on .vibe-check { opacity: 1; transform: scale(1); }
 
-/* ── OPTION ROW (pace / arrival) ─────────────────────────── */
+/* -- OPTION ROW (pace / arrival) --------------------------- */
 .option-row {
   display: flex;
   gap: 8px;
@@ -480,7 +479,7 @@ img { display:block; }
   color: var(--white);
 }
 
-/* ── OPTIONAL INPUT ──────────────────────────────────────── */
+/* -- OPTIONAL INPUT ---------------------------------------- */
 .optional-input {
   width: 100%;
   padding: 13px 16px;
@@ -500,7 +499,7 @@ img { display:block; }
   box-shadow: 0 0 0 3px var(--gold-soft);
 }
 
-/* ── PRIMARY BUTTON ──────────────────────────────────────── */
+/* -- PRIMARY BUTTON ---------------------------------------- */
 .primary-btn {
   width: 100%;
   padding: 17px;
@@ -539,7 +538,7 @@ img { display:block; }
 }
 .primary-btn.gold:hover { box-shadow: 0 12px 36px rgba(18,30,54,.35); }
 
-/* ── PLAN SCREEN ─────────────────────────────────────────── */
+/* -- PLAN SCREEN ------------------------------------------- */
 .plan-header {
   padding: 18px 20px 0;
   margin-bottom: 18px;
@@ -589,7 +588,7 @@ img { display:block; }
   color: var(--gold);
 }
 
-/* ── TIMELINE ────────────────────────────────────────────── */
+/* -- TIMELINE ---------------------------------------------- */
 .tl {
   padding: 0 20px;
   position: relative;
@@ -695,7 +694,7 @@ img { display:block; }
 .tl-maps:hover { color: var(--ink); border-color: var(--ink-3); background: var(--white); }
 .tl-spacer { height: 10px; }
 
-/* ── PICKS ───────────────────────────────────────────────── */
+/* -- PICKS ------------------------------------------------- */
 .picks-section {
   padding: 22px 20px 0;
 }
@@ -788,7 +787,7 @@ img { display:block; }
   letter-spacing: .04em;
 }
 
-/* ── CHAT BAR ────────────────────────────────────────────── */
+/* -- CHAT BAR ---------------------------------------------- */
 .chat-bar {
   flex: 0 0 auto;
   padding: 10px 14px 18px;
@@ -838,7 +837,7 @@ img { display:block; }
 .chat-send:hover { background: var(--gold); transform: scale(1.06); }
 .chat-send:active { transform: scale(.94); }
 
-/* ── CHAT MESSAGES ───────────────────────────────────────── */
+/* -- CHAT MESSAGES ----------------------------------------- */
 .chat-msgs {
   padding: 0 20px;
   margin-bottom: 8px;
@@ -894,7 +893,7 @@ img { display:block; }
   40% { transform: translateY(-5px); }
 }
 
-/* ── GENERATING OVERLAY ──────────────────────────────────── */
+/* -- GENERATING OVERLAY ------------------------------------ */
 .gen-overlay {
   position: absolute;
   inset: 0;
@@ -960,7 +959,7 @@ img { display:block; }
 .gen-step.active { opacity: 1; color: var(--gold); }
 .gen-step.done { opacity: .5; color: var(--ink-2); }
 
-/* ── BACK BTN ────────────────────────────────────────────── */
+/* -- BACK BTN ---------------------------------------------- */
 .back-btn {
   display: flex;
   align-items: center;
@@ -975,7 +974,7 @@ img { display:block; }
 .back-btn:hover { color: var(--ink); }
 .back-arrow { font-size: 16px; line-height: 1; }
 
-/* ── NUDGE ANIMATION ─────────────────────────────────────── */
+/* -- NUDGE ANIMATION --------------------------------------- */
 @keyframes nudge {
   0%,100% { transform:translateX(0); }
   20% { transform:translateX(-5px); }
@@ -985,7 +984,7 @@ img { display:block; }
 }
 .nudge { animation: nudge .5s ease; }
 
-/* ── TOAST ───────────────────────────────────────────────── */
+/* -- TOAST ------------------------------------------------- */
 .toast {
   position: fixed;
   bottom: 28px;
@@ -1006,21 +1005,19 @@ img { display:block; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ── DIVIDER ─────────────────────────────────────────────── */
+/* -- DIVIDER ----------------------------------------------- */
 .divider {
   height: 1px;
   background: var(--ink-4);
   margin: 20px 0;
 }
 </style>
-
 </head>
 <body>
 
-<!-- ════════════════════════════════════════════════════════
+<!-- ========================================================
      SCREEN 0 — SEARCH
-═══════════════════════════════════════════════════════════ -->
-
+=========================================================== -->
 <div id="s0" class="screen active" style="background:var(--bg);">
   <div class="topbar">
     <div class="topbar-logo">
@@ -1037,26 +1034,22 @@ img { display:block; }
     <h1 class="hero-headline">What show are<br>you going <em>to?</em></h1>
     <p class="hero-sub">Search your event and we'll build the perfect day around it — from first coffee to last call.</p>
 
-```
-<div class="search-wrap">
-  <input id="kwInput" class="search-input" type="text"
-         placeholder="Artist, band, venue, city…"
-         autocomplete="off" autocorrect="off" spellcheck="false"/>
-  <button class="search-go" id="searchBtn" title="Search">→</button>
-</div>
+    <div class="search-wrap">
+      <input id="kwInput" class="search-input" type="text"
+             placeholder="Artist, band, venue, city…"
+             autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <button class="search-go" id="searchBtn" title="Search">→</button>
+    </div>
 
-<div id="statusLine" class="status-line">Start with an artist name or city</div>
+    <div id="statusLine" class="status-line">Start with an artist name or city</div>
 
-<div id="eventList" class="event-list"></div>
-```
-
+    <div id="eventList" class="event-list"></div>
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════════
+<!-- ========================================================
      SCREEN 1 — VIBE
-═══════════════════════════════════════════════════════════ -->
-
+=========================================================== -->
 <div id="s1" class="screen" style="background:var(--bg);">
   <div class="topbar">
     <button class="back-btn" id="vibeBack">
@@ -1079,82 +1072,78 @@ img { display:block; }
       </div>
     </div>
 
-```
-<!-- Vibe tiles -->
-<p class="section-label">What's the vibe?</p>
-<div class="vibe-grid" id="vibeGrid">
-  <button class="vibe-tile" data-v="dinner" type="button">
-    <div class="vibe-check">✓</div>
-    <div class="vibe-tile-icon">🍽</div>
-    <div class="vibe-tile-name">Dinner</div>
-    <div class="vibe-tile-hint">Pre-show meal</div>
-  </button>
-  <button class="vibe-tile" data-v="cocktails" type="button">
-    <div class="vibe-check">✓</div>
-    <div class="vibe-tile-icon">🍸</div>
-    <div class="vibe-tile-name">Cocktails</div>
-    <div class="vibe-tile-hint">Pre-show drinks</div>
-  </button>
-  <button class="vibe-tile" data-v="coffee" type="button">
-    <div class="vibe-check">✓</div>
-    <div class="vibe-tile-icon">☕</div>
-    <div class="vibe-tile-name">Coffee</div>
-    <div class="vibe-tile-hint">Afternoon start</div>
-  </button>
-  <button class="vibe-tile" data-v="afterparty" type="button">
-    <div class="vibe-check">✓</div>
-    <div class="vibe-tile-icon">🌙</div>
-    <div class="vibe-tile-name">After-party</div>
-    <div class="vibe-tile-hint">Keep it going</div>
-  </button>
-  <button class="vibe-tile" data-v="latenight" type="button">
-    <div class="vibe-check">✓</div>
-    <div class="vibe-tile-icon">🌮</div>
-    <div class="vibe-tile-name">Late-night eats</div>
-    <div class="vibe-tile-hint">Post-encore fuel</div>
-  </button>
-  <button class="vibe-tile" data-v="wine" type="button">
-    <div class="vibe-check">✓</div>
-    <div class="vibe-tile-icon">🍷</div>
-    <div class="vibe-tile-name">Wine bar</div>
-    <div class="vibe-tile-hint">Slow and easy</div>
-  </button>
-</div>
+    <!-- Vibe tiles -->
+    <p class="section-label">What's the vibe?</p>
+    <div class="vibe-grid" id="vibeGrid">
+      <button class="vibe-tile" data-v="dinner" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🍽</div>
+        <div class="vibe-tile-name">Dinner</div>
+        <div class="vibe-tile-hint">Pre-show meal</div>
+      </button>
+      <button class="vibe-tile" data-v="cocktails" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🍸</div>
+        <div class="vibe-tile-name">Cocktails</div>
+        <div class="vibe-tile-hint">Pre-show drinks</div>
+      </button>
+      <button class="vibe-tile" data-v="coffee" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">☕</div>
+        <div class="vibe-tile-name">Coffee</div>
+        <div class="vibe-tile-hint">Afternoon start</div>
+      </button>
+      <button class="vibe-tile" data-v="afterparty" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🌙</div>
+        <div class="vibe-tile-name">After-party</div>
+        <div class="vibe-tile-hint">Keep it going</div>
+      </button>
+      <button class="vibe-tile" data-v="latenight" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🌮</div>
+        <div class="vibe-tile-name">Late-night eats</div>
+        <div class="vibe-tile-hint">Post-encore fuel</div>
+      </button>
+      <button class="vibe-tile" data-v="wine" type="button">
+        <div class="vibe-check">✓</div>
+        <div class="vibe-tile-icon">🍷</div>
+        <div class="vibe-tile-name">Wine bar</div>
+        <div class="vibe-tile-hint">Slow and easy</div>
+      </button>
+    </div>
 
-<!-- Pace -->
-<p class="section-label">How packed is the day?</p>
-<div class="option-row" id="paceRow">
-  <button class="opt-pill" data-p="chill">Chill</button>
-  <button class="opt-pill on" data-p="balanced">Balanced</button>
-  <button class="opt-pill" data-p="packed">Packed</button>
-</div>
+    <!-- Pace -->
+    <p class="section-label">How packed is the day?</p>
+    <div class="option-row" id="paceRow">
+      <button class="opt-pill" data-p="chill">Chill</button>
+      <button class="opt-pill on" data-p="balanced">Balanced</button>
+      <button class="opt-pill" data-p="packed">Packed</button>
+    </div>
 
-<!-- Arrive -->
-<p class="section-label">Arrive at venue</p>
-<div class="option-row" id="arrRow">
-  <button class="opt-pill" data-m="30">30 min early</button>
-  <button class="opt-pill on" data-m="60">1 hr early</button>
-  <button class="opt-pill" data-m="90">90 min early</button>
-</div>
+    <!-- Arrive -->
+    <p class="section-label">Arrive at venue</p>
+    <div class="option-row" id="arrRow">
+      <button class="opt-pill" data-m="30">30 min early</button>
+      <button class="opt-pill on" data-m="60">1 hr early</button>
+      <button class="opt-pill" data-m="90">90 min early</button>
+    </div>
 
-<!-- Hotel optional -->
-<p class="section-label">Hotel / starting point <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-3);font-size:11px;"> — optional</span></p>
-<input id="hotelInp" class="optional-input" type="text"
-       placeholder="e.g. The Standard, High Line"
-       autocomplete="off"/>
+    <!-- Hotel optional -->
+    <p class="section-label">Hotel / starting point <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-3);font-size:11px;"> — optional</span></p>
+    <input id="hotelInp" class="optional-input" type="text"
+           placeholder="e.g. The Standard, High Line"
+           autocomplete="off"/>
 
-<button id="buildBtn" class="primary-btn gold" disabled>
-  Build my night →
-</button>
-```
-
+    <button id="buildBtn" class="primary-btn gold" disabled>
+      Build my night →
+    </button>
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════════
+<!-- ========================================================
      SCREEN 2 — PLAN
-═══════════════════════════════════════════════════════════ -->
-
+=========================================================== -->
 <div id="s2" class="screen" style="background:var(--bg); display:flex; flex-direction:column;">
   <!-- Generating overlay -->
   <div class="gen-overlay" id="genOverlay">
@@ -1169,7 +1158,6 @@ img { display:block; }
   </div>
 
   <!-- Plan header — fixed, never scrolls -->
-
   <div class="plan-header" id="planHeader" style="flex:0 0 auto;">
     <div class="plan-eyebrow">Your Concerto+ plan</div>
     <div class="plan-artist" id="planArtist">—</div>
@@ -1181,7 +1169,6 @@ img { display:block; }
   </div>
 
   <!-- Scrollable content -->
-
   <div class="scroll-area" id="planScroll" style="flex:1 1 auto; min-height:0;">
     <!-- Timeline -->
     <div class="tl" id="tlWrap">
@@ -1189,18 +1176,14 @@ img { display:block; }
       <div id="tlList"></div>
     </div>
 
-```
-<!-- Picks -->
-<div class="picks-section" id="picksSec"></div>
+    <!-- Picks -->
+    <div class="picks-section" id="picksSec"></div>
 
-<!-- Chat history -->
-<div class="chat-msgs" id="chatMsgs"></div>
-```
-
+    <!-- Chat history -->
+    <div class="chat-msgs" id="chatMsgs"></div>
   </div>
 
   <!-- Chat bar — fixed at bottom -->
-
   <div class="chat-bar" style="flex:0 0 auto;">
     <div class="chat-inner">
       <textarea class="chat-input" id="chatInput" rows="1"
@@ -1211,20 +1194,20 @@ img { display:block; }
 </div>
 
 <!-- Toast -->
-
 <div class="toast" id="toast"></div>
 
 <!-- Google Maps SDK not needed - using server-side proxy for all API calls -->
 
+
 <script>
-/* ═══════════════════════════════════════════════
+/* ===============================================
    CONCERTO+ — MAIN SCRIPT (clean)
    All API keys stored in Netlify env vars
-═══════════════════════════════════════════════ */
+=============================================== */
 
 const $ = id => document.getElementById(id);
 
-// ── State ─────────────────────────────────────
+// -- State -------------------------------------
 const S = {
   ev:          null,   // selected Ticketmaster event
   vibes:       [],     // e.g. ['dinner','cocktails']
@@ -1238,7 +1221,7 @@ const S = {
   chatHistory: [],     // [{role,content}] real chat turns only
 };
 
-// ── Vibe config ───────────────────────────────
+// -- Vibe config -------------------------------
 const VC = {
   dinner:     {label:'Dinner',      icon:'🍽',  type:'restaurant',  kw:'dinner restaurant'},
   cocktails:  {label:'Cocktails',   icon:'🍸',  type:'bar',         kw:'cocktail bar'},
@@ -1248,7 +1231,7 @@ const VC = {
   wine:       {label:'Wine bar',    icon:'🍷',  type:'bar',         kw:'wine bar'},
 };
 
-// ── Tiny helpers ──────────────────────────────
+// -- Tiny helpers ------------------------------
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function toDate(s){
@@ -1280,7 +1263,7 @@ function showToast(msg, ms=2400){
   _toastTimer=setTimeout(()=>el.classList.remove('show'), ms);
 }
 
-// ── Screen nav ────────────────────────────────
+// -- Screen nav --------------------------------
 const SCREENS=[$('s0'),$('s1'),$('s2')];
 function goTo(idx){
   SCREENS.forEach((s,i)=>{
@@ -1290,7 +1273,7 @@ function goTo(idx){
   });
 }
 
-// ── Gen overlay ───────────────────────────────
+// -- Gen overlay -------------------------------
 function showGen(on){
   const el=$('genOverlay');
   if(on){
@@ -1309,7 +1292,7 @@ function genStep(i){
   const cur=$(`gs${i}`); if(cur){ cur.classList.remove('done'); cur.classList.add('active'); }
 }
 
-// ── Nav wiring ────────────────────────────────
+// -- Nav wiring --------------------------------
 $('vibeBack').addEventListener('click',  ()=>goTo(0));
 $('editBtn').addEventListener('click',   ()=>goTo(1));
 $('vibeReset').addEventListener('click', ()=>{
@@ -1322,7 +1305,7 @@ $('helpBtn').addEventListener('click', ()=>{
   showToast('Search a show → pick your vibe → we build the night', 3200);
 });
 
-// ── Event search ──────────────────────────────
+// -- Event search ------------------------------
 $('kwInput').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); doSearch(); }});
 $('searchBtn').addEventListener('click', doSearch);
 
@@ -1422,7 +1405,7 @@ function selectEvent(ev){
   goTo(1);
 }
 
-// ── Vibe tiles ────────────────────────────────
+// -- Vibe tiles --------------------------------
 document.querySelectorAll('.vibe-tile').forEach(tile=>{
   tile.addEventListener('click', ()=>{
     const v=tile.dataset.v;
@@ -1433,7 +1416,7 @@ document.querySelectorAll('.vibe-tile').forEach(tile=>{
   });
 });
 
-// ── Pace ──────────────────────────────────────
+// -- Pace --------------------------------------
 $('paceRow').addEventListener('click', e=>{
   const b=e.target.closest('.opt-pill'); if(!b) return;
   $('paceRow').querySelectorAll('.opt-pill').forEach(x=>x.classList.remove('on'));
@@ -1441,7 +1424,7 @@ $('paceRow').addEventListener('click', e=>{
   S.pace=b.dataset.p;
 });
 
-// ── Arrival ───────────────────────────────────
+// -- Arrival -----------------------------------
 $('arrRow').addEventListener('click', e=>{
   const b=e.target.closest('.opt-pill'); if(!b) return;
   $('arrRow').querySelectorAll('.opt-pill').forEach(x=>x.classList.remove('on'));
@@ -1453,7 +1436,7 @@ function updateBuildBtn(){
   $('buildBtn').disabled=!(S.ev && S.vibes.length>0);
 }
 
-// ── BUILD PLAN ────────────────────────────────
+// -- BUILD PLAN --------------------------------
 $('buildBtn').addEventListener('click', buildPlan);
 
 async function buildPlan(){
@@ -1513,7 +1496,7 @@ async function buildPlan(){
   }
 }
 
-// ── Prompt builder ────────────────────────────
+// -- Prompt builder ----------------------------
 function makeBuildPrompt(){
   const ev=S.ev;
   const dt=toDate(ev.dateTime);
@@ -1561,7 +1544,7 @@ RESPOND WITH ONLY THIS JSON — no markdown fences, no explanation:
 {"timeline":[{"time":"6:00 PM","label":"Dinner at Carbone","note":"Order the rigatoni vodka — worth the hour wait at the bar.","placeName":"Carbone","vibe":"dinner","isShow":false},{"time":"8:30 PM","label":"Harry Styles at MSG","note":"","placeName":"Madison Square Garden","vibe":"show","isShow":true}],"picks":{"dinner":[{"name":"Carbone","why":"The best pre-show power dinner in the city — book or walk in at 5:45."}]}}`;
 }
 
-// ── Claude API call ───────────────────────────
+// -- Claude API call ---------------------------
 async function claudeCall(messages){
   const sys=`You are the Concerto+ concierge — a lifelong music fan with the precision of a luxury hotel concierge. You build curated night-out plans around concerts. Be specific and opinionated. Name actual dishes. Give real insider tips. Avoid generic filler phrases. Respond ONLY with a raw JSON object — no markdown, no extra text.`;
 
@@ -1610,7 +1593,7 @@ async function claudeCall(messages){
   }
 }
 
-// ── Geocode ───────────────────────────────────
+// -- Geocode -----------------------------------
 async function geocode(addr){
   try{
     const res=await fetch('/.netlify/functions/claude',{
@@ -1624,7 +1607,7 @@ async function geocode(addr){
   } catch{ return null; }
 }
 
-// ── Google Places ─────────────────────────────
+// -- Google Places -----------------------------
 function mapPlaceREST(p){
   return {
     name:    p.name||'',
@@ -1654,13 +1637,13 @@ async function fetchNearby({loc, type, kw, max=8}){
   } catch(e){ console.error('fetchNearby error',e); return []; }
 }
 
-// ── Render plan ───────────────────────────────
+// -- Render plan -------------------------------
 function renderPlan(plan){
   const ev=S.ev, dt=toDate(ev.dateTime);
   $('planArtist').textContent = ev.artist||ev.name;
   $('planMeta').textContent   = [ev.venue, ev.city, dt?fmtD(dt):''].filter(Boolean).join(' · ');
 
-  // ─ Timeline ─
+  // - Timeline -
   const tlList=$('tlList');
   tlList.innerHTML='';
   const allPlaces=Object.values(S.byVibe).flat();
@@ -1692,7 +1675,7 @@ function renderPlan(plan){
     });
   }
 
-  // ─ Picks ─
+  // - Picks -
   const picksSec=$('picksSec');
   picksSec.innerHTML='';
   const pd=plan.picks||{};
@@ -1742,7 +1725,7 @@ function renderPlan(plan){
   $('planScroll').scrollTop=0;
 }
 
-// ── Share ─────────────────────────────────────
+// -- Share -------------------------------------
 $('shareBtn').addEventListener('click', async()=>{
   if(!S.ev || !S.plan) return;
   const dt=toDate(S.ev.dateTime);
@@ -1754,7 +1737,7 @@ $('shareBtn').addEventListener('click', async()=>{
   } catch { showToast('Share canceled'); }
 });
 
-// ── Chat ──────────────────────────────────────
+// -- Chat --------------------------------------
 const chatInput=$('chatInput');
 chatInput.addEventListener('input', ()=>{
   chatInput.style.height='auto';
@@ -1811,9 +1794,8 @@ function addBubble(text, role, typing=false){
   return el;
 }
 
-// ── Init ──────────────────────────────────────
+// -- Init --------------------------------------
 updateBuildBtn();
 </script>
-
 </body>
 </html>

@@ -94,6 +94,8 @@ img { display:block; }
   padding: 14px 20px 10px;
   position: relative;
   z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--card-b) !important;
 }
 .topbar-logo {
   display: flex;
@@ -146,33 +148,17 @@ img { display:block; }
 .scroll-area::-webkit-scrollbar { display: none; }
 
 /* -- HERO (Search screen) ---------------------------------- */
-.hero-eyebrow {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .2em;
-  color: var(--gold);
-  text-transform: uppercase;
-  margin-bottom: 10px;
+.eyebrow {
+  font-size: 10px; font-weight: 600; letter-spacing: .2em;
+  color: var(--ink-3); text-transform: uppercase; margin-bottom: 10px; margin-top: 24px;
 }
-.hero-headline {
-  font-family: var(--display);
-  font-size: 38px;
-  font-weight: 700;
-  line-height: 1.08;
-  color: var(--ink);
-  letter-spacing: -.01em;
-  margin-bottom: 10px;
+.headline {
+  font-family: var(--display); font-size: 34px; font-weight: 700; line-height: 1.08;
+  color: var(--ink); letter-spacing: -.01em; margin-bottom: 6px;
 }
-.hero-headline em {
-  font-style: italic;
-  color: var(--gold);
-}
-.hero-sub {
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--ink-2);
-  line-height: 1.5;
-  margin-bottom: 28px;
+.headline em { font-style: italic; color: var(--ink-2); }
+.sub {
+  font-size: 14px; color: var(--ink-3); line-height: 1.6; margin-bottom: 28px;
 }
 
 /* -- SEARCH BOX -------------------------------------------- */
@@ -1030,9 +1016,9 @@ img { display:block; }
   </div>
 
   <div class="scroll-area">
-    <p class="hero-eyebrow">Your night, curated</p>
-    <h1 class="hero-headline">What show are<br>you going <em>to?</em></h1>
-    <p class="hero-sub">Search your event and we'll build the perfect day around it — from first coffee to last call.</p>
+    <div class="eyebrow">Your night, curated</div>
+    <h1 class="headline">What show are<br>you going <em>to?</em></h1>
+    <p class="sub">Search your event and we'll build the perfect day around it — from first coffee to last call.</p>
 
     <div class="search-wrap">
       <input id="kwInput" class="search-input" type="text"
